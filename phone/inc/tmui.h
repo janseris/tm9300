@@ -40,7 +40,7 @@ public:
 struct TmUiTrack
     {
     char iName[20];             // the file's name without .tmb (rallyA1)
-    int iEnv;                   // 0 Rally, 1 Snow
+    int iEnv;                   // 0 Rally, 1 Snow, 2 Desert, 3 Island, 4 Bay, 5 Coast, 6 Stadium
     int iSeries;                // 0 White (A) .. 4 Black (E)
     int iNum;                   // 1..5 (E: 1)
     int iFile;                  // its index among the installed files
@@ -120,7 +120,8 @@ private:
     TmPix* iBg;                 // the background (gradient and globe), 640 x 200
     int iSel[10];               // the selected item per screen
     bool iInGrid;               // Solo: the focus in the track grid
-    int iGridCol, iGridRow;
+    int iGridCol, iGridRow;     // iGridRow: an index into iEnvs (three rows a page)
+    int iEnvs[7], iNEnvs;       // the environments installed, in the game's order
     int iOppSel;
     int iHsRow;                 // hot seat: 0 the mode, 1 its value, 2..9 the player slots, 10 start, 11 back
     bool iChooser;              // hot seat: the profile chooser open over the slots

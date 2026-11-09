@@ -386,11 +386,14 @@ using namespace TmDraw;
 
 // ---- the menu ----
 static const char* const KSeriesName[5] = { "White", "Green", "Blue", "Red", "Black" };
-static const char* const KEnvName[2] = { "Rally", "Snow" };
+// the environments (TmUiTrack::iEnv) and their rows' order in the game's grid: Stadium, Island, Desert | Rally, Bay,
+// Coast | Snow (three a page)
+static const char* const KEnvName[7] = { "Rally", "Snow", "Desert", "Island", "Bay", "Coast", "Stadium" };
+static const int KEnvRank[7] = { 3, 6, 2, 1, 4, 5, 0 };
 enum { LEFT_W = 196, RIGHT_X = 204 };
 
 TmMenu::TmMenu() : iDirty(true), iScreen(ETitle), iVersion(""), iRaceFile(-1), iRaceOpp(EOppGold), iPlayers(1), iAttempts(3), iHsMode(0), iTimeLimit(300), iNProfiles(0), iProfilesChanged(false), iSeriesN(0),
-    iLockMsg(false), iPack(0), iBig(0), iText(0), iSmall(0), iNTracks(0), iBg(0), iInGrid(false), iGridCol(0), iGridRow(0), iOppSel(0), iHsRow(2), iChooser(false), iChooserSel(0), iRowH(24), iPlateH(29), iEditing(-1), iSeriesSel(0), iTitleTick(0)
+    iLockMsg(false), iPack(0), iBig(0), iText(0), iSmall(0), iNTracks(0), iBg(0), iInGrid(false), iGridCol(0), iGridRow(0), iNEnvs(0), iOppSel(0), iHsRow(2), iChooser(false), iChooserSel(0), iRowH(24), iPlateH(29), iEditing(-1), iSeriesSel(0), iTitleTick(0)
     {
     for (int i = 0; i < 10; i++) iSel[i] = 0;
     for (int p = 0; p < KMaxPlayers; p++) iNames[p][0] = 0;
@@ -400,6 +403,11 @@ TmMenu::~TmMenu() { delete[] iBg; }
 bool TmMenu::Init(const TmFont* aBig, const TmFont* aText, const TmFont* aSmall, const TmUiTrack* aTracks, int aN, const TmUiPack* aPack)
     {
     iBig = aBig; iText = aText; iSmall = aSmall; iPack = aPack;
+    // the environments with a track installed, in the game's order
+    iNEnvs = 0;
+    for (int rank = 0; rank < 7; rank++)
+        for (int e = 0; e < 7; e++)
+            if (KEnvRank[e] == rank) for (int i = 0; i < aN; i++) if (aTracks[i].iEnv == e) { iEnvs[iNEnvs++] = e; break; }
     // 0.14: the left list's sizes from the fonts (the phone's may be bigger than the PC's): the title plate holds the
     // title and its line under it, a row its text with room
     iPlateH = iBig->iH + iSmall->iH - 3; if (iPlateH < 29) iPlateH = 29; if (iPlateH > 44) iPlateH = 44;
@@ -635,13 +643,30 @@ int TmMenu::SeriesCount(int aEnv, int aSeries) const
 void TmMenu::DrawGrid(TmPix* f, int s)
     {
     const int series = iSel[ESolo] < 5 ? iSel[ESolo] : 0;
-    const int cw = 84, ch = 64, x0 = RIGHT_X + 6, y0 = 50;
-    for (int env = 0; env < 2; env++)
+    // the installed environments' rows, three a page as the game's; the page with the selection, its arrows at the foot
+    const int page = iGridRow / 3, rows = iNEnvs - page * 3 < 3 ? iNEnvs - page * 3 : 3;
+    const int x0 = RIGHT_X + 6, y0 = 46, cw = 84, gap = 5;
+    const int arrowH = iNEnvs > 3 ? 12 : 0;
+    int ch = rows > 0 ? (200 - y0 - 3 - arrowH) / (rows > 2 ? 3 : 2) - gap : 64; if (ch > 64) ch = 64;
+    if (iNEnvs > 3)
+        {
+        // the game's two round buttons: up (a page before), down (a page after)
+        const int ax = x0 + (5 * cw) / 2, ay = 200 - arrowH / 2 - 2;
+        for (int k = 0; k < 2; k++)
+            {
+            const bool on = k ? (page + 1) * 3 < iNEnvs : page > 0;
+            const int cx = ax + (k ? 8 : -8);
+            Round(f, s, cx - 5, ay - 5, 11, 11, 5, on ? Rgb(240, 240, 240) : Rgb(120, 130, 140), on ? Rgb(190, 190, 190) : Rgb(90, 100, 110));
+            if (on) for (int j = 0; j < 4; j++) Fill(f, s, cx - j, k ? ay + 2 - j : ay - 2 + j, 2 * j + 1, 1, Rgb(20, 20, 20));
+            }
+        }
+    for (int r = 0; r < rows; r++)
         for (int n = 1; n <= 5; n++)
             {
-            const int x = x0 + (n - 1) * cw, y = y0 + env * (ch + 7);
+            const int row = page * 3 + r, env = iEnvs[row];
+            const int x = x0 + (n - 1) * cw, y = y0 + r * (ch + gap);
             const int ti = TrackAt(series, env, n);
-            const bool sel = iInGrid && iGridRow == env && iGridCol == n - 1;
+            const bool sel = iInGrid && iGridRow == row && iGridCol == n - 1;
             Round(f, s, x, y, cw - 4, ch, 4, sel ? Rgb(255, 240, 170) : Rgb(220, 226, 230), sel ? Rgb(220, 180, 70) : Rgb(170, 178, 184));
             if (ti < 0)
                 {
@@ -655,7 +680,7 @@ void TmMenu::DrawGrid(TmPix* f, int s)
                 {
                 // not open yet, as the game's: a padlock and "(the conditions)" (Enter shows them), no picture, no name
                 Round(f, s, x + 3, y + 3, tw, th, 3, Rgb(70, 72, 96), Rgb(40, 42, 60));
-                Icon(f, s, x + (cw - 4) / 2 - 15, y + 2, EIcoLock);
+                Icon(f, s, x + (cw - 4) / 2 - 15, y + (th - 30 - iSmall->iH) / 2 + 3 > y + 1 ? y + (th - 30 - iSmall->iH) / 2 + 3 : y + 1, EIcoLock);
                 TextCentre(f, s, *iSmall, x + 3, x + 3 + tw, y + th + 2 - iSmall->iH, "(conditions)", Rgb(200, 204, 220));
                 continue;
                 }
@@ -949,7 +974,7 @@ int TmMenu::Key(int aKey, int aChar)
                     // into the grid, on the first installed track
                     iInGrid = true; iGridRow = 0; iGridCol = 0;
                     bool found = false;
-                    for (int e = 0; e < 2 && !found; e++) for (int n = 1; n <= 5 && !found; n++) if (TrackAt(k, e, n) >= 0) { iGridRow = e; iGridCol = n - 1; found = true; }
+                    for (int r = 0; r < iNEnvs && !found; r++) for (int n = 1; n <= 5 && !found; n++) if (TrackAt(k, iEnvs[r], n) >= 0) { iGridRow = r; iGridCol = n - 1; found = true; }
                     }
                 return EUiNone;
                 }
@@ -957,10 +982,10 @@ int TmMenu::Key(int aKey, int aChar)
             if (aKey == EUiBack) { iInGrid = false; return EUiNone; }
             if (aKey == EUiLeft) { if (iGridCol == 0) iInGrid = false; else iGridCol--; }
             else if (aKey == EUiRight) { if (iGridCol < 4) iGridCol++; }
-            else if (aKey == EUiUp || aKey == EUiDown) iGridRow ^= 1;
-            else if (aKey == EUiOk)
+            else if ((aKey == EUiUp || aKey == EUiDown) && iNEnvs > 0) iGridRow = (iGridRow + (aKey == EUiUp ? iNEnvs - 1 : 1)) % iNEnvs;
+            else if (aKey == EUiOk && iNEnvs > 0)
                 {
-                const int ti = TrackAt(iSel[ESolo], iGridRow, iGridCol + 1);
+                const int ti = TrackAt(iSel[ESolo], iEnvs[iGridRow], iGridCol + 1);
                 if (ti >= 0 && !Unlocked(ti)) iLockMsg = true;
                 else if (ti >= 0) { iRaceFile = iTracks[ti].iFile; iScreen = EOpponent; iOppSel = 1; }
                 }

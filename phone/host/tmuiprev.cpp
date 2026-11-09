@@ -52,8 +52,10 @@ int main(int argc, char** argv)
         {
         TmUiTrack& t = tr[nt]; memset(&t, 0, sizeof(t));
         strncpy(t.iName, argv[i], 19);
-        t.iEnv = argv[i][0] == 's' ? 1 : 0;
-        const char* k = argv[i] + (t.iEnv ? 4 : 5);
+        static const char* const env[7] = { "rally", "snow", "desert", "island", "bay", "coast", "stadium" };
+        int kk = 5; t.iEnv = 0;
+        for (int e = 0; e < 7; e++) if (!strncmp(argv[i], env[e], strlen(env[e]))) { t.iEnv = e; kk = (int) strlen(env[e]); }
+        const char* k = argv[i] + kk;
         t.iSeries = k[0] - 'A'; t.iNum = k[1] ? k[1] - '0' : 1; t.iFile = nt;
         sprintf(p, "%s/%s.tmt", argv[3], argv[i]);
         int n; unsigned char* d = ReadAll(p, n);
