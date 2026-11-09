@@ -32,7 +32,8 @@ The collision meshes are Nadeo's own collision solids (CPlugSurface), pre-turned
 # off: the renderer's depth test (tm9300 0.5, R3D 1.60) draws layered surfaces right; --depthfix turns them on
 DEPTHFIX = False
 CAR_TRIS = int(__import__('os').environ.get('CAR_TRIS', '600'))   # the car's triangles (vertex clustering below ~500 ruins its shape)
-ALLWALLS = __import__('os').environ.get('ALLWALLS', '1') != '0'     # 0.8: every steep face of a collidable piece is a wall
+ALLWALLS = __import__('os').environ.get('ALLWALLS', '1') != '0'
+NADEOWALLS = __import__('os').environ.get('NADEOWALLS', '0') != '0'   # 0.16: walls from Nadeo's collision meshes     # 0.8: every steep face of a collidable piece is a wall
 WALL_NY = 0.45         # faces steeper than ~63 degrees are walls (the car hits them), not ground: a big stone's side, a bank
 WALLSTAT = [0, 0]      # steep faces kept as walls / dropped (per solid when PACKSTATS is set)
 import sys, json, struct, math, os, collections
@@ -503,8 +504,31 @@ def main():
                 farkey[key] = add_mesh(fm) if fm is not None and fm.faces else -1
                 # its collision: the same corners, the faces the car stands on
                 tris = coll_from(rm)
+                iv = meshes[meshkey[key]][0]
+                # 0.16: the walls from Nadeo's own collision mesh (its steep faces, both sides), not the drawn mesh's
+                # simplified ones, for pieces in one part: the car's body box meets them as the game's car does
+                sc = t.solids[sname].get('coll')
+                if NADEOWALLS and ox == 0 and oz == 0 and len(solid_mesh(sname)) == 1 and sc and sc.get('tris'):
+                    tris = [tr for tr in tris if tr[4] != 9]
+                    cv = sc['verts']; extra = []
+                    for i in range(0, len(sc['tris']), 4):
+                        if sc['surfs'][sc['tris'][i + 3]] == 'NotCollidable': continue
+                        P = [tuple(cv[sc['tris'][i + q] * 3 + k] for k in range(3)) for q in range(3)]
+                        n, area = face_normal(*P)
+                        if n is None or abs(n[1]) >= WALL_NY or area < 0.02: continue
+                        extra.append(P)
+                    if extra:
+                        rmw = rotate(Mesh([p2 for P in extra for p2 in P], []), d, c)
+                        iv = list(iv); b0 = len(iv)
+                        for p2 in rmw.verts: iv.append((int(round(p2[0] * 16)), int(round(p2[1] * 16)), int(round(p2[2] * 16))))
+                        for k in range(len(extra)):
+                            A, B, C = rmw.verts[k * 3], rmw.verts[k * 3 + 1], rmw.verts[k * 3 + 2]
+                            n, _ = face_normal(A, B, C)
+                            if n is None: continue
+                            nn = tuple(int(round(q * 8192)) for q in n)
+                            tris.append((b0 + k * 3, b0 + k * 3 + 1, b0 + k * 3 + 2, nn, 9))
+                            tris.append((b0 + k * 3, b0 + k * 3 + 2, b0 + k * 3 + 1, tuple(-q for q in nn), 9))
                 if tris:
-                    iv = meshes[meshkey[key]][0]
                     used = sorted({k for tr in tris for k in tr[:3]}); remap = {k: i for i, k in enumerate(used)}
                     civ = [iv[k] for k in used]
                     cbb = [min(p[0] for p in civ), min(p[1] for p in civ), min(p[2] for p in civ), max(p[0] for p in civ), max(p[1] for p in civ), max(p[2] for p in civ)]

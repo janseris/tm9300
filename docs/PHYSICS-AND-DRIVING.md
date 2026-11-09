@@ -387,6 +387,12 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   have a sand tile left over them, A2/A3's jumps, the D and E tracks). The menu's grid and the hot seat's series
   list every installed environment (the grid three a page in the game's order).
 
+- The camera at the start (and wherever the ground behind the car rises: a hill, a bank) stays at its height: a
+  surface well under it is ground it is above, not a roof (the Rally starts held it 1.2 m over the road). Tried a
+  whole box for the car's body (its size from the car's mesh) against walls from Nadeo's own collision meshes
+  (`NADEOWALLS=1 pack.py`): the narrow roads' rails and the hills' sides still snag it (RallyE stops at a hill's foot,
+  SnowE at 2 checkpoints of 27 instead of 6): not shipped.
+
 ## Next
 
 1. **Speed on Snow**: SnowA1 draws ~2,000 triangles a frame (3.8 M instructions: ~18 fps on the phone), the

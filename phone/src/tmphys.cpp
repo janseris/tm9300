@@ -779,7 +779,10 @@ void TmFollowCam::Update(const TmGround& aG, const TmCarState& aS, int& aX, int&
     {
     TmGroundHit h;
     const int base = ty - iUp;
-    if (aG.Probe(tx, tz, ty + 128, h) && h.y > base + 256)
+    // 0.16: a surface well under the camera is ground it is above (a bank, the hill behind a start), not a roof: the
+    // camera stays at its height, a metre over that ground at least (it was held 1.2 m over the road at the starts)
+    if (aG.Probe(tx, tz, ty + 128, h) && h.y > base + 256 && h.y < ty - 128) { if (ty < h.y + 256) ty = h.y + 256; }
+    else if (aG.Probe(tx, tz, ty + 128, h) && h.y > base + 256)
         {
         int cap = h.y - 384; if (cap < base + 307) cap = base + 307;
         if (ty > cap) ty = cap;
