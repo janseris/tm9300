@@ -337,8 +337,9 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   his best run of the turn is his ghost; the orange bar under the players shows what is left of the turn. Esc:
   "Hot Seat" (Continue, Give up, Quit). After the last player the standings, then the series' next track.
 - The game's own font (Gill Sans from `GameData/Menu/Media/Font/United_Textures/United_00.dds`): `tools/pc/tmfont.py`
-  cuts ASCII out of the sheet into `tm9300.fnt` (never in git); the phone scales it to the heights of its own three
-  fonts at start-up (the title's in bold). Without the file the phone's fonts are used as before.
+  cuts ASCII out of the sheet into `tm9300.fnt` (never in git); the phone scales it at start-up to the game's
+  proportions against the menus' rows (titles 15 lines in bold, text 11, small 10; the phone's own fonts filled the
+  rows). Without the file the phone's fonts are used as before.
 - The menus' picture pack is no longer a writable static (the phone's programs may not have one: petran had
   refused it), it sits in the thread's slot.
 

@@ -38,7 +38,9 @@ int main(int argc, char** argv)
     if (fd && TmFontLoad(fd, fn, sheet))
         {
         TmFont nb, nt, ns;
-        TmFontScale(sheet, big.iH, true, nb); TmFontScale(sheet, text.iH, false, nt); TmFontScale(sheet, small.iH, false, ns);
+        const char* e = getenv("TMFONT"); int hb = 15, ht = 11, hs = 10;
+        if (e) sscanf(e, "%d,%d,%d", &hb, &ht, &hs);
+        TmFontScale(sheet, hb, true, nb); TmFontScale(sheet, ht, false, nt); TmFontScale(sheet, hs, false, ns);
         big = nb; text = nt; small = ns;
         printf("the game's font: %d %d %d\n", big.iH, text.iH, small.iH);
         }

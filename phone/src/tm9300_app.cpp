@@ -505,7 +505,7 @@ void CTmView::ScanTracks()
         }
     }
 
-// 0.14: the game's own font (tm9300.fnt, its sheet), made the heights of the phone's three fonts; the title's bold
+// 0.14: the game's own font (tm9300.fnt, its sheet) at the game's sizes; the title's bold
 void CTmView::GameFont()
     {
     RFs& fs = iCoeEnv->FsSession();
@@ -520,12 +520,15 @@ void CTmView::GameFont()
         TmFont sheet;
         if (f.Read(p) == KErrNone && p.Length() == sz && TmFontLoad(d, sz, sheet))
             {
+            // the sizes the game's own (its text against its menus' rows and plates, as far as reading allows):
+            // the titles 15 lines (bold), the text 11, the small 10
             TmFont* fonts[3] = { &iFBig, &iFText, &iFSmall };
+            const TInt sizes[3] = { 15, 11, 10 };
             for (TInt k = 0; k < 3; k++)
                 {
                 if (!fonts[k]->iMask) continue;
                 TmFont g;
-                if (TmFontScale(sheet, fonts[k]->iH, k == 0, g)) { delete[] fonts[k]->iMask; *fonts[k] = g; }
+                if (TmFontScale(sheet, sizes[k], k == 0, g)) { delete[] fonts[k]->iMask; *fonts[k] = g; }
                 }
             }
         User::Free(d);

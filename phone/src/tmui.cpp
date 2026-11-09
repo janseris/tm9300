@@ -44,8 +44,16 @@ bool TmFontScale(const TmFont& src, int h, bool bold, TmFont& out)
     int x = 0;
     for (int c = 0; c < 95; c++)
         {
-        int w = (src.iW[c] * h + sh / 2) / sh; if (w < 1) w = 1;
-        if (bold && c) w++;
+        // a glyph: its picture (the sheet's cell less its 2-pixel bearings) made the height's size, then a gap
+        // (the bearings, at least a pixel): rounded once for the whole cell, small type spread unevenly
+        int w;
+        if (!c) { w = (src.iW[c] * h + sh / 2) / sh; if (w < 2) w = 2; }
+        else
+            {
+            int gap = (4 * h + sh / 2) / sh; if (gap < 1) gap = 1;
+            int b = ((src.iW[c] - 4) * h + sh / 2) / sh; if (b < 1) b = 1;
+            w = b + gap + (bold ? 1 : 0);
+            }
         out.iX[c] = x; out.iW[c] = w; x += w;
         }
     out.iStripW = x;
@@ -55,8 +63,9 @@ bool TmFontScale(const TmFont& src, int h, bool bold, TmFont& out)
     // each target pixel: the sheet's pixels under it, weighted by how much of each it covers (1/256 pixel units)
     for (int c = 1; c < 95; c++)
         {
-        const int sw = src.iW[c], tw = out.iW[c] - (bold ? 1 : 0);
-        const unsigned char* sm = src.iMask + src.iX[c];
+        int gap = (4 * h + sh / 2) / sh; if (gap < 1) gap = 1;
+        const int sw = src.iW[c] - 4, tw = out.iW[c] - gap - (bold ? 1 : 0);
+        const unsigned char* sm = src.iMask + src.iX[c] + 2;
         unsigned char* om = out.iMask + out.iX[c];
         for (int ty = 0; ty < h; ty++)
             {
