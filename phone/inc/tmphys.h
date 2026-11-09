@@ -89,6 +89,8 @@ public:
     int iCpInst[KMaxCpBoxes], iCpGroup[KMaxCpBoxes], iNCp;     // 0.6: the checkpoint boxes and their checkpoint
     // tuning (set before Reset; 1/256 m/s^2 etc. are computed inside)
     int iGravity;               // m/s^2 * 256 (0.16: 40 * 256, the replays' vertical acceleration in the air in all environments)
+    int iSusB, iSusV;           // 0.17: the body on its springs: its height over its rest (1/256 m), its speed (1/256 m/s)
+    int Load() const;           // the wheels' load from the body (256: standing)
 private:
     void Race(const TmGround& aG);
     int iBumpY;                 // the ground's last y (when the probe finds nothing)
@@ -97,6 +99,7 @@ private:
     int iClimbVy;               // 0.16: the upward speed the ground gave the last steps (1/256 m/s)
     int iClimbRaw;              //   the last step's alone
     int iTurbo;                 // 0.16: the turbo's steps left
+    void Suspension(int aVy0);
     };
 
 // the camera that follows a driven car: behind it along its heading, smoothed, kept above the ground

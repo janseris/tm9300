@@ -390,7 +390,7 @@ void TmCarState::Slopes(int& aAlong, int& aRight) const
     if (aRight > 4096) aRight = 4096; if (aRight < -4096) aRight = -4096;
     }
 
-TmCar::TmCar() : iClass(0), iCheckpoints(0), iCheckMask(0), iFinished(0), iSteps(0), iFinishSteps(0), iLastKindInst(-1), iTotalCps(0), iWallHits(0), iTopY(0), iCpX(0), iCpY(0), iCpZ(0), iCpYaw(0), iGravity(40 * 256), iBumpY(0), iAirSteps(0), iClimbVy(0), iClimbRaw(0), iTurbo(0)
+TmCar::TmCar() : iClass(0), iCheckpoints(0), iCheckMask(0), iFinished(0), iSteps(0), iFinishSteps(0), iLastKindInst(-1), iTotalCps(0), iWallHits(0), iTopY(0), iCpX(0), iCpY(0), iCpZ(0), iCpYaw(0), iGravity(40 * 256), iSusB(0), iSusV(0), iBumpY(0), iAirSteps(0), iClimbVy(0), iClimbRaw(0), iTurbo(0)
     {
     iS.x = iS.y = iS.z = 0; iS.vx = iS.vy = iS.vz = 0; iS.yaw = iS.yaw16 = 0; iS.onGround = 1; iS.surf = 0;
     iS.nx = 0; iS.ny = 8192; iS.nz = 0; iS.speed = 0; iS.steerPos = 0;
@@ -424,7 +424,7 @@ void TmCar::Reset(const TmTrack& aT)
         }
     iBumpY = iS.y;
     for (int w = 0; w < 5; w++) { iLast[w].cinst = -1; iLast[w].face = -1; }
-    iCpX = iS.x; iCpY = iS.y; iCpZ = iS.z; iCpYaw = iS.yaw; iTopY = iS.y; iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; iTurbo = 0;
+    iCpX = iS.x; iCpY = iS.y; iCpZ = iS.z; iCpYaw = iS.yaw; iTopY = iS.y; iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; iTurbo = 0; iSusB = 0; iSusV = 0;
     }
 
 void TmCar::Respawn()
@@ -432,13 +432,14 @@ void TmCar::Respawn()
     // standing at the last checkpoint taken (the start when none), the race going on
     iS.x = iCpX; iS.y = iCpY; iS.z = iCpZ; iS.yaw = iCpYaw & 4095; iS.yaw16 = iS.yaw * 16;
     iS.vx = iS.vy = iS.vz = 0; iS.onGround = 1; iS.surf = 0; iS.nx = 0; iS.ny = 8192; iS.nz = 0; iS.speed = 0; iS.steerPos = 0;
-    iBumpY = iS.y; iTopY = iS.y; iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; iTurbo = 0;
+    iBumpY = iS.y; iTopY = iS.y; iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; iTurbo = 0; iSusB = 0; iSusV = 0;
     for (int w = 0; w < 5; w++) { iLast[w].cinst = -1; iLast[w].face = -1; }
     }
 
 void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
     {
     TmCarState& s = iS;
+    const int vy0 = s.vy;
     if (!iFinished) iSteps++;
     // the steering wheel: to the key's side in ~100 ms, back to the middle faster
     int want = Clamp(aIn.steer, -256, 256);
@@ -480,6 +481,10 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
         v = Clamp(v + a, -20 * 256, (iClass == 2 ? 140 : 100) * 256);       // 0.16: Desert's 140 m/s (its car reaches 120 in the replays; the others 100)
         // the turning, and the grip: the sideways speed dies away (a slide on soft ground), scrubbing some speed
         int turn = (KTurn[iClass][band] * KSurfTurn[surf]) >> 8;
+        // 0.17: the wheels' load from the body on its springs: rebounding after a bump the tyres are light (they turn and
+        // hold less), squashed they bite (Desert's soft car feels it, the stiff ones hardly)
+        const int load = Load();
+        turn = (turn * (load < 256 ? load : 256)) >> 8;
         if (band == 0) { int t = (Abs(v) * 42) >> 8; if (t < turn) turn = t; }
         int dyaw = (s.steerPos * turn) >> 8;
         if (v < 0) dyaw = -dyaw;
@@ -495,7 +500,7 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
         v = (wx * sn2 + wz * co2) >> 14;
         l = (wx * co2 - wz * sn2) >> 14;
         }
-        const int grip = (KGrip[iClass] * KSurfGrip[surf]) >> 8;
+        const int grip = (((KGrip[iClass] * KSurfGrip[surf]) >> 8) * load) >> 8;
         if (l > grip) l -= grip; else if (l < -grip) l += grip; else l = 0;
         // the slide no wider than the class's angle (TrackMania's cars do not spin out on their own)
         const int lmax = (Abs(v) * KSlipMax[iClass]) >> 8;
@@ -691,7 +696,37 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
         }
     iTopY = top > ny ? top : ny;
     s.x = nx; s.y = ny; s.z = nz;
+    Suspension(vy0);
     Race(aG);
+    }
+
+// 0.17 (0.15 in the app, drawn only): the body follows the wheels' vertical movement through a spring: a bump or a
+// landing (the change of the wheels' vertical speed) throws it, the spring brings it back, ringing a while on the
+// Desert car (1.4 Hz, damping 0.12), hardly on the others (3 Hz, 0.6). The body's height over its rest (1/256 m)
+// and speed are drawn; the load it puts on the wheels (Load) sets their grip
+void TmCar::Suspension(int aVy0)
+    {
+    const bool soft = iClass == 2;
+    const int k = soft ? 77 : 355, c = soft ? 2 : 23;          // omega^2 (1/s^2), 2 zeta omega (1/s)
+    int aw = 0;
+    if (iS.onGround) aw = (iS.vy - aVy0) * (soft ? 25 : 12);   // the wheels' vertical acceleration (a landing: the fall stopped)
+    if (aw > 300 * 256) aw = 300 * 256; if (aw < -300 * 256) aw = -300 * 256;
+    iSusV += (-k * iSusB - c * iSusV - aw) / 50;               // b'' = -k b - c b' - aw (the body lags the wheels)
+    iSusB += iSusV / 50;
+    const int lim = soft ? 110 : 40;                           // 0.43 m / 0.16 m of travel
+    if (iSusB > lim) { iSusB = lim; if (iSusV > 0) iSusV = 0; }
+    if (iSusB < -lim) { iSusB = -lim; if (iSusV < 0) iSusV = -(iSusV >> 2); }
+    }
+
+// the wheels' load against the car standing (256): the spring's and the damper's push over 20 m/s^2, 0.5 .. 1.3
+int TmCar::Load() const
+    {
+    if (iClass != 2) return 256;                               // the stiff cars: their tyres always bite
+    const int k = iClass == 2 ? 77 : 355, c = iClass == 2 ? 2 : 23;
+    const int f = 20 * 256 - k * iSusB - c * iSusV;            // 1/256 m/s^2
+    int l = f / 20;
+    if (l < 128) l = 128; if (l > 333) l = 333;
+    return l;
     }
 
 void TmCar::Race(const TmGround& aG)

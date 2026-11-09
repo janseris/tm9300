@@ -408,6 +408,10 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   coarse grids only for the sand, cliffs and rocks; `ROAD_BUDGET=300`): a ramp clustered at 3 m lost its slope.
   Still ~1,100-1,400 triangles drawn a frame on average (Rally 900, Snow 1,600). `tools/pc/packdesert.sh` packs
   and drives all 21.
+- The body on its springs is the car's own now (`TmCar::Suspension`, was the app's, drawn only), and on the Desert car
+  it drives: the load the body puts on the wheels (the spring's and the damper's push over 20 m/s^2, 0.5 .. 1.3 of
+  standing) scales the grip and the turning, so after a bump or a landing, while the body rebounds, the car holds and
+  turns less (the game's American car); Rally's and Snow's stiff cars bite always.
 - The auto-driver finishes Desert A1, A4, A5, B1, B3, B5, C1, C2, C3 (D1 too, before the turbo's change); the others
   fail on its line-keeping after jumps and at the E start (the author turns on the spot). Installed: A1, B3, C1, D1.
 
