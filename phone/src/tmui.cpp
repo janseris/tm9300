@@ -698,9 +698,7 @@ void TmMenu::DrawHotSeat(TmPix* f, int s)
         Round(f, s, cx, cy, cw, chh - 2, 3, sel ? Rgb(255, 250, 220) : Rgb(236, 236, 236), sel ? Rgb(230, 220, 170) : Rgb(214, 214, 214));
         if (iNames[p][0])
             {
-            const int sq = chh - 6;
-            Fill(f, s, cx + 3, cy + 2, sq, sq, Rgb(230, 20, 20));
-            TextCentre(f, s, nf, cx + sq + 4, cx + cw - 10, cy + (chh - 2 - nf.iH) / 2, iNames[p], Rgb(90, 90, 90));
+            TextCentre(f, s, nf, cx + 4, cx + cw - 10, cy + (chh - 2 - nf.iH) / 2, iNames[p], Rgb(90, 90, 90));
             Text(f, s, *iSmall, cx + cw - 9, cy + 1, "x", Rgb(20, 20, 20));
             }
         else TextCentre(f, s, *iSmall, cx, cx + cw, cy + (chh - 2 - iSmall->iH) / 2, "Enter: add a player", Rgb(30, 90, 220));
@@ -742,7 +740,7 @@ void TmMenu::DrawChooser(TmPix* f, int s)
         const bool on = r == iChooserSel;
         const char* t = rows[r] >= 0 ? iProfiles[rows[r]] : rows[r] == -1 ? (iEditing >= 0 ? "" : "Create a new profile") : "Cancel";
         Round(f, s, x + 10, ry, w - 20, rh - 2, (rh - 2) / 2, on ? Rgb(255, 255, 255) : Rgb(226, 226, 226), on ? Rgb(200, 220, 255) : Rgb(190, 190, 190));
-        if (rows[r] >= 0) { Fill(f, s, x + 16, ry + 2, rh - 6, rh - 6, Rgb(230, 20, 20)); Text(f, s, *iSmall, x + w - 22, ry + 1, "x", Rgb(20, 20, 20)); }
+        if (rows[r] >= 0) Text(f, s, *iSmall, x + w - 22, ry + 1, "x", Rgb(20, 20, 20));
         if (rows[r] == -1 && iEditing >= 0)
             {
             // a new profile's name being typed
