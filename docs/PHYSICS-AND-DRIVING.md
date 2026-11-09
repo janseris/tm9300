@@ -1,0 +1,237 @@
+# The car on the track: physics, collision, the drive mode, the depth order (9 Nov 2026)
+
+State: **tm9300 v0.3.1 is a playable game** on two tracks (RallyA1, SnowA1): the car drives on Nadeo's
+own collision geometry with an arcade model fitted to the game's replays; checkpoints and the finish count;
+a follow camera; the car tilts with the ground. Everything is integer, 50 steps a second, ~1.5–2 % of the
+phone's CPU (ARM emulator: 22–24 k instructions a step), bit-exact between the PC and the ARM build.
+
+## What the phone test said (v0.2.0, the flythrough, 320×200 in the middle of the screen)
+
+| variant | fps | draw | copy |
+|---|---|---|---|
+| mesh path, 180 m, with the car | **26.5** | 31 ms | 5 ms |
+| the same without the car | 29.5 | 27 ms | 6 ms |
+| 90 m far cut | 38.8 | 20 ms | 5 ms |
+| geometry only (nothing rasterised) | 49.7 | 14 ms | 5 ms |
+
+The copy to the screen dropped from 9 ms to 5 ms by copying only the view and the counter bar
+(`fm_memcpy` a row, `Update(region)`). The car (542 triangles) costs ~4 ms. The geometry share (14 ms of 31)
+is the next thing to attack (see "Next").
+
+The shaking the user saw was the trailing camera snapping to the replay's 10 Hz samples; it now glides
+(the trailing point is interpolated inside the sample it lands in). The benchmark pauses with the counters
+when it is done and shows its progress (variant n of 5 and a bar) while it runs.
+
+## Three placement bugs the flythrough had hidden
+
+The ground probe compared against the replay's car heights (`tools/pc/groundcheck.py` over
+`phone/host/tmgrounddiag.cpp`: the ground under every replay sample) found:
+
+1. **The rotation sense was inverted.** `rot_xz` turned blocks the wrong way round; the earlier "proof"
+   on road exits was on pieces symmetric under the swap. Now `rotsign = -1` (assemble.py), checked on both
+   tracks: every road sample sits on its road within 0.3 m.
+2. **Multi-cell blocks pivoted about the wrong corner.** The Gbx cell is the lowest corner of the *turned*
+   footprint: the mesh is turned about its first unit's middle and then shifted by the turned footprint's
+   lowest unit. Blocks without a unit list in the kit (Alpine's Great Wall pieces: 62 of 209) get their
+   footprint from the solid's box, rounded to whole cells.
+3. **The zone tile under every ground block was still drawn** (the grass flat at 48 m over a road sunk to
+   46.3 m: the car looked buried, and which one won was luck in the sorter). Every Rally ground block carries
+   its own terrain over its whole footprint (checked: footprint ≥ 1.0 cell for all of them except the Clip),
+   so `drop_covered_zones()` removes a zone tile whose cell middle a ground block's collision mesh covers.
+   RallyA1: 88 tiles dropped.
+
+Also found: **Alpine's cells are 16 m high** (Rally 8 m): `ENV_BLK_H`. And the KitExport keyed solids by
+their file name, which Alpine reuses per block folder (`GreatWallGTCurve3/Air.Solid.Gbx`): the key is now
+`folder/name`, and the big Alpine pieces keep their mobils in the newer `GroundBlockInfoMobils` rows
+(chunk 0x01E), which the export now reads too (Alpine: 454 → 539 solids).
+
+## TMB4 (pack.py v3)
+
+TMB3 plus, after the path: the collision meshes and their instances, the start.
+
+```
+'TMB4' u32 nMesh u32 nInst u32 nPath i32 carMesh (top byte: the car's class 0 Rally 1 Snow 2 Desert 3 Bay 4 Island)
+i32 sky ground fog fogStart fogEnd
+u32 nColl u32 nCInst  i32 startX startY startZ (1/16 m) i32 startYaw
+meshes, instances, path as TMB3
+coll mesh: u16 nv u16 nf i16 bbox[6]; i16 v[nv*3]; u16 idx[nf*3]; i16 normal[nf*3] (*8192, up); u8 surface[nf]; pad 4
+cinst: u16 coll u16 kind (0 plain, 1 start, 2 checkpoint, 3 finish, 4 multilap); i32 x y z; i32 bbox[6]
+```
+
+Surfaces: 0 road (pavement, wood, metal), 1 dirt, 2 grass, 3 rock, 4 water, 6 turbo, 7 ice, 8 snow
+(5 "not collidable" is dropped). The collision comes from Nadeo's `CPlugSurface` meshes, **as they are**:
+only the faces the car can stand on (|ny| ≥ 0.25) are kept, two-sided faces turned up. Decimating them by
+vertex clustering was tried and dropped: it opened seams between pieces (the car fell through or hit a
+0.76 m "wall") and merged road edges with their shoulders (a kerb under one wheel every piece). RallyA1
+carries 70 k collision triangles (989 KB file), SnowA1 35 k (768 KB). The phone has the RAM; the probe cost
+is kept down by (a) a 32 m cell grid over the instances, (b) an 8×8 grid over each mesh's faces, built at
+load, (c) a hint: each wheel tries the face it stood on last step first and keeps it when the point is still
+over it and the height within 0.5 m (on a road that is 90 % of the probes).
+
+A loader that sees `TMB3` still works (no collision: the viewer only).
+
+## The car model (tmphys.cpp)
+
+Units: positions and speeds in 1/256 m, yaw 0..4095 (×16 inside), 20 ms steps. No floats, no libc.
+
+The figures were fitted to the campaign replays (10 Hz samples with velocity and orientation,
+`tools/pc/ReplayDump.cs`): per 10 m/s speed band the 80th percentile of the acceleration on level ground
+(= the pull at full throttle, drag included), the 95th percentile of the yaw rate (= full lock), the slip
+angle (10–15° in a Rally drift), and the vertical acceleration in the air (the mode is **27 m/s²**: the game's
+gravity is heavier than Earth's).
+
+- longitudinal: `v += pull[class][band] * surf` at full throttle; coasting loses 2.5 m/s² + 0.0005 v²,
+  soft ground adds its share; brake −16 m/s², reverse to 15 m/s; the slope adds g·(f·n)·ny; a turbo
+  pad +60 m/s².
+- steering: the wheel ramps to full lock in ~100 ms; yaw rate = lock · turn[class][band] · surf; below 10 m/s
+  the rate is bounded by a 5 m turning radius.
+- grip: the sideways speed decays by a per-surface factor a step (road 0.85, dirt 0.88, grass 0.93, ice 0.97)
+  and scrubs ~0.8 of itself a second off the speed.
+- the ground: four wheel probes (±0.9 m, +1.7/−1.5 m); the height is their mean, the normal from the axle and
+  track slopes (smoothed over ~4 steps so a kerb under one wheel is not a ramp), the surface the rear wheels'.
+  The car stays on the ground unless the ground falls away faster than a throw would (y + vy·dt − ½g·dt²):
+  TrackMania's cars stick over crests but fly off real ramps. The climb rate is measured from the ground itself
+  so a ramp's end throws the car at that rate. A step up of more than 0.75 m is a wall: the car stops and
+  bounces back a quarter of its speed. Off the collision meshes the ground is flat at the last height.
+- the race: a checkpoint counts once per instance (a bit each), the finish only with all checkpoints and
+  after the first second (start/finish lines).
+
+Per-class tables exist for all five cars; Rally's and Snow's are from the replays and driven, the other three
+are first fits from the same analysis (`Desert`, `Bay`, `Island` rows) and untested.
+
+### Validation: an automatic driver on the PC
+
+`phone/host/tmdrive.cpp` steers the car toward the replay's path (12 m + 0.4 s ahead), brakes for sharp
+turns and keeps to the replay's own pace, and renders the follow camera. It **finishes RallyA1 in 20.4 s
+(the replay: 22.0 s) and SnowA1 in 17.9 s (21.0 s)**, taking both checkpoints, within a few metres of the
+replay's line throughout. It is the regression test for anything touching the physics or the packer.
+
+## The drive mode on the phone (tm9300_app.cpp)
+
+- starts in the car at the start line when the track carries collision; **↑ throttle, ↓ brake / reverse,
+  ←/→ steer, Enter (or R) restart, N the next track, V the flythrough, B the benchmark** (pauses with the
+  counters when done, then back in the car), F the counters, +/− the far cut.
+- the physics is stepped by the clock (20 ms a step, at most 4 steps a frame so a slow frame does not
+  snowball), the frame drawn from `TmFollowCam` (8 m behind the car along the way it moves, 2.5 m up,
+  smoothed, never under the ground: it probes).
+- the right-hand counters: km/h, the time (s and 1/100), checkpoints taken / in all, a 1 under them when
+  finished (the time then stays).
+- the car tilts with the ground: `TmView::iCarSlopeF/R` shear the car's corners before the yaw turn.
+
+## The depth order (0.5): a depth test for the near polygons, in the engine
+
+R3D draws polygons sorted by the depth of their middle into 1 m buckets, nearest first, skipping pixels
+already drawn (the coverage bits). Two surfaces close together fight in that order: a bridge deck 0.34 m
+over its water, a road over the terrain tile, the car's underside over the road. Whichever middle sorts
+nearer covers the other's pixels: the "triangles" on the RallyB1/C1 bridges, the car's wheels in the road.
+v0.3/0.4 patched the data (water under decks and faces under low pieces dropped in the importer); the
+rule now is **the engine draws what the data says**, so those work-arounds are off (`pack.py --depthfix`
+turns them back on for comparison) and the fix is in R3D 1.60:
+
+- **Every flat polygon nearer than 40 m at a corner carries its plane** (`StorePlane`, 1/z affine over the
+  screen: `w·2^8 = A·(x−cx) + B·(y−cy) + C`, 32-bit, from the world geometry turned to the camera, exact to
+  1e-4; Poly's clipped polygons from their camera-space corners, pieces without one fitted from the
+  rounded corners). ~100 instructions a polygon.
+- **A depth buffer of 2^18/z per cell of two pixels** (320×200: 32 kB). On a near polygon's runs (what
+  r3_cover found not drawn yet) the pixels and the plane's depth are written; in the **gaps** between the
+  runs (drawn already by something sorted nearer) the pixel and its depth are replaced where this polygon
+  is nearer. Far polygons (all corners beyond 40 m) write their middle's depth on their runs and are never
+  tested: beyond 40 m a misorder is a pixel. `RasterNear`, `ZGap` in r3d.cpp; `iZNear` sets the reach
+  (0: off; the **Z key** on the phone toggles it for A/B).
+- Measured against a z-buffer reference of the same polygons (`tmhost` with `REF=1`, `R3_REFERENCE`
+  build: `ReferenceFrame`, `DebugPixel`): the RallyB1 bridge frame had 4.6 % of its pixels wrong in
+  blobs before (the deck, the banks), 0.47 % after (all beyond 40 m or shoreline pixels where the bank
+  meets the water within a centimetre).
+- Cost in the ARM emulator (320×200, 5 frames each): RallyA1 2.29 → 3.03 M instructions a frame,
+  SnowA1 3.69 → 4.79 M, RallyB1 2.17 → 3.15 M: about +0.7–1.1 M, ~30 %. Half of it is the per-row
+  bookkeeping in C (`RasterNear` ~95 instructions a row with ~19 pixels a row); an assembly version
+  would halve that. If the phone shows the drop matters, that is the next step; `Z` turns it off
+  meanwhile.
+
+What was tried first and dropped: re-sorting the polygons by their planes (Newell's test on
+overlapping screen boxes within a window of depth buckets, big polygons cut into depth slabs first). It
+worked on the bridge (0.65 % wrong) but cost 2.3 M instructions a frame however it was arranged (the
+pair search and the topological sort), more than drawing the frame; the depth test is both cheaper and
+exact.
+
+## 0.6: what the second phone test found, and what changed (9 Nov 2026)
+
+The phone test of 0.5: 19 fps on Rally (26 before the depth test), the road still cutting into the car, the car
+jumping on RallyA1, Rally driving "like Island", the car sinking into uphills at speed (B1, D2) and into stones,
+the D2 start platform clipping through the car at 12 fps, the camera leaping over bridges, buildings, gates and
+tracks overhead, the Snow car climbing the road's rails and passing castle walls, no visible depth-test state,
+no checkpoint respawn. Every fix below was measured on the PC first (the auto-driver, a z-buffer reference of the
+frame, the replays) and checked in the ARM emulator (physics and frames identical to the PC bit for bit).
+
+### Drawing
+- **The depth test had a hole**: a near polygon that `r3_cover` found completely drawn over already was skipped
+  before the depth test ran. The car's triangles under a big road triangle whose middle sorted nearer were all in
+  that case: the reference frame showed the whole car, the engine half of it. Fixed (`Raster`: such a polygon is
+  all gaps); the car now draws as the z-buffer reference does.
+- **A depth value per pixel** (was one per two pixels: neighbouring faces of the car shared a cell and the one
+  judged a hair farther lost its pixel to the road: dots inside the car). The routines in assembly
+  (`fm_zrows`, `fm_zrun`, `fm_zgap`), identical to their C references. A tolerance instead was tried: it let the
+  car's own far faces show through. 128 kB of RAM.
+- Completely hidden polygons are tested only within 16 m (the car and what it stands on): testing every pixel of
+  every hidden polygon to 40 m was the test's biggest cost.
+- **Side culling** of instances (their bounding circles against the view's side planes) before the sort and
+  `BoxVisible`: ~80 k instructions a frame back, frames unchanged.
+- Cost now (emulator, 5 frames each): RallyA1 2.20 → 2.91 M instructions with the test, SnowA1 3.60 → 4.70,
+  RallyB1 2.09 → 2.95, RallyD2 2.48 → 3.33 (0.5 was 3.02 on RallyA1 with the test, i.e. ~19 fps; expect ~20). The
+  cost is per polygon and per row more than per pixel: a car-only mode (the test only in the car's screen box)
+  was built and measured at +0.61 M against +0.70 M for the full test, and dropped. A 250-triangle car was tried:
+  vertex clustering wrecks its shape below ~500.
+- The **Z** key toggles the test; the bar shows **Z ON** (green) / **Z OFF** (red).
+
+### The car
+- **It could not drift.** The step turned the car's velocity together with its heading, so turning never made any
+  sideways speed: zero slip on every track (measured), which is what felt like the Island car. Now the velocity
+  keeps its direction when the car turns and the tyres take out at most a grip (m/s², by class and surface) of
+  the sideways speed per step; the slide is capped (Rally 32°, Snow 17°) and costs speed. Fitted to the replays'
+  slip angles: Rally 90th percentile ~8–20° at 20–40 m/s (replays 5–11°, hardest 20–30°), Snow 0–3° (replays
+  2–3°). Nadeo's tunings agree on the ratio (Rally `MaxSideFriction` 25, Snow 100). With it **the Rally lap
+  times match the replays**: A1 22.5 s (replay 22.0), B1 20.4 (20.2), B2 21.6 (22.1), A3 20.3 (20.4), A5 22.7
+  (22.3). The straight-line pace was not too fast: the replays do 0–100 km/h in 1.0 s and ours 1.1 s.
+- **Climbing**: a surface is judged by its own slope, not the slope the car stands on: it is climbed when its rise
+  over the step is within 0.45 m plus the move times its own steepness, so a 45° bank met from flat ground at
+  speed is climbed (0.5 took it for a wall, the car bounced and a step later stood inside the bank: the uphill
+  sinking, the stones), and a rail's flat top 0.6 m up is not. Surfaces more than 1.2 m plus the move above the
+  car are overhead (bridges, roofs) and ignored. Nothing under the car but a drivable surface within 2 m above:
+  the car is put on it.
+- **Walls**: a bevelled face (26–63°) is a wall where the game's own collision mesh has a steep wall right there
+  facing the same way (pack.py `mark_walls`): the snow road's rails and the castle walls are drawn bevelled and
+  were slopes the car climbed. The wall test follows the move's vertical part (a falling car passed leaning castle
+  faces), and the final move is checked once more (a slide along one face could cross the next at a corner).
+  Checked by brute force (every wall face of the track against every step, steering into the sides): SnowA1 0
+  crossings driving normally, 4 in a run spent pressed into the walls (a wedge between two leaning faces).
+- **Jumps**: the car leaves the ground when it falls away faster than a throw by more than 0.1 m, two steps
+  running: the real jumps happen (A1 1 of the replay's 3 jumps of 0.3 s or more, B1 3 of 5, C1 3 of 7, D2 6 of 8)
+  and the small hops (14 a lap on the replay of A1) do not — 0.5 bounced on every seam, last night's 0.25 m never
+  left the ground at all.
+- **Checkpoints**: an elevated checkpoint's pillars carried the checkpoint flag too and counted as checkpoints of
+  their own, so 10 of the 42 tracks could not be finished (RallyE: 33 "checkpoints" for 22). The boxes on one
+  spot are now one checkpoint: on all 42 tracks the replay takes every checkpoint (`cpcheck`). **Enter** puts the
+  car at the last checkpoint taken (the start when none), **Backspace** at the start.
+
+### The camera
+- It rides on the car's own trail (a point every 0.4 m, 25 m kept): 8 m back along it, 3 m over where the car
+  was, looking at a point 1 m over the car. It goes where the car went — under the Rally E building, under a
+  bridge or a track overhead, through a gate — and never searches for ground, so it cannot leap onto what is
+  above. Smoothed per physics step (it was per frame: at 19 fps the heading lagged ~0.2 s).
+
+### Regression (all 42 campaign tracks, `packall.sh`)
+20 finish under the auto-driver (0.5: 15), every Rally A/B track among them. The failures are mostly Snow C/D
+(wall rides and loops the physics does not model) and long E tracks.
+
+## Next
+
+1. **Speed on Snow**: SnowA1 draws ~2,000 triangles a frame (3.8 M instructions: ~18 fps on the phone), the
+   Great Wall pieces are heavy. Near/far forms per solid (a 60-triangle stand-in beyond 60 m), a PVS per
+   track cell, and a cheaper box test (`BoxVisible` is 7 % of a frame) are the levers; the geometry share is
+   14 ms of 31 on Rally already.
+2. Tune by feel after the phone test: the pull (the driver is ~10 % quicker than the replays), the steering
+   ramp, the camera distance.
+3. The depth test's per-polygon and per-row cost (the planes, the row bookkeeping): ~0.7 M a frame.
+4. Wall rides and loops (Snow C/D).
+5. Desert, Bay, Island on the same pipeline (their kits are not exported yet; Bay and Island have 64 m cells).
+6. A menu (track list, best times kept in `C:\Data\TM9300`), a countdown, a replay of the ghost from the path.

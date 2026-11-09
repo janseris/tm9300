@@ -1,0 +1,121 @@
+// tmphys.h - the car on the track: an arcade model fitted to TrackMania's replays (integer, 50 steps a second),
+// the ground from the packed track's collision meshes (TMB4). Portable C++ for GCC 2.9: no floats, no libc,
+// no writable static data.
+//
+// Units: positions and speeds in 1/256 m (and 1/256 m/s); yaw 0..4095 (0 = +z, clockwise = towards +x, as R3D);
+// a step is 20 ms. Nadeo's replays gave the figures: a Rally car launches at ~30 m/s^2, pulls ~6 m/s^2 at 50 m/s
+// and tops out near 80 m/s; it turns at up to ~1.5 rad/s while sliding ~10 degrees; it falls at ~27 m/s^2.
+#ifndef TMPHYS_H
+#define TMPHYS_H
+
+#include "tmcore.h"
+
+// the yaw (0..4095, R3D's: 0 = +z, clockwise = towards +x) of a direction
+int TmYawTo(int aDx, int aDz);
+
+struct TmGroundHit
+    {
+    int y;                      // 1/256 m
+    int nx, ny, nz;             // * 8192
+    int surf;                   // the surface class (TmColl::surf)
+    int cinst, face;            // the collision instance and face hit (-1: none)
+    };
+
+// the collision instances on a grid of cells, and a probe for the ground under a point
+class TmGround
+    {
+public:
+    TmGround();
+    ~TmGround();
+    bool Init(const TmTrack& aT);
+    // the highest surface at (aX, aZ) no higher than aYMax (all 1/256 m); false: nothing there
+    bool Probe(int aX, int aZ, int aYMax, TmGroundHit& aHit) const;
+    // the same with a hint: the face hit last time is tried first, and taken when the point is still over it
+    // and its height is within 0.5 m of aLastY (the car rolls along a face for many steps)
+    bool Probe(int aX, int aZ, int aYMax, int aLastY, TmGroundHit& aHit) const;
+    // one face: true when the point is over it and its height there is no more than aYMax (aHit filled)
+    bool FaceAt(int aCInst, int aFace, int aX, int aZ, int aYMax, TmGroundHit& aHit) const;
+    // a wall between (aX0, aY, aZ0) and (aX1, aY, aZ1) (1/256 m): the nearest wall face the segment crosses;
+    // aHit gets the crossing point (x, z in aHit.y? no: aHit.nx/ny/nz the wall's normal, aHit.y the fraction * 4096)
+    bool WallHit(int aX0, int aZ0, int aX1, int aZ1, int aY, TmGroundHit& aHit, int aDY = 0) const;     // aDY: the move's height change
+    // the collision instances of a kind (checkpoint, finish) whose box holds the point (1/256 m): the first one's index, or -1
+    int KindAt(int aKind, int aX, int aY, int aZ) const;
+    int iProbes, iTests;        // statistics: probes, triangles tested
+    const TmTrack& Track() const { return *iT; }
+private:
+    const TmTrack* iT;
+    int iCellX0, iCellZ0, iCellsX, iCellsZ;     // the grid: 32 m cells (1/16 m: 512), from the instances' boxes
+    int* iFirst;                // per cell: the first index into iList (iCellsX * iCellsZ + 1)
+    int* iList;                 // instance indices, grouped by cell
+    // each collision mesh's faces bucketed on an 8 x 8 grid over its box (a probe scans one bucket)
+    enum { KGrid = 8 };
+    struct TMeshGrid { int x0, z0, dx, dz; int first[KGrid * KGrid + 1]; unsigned short* list; };
+    TMeshGrid* iGrid;
+    unsigned short* iGridList;
+    };
+
+struct TmCarInput { int steer; int throttle; int brake; };    // steer -256..256 (left negative), throttle / brake 0 or 1
+
+struct TmCarState
+    {
+    int x, y, z;                // 1/256 m: the car's contact point (under its middle)
+    int vx, vy, vz;             // 1/256 m/s
+    int yaw;                    // 0..4095 (* 16 inside: iYaw16)
+    int yaw16;
+    int onGround, surf;
+    int nx, ny, nz;             // the ground's normal under the car (* 8192; (0, 8192, 0) in the air)
+    int speed;                  // 1/256 m/s along the heading (signed)
+    // the ground's slope along the heading and to the right (* 4096), for the car's tilt when drawn
+    void Slopes(int& aAlong, int& aRight) const;
+    int steerPos;               // the steering's position -256..256 (ramped from the keys)
+    };
+
+class TmCar
+    {
+public:
+    TmCar();
+    void Reset(const TmTrack& aT);                  // at the start, standing
+    void Respawn();                                 // standing at the last checkpoint taken (the start when none), the race going on
+    void Step(const TmGround& aG, const TmCarInput& aIn);
+    TmCarState iS;
+    int iClass;                 // the car's class (TmTrack::iCarClass)
+    // the race: checkpoints taken, finished, the time in steps
+    int iCheckpoints, iCheckMask, iFinished, iSteps, iFinishSteps;
+    int iLastKindInst, iTotalCps;
+    int iWallHits;              // walls hit so far (statistics)
+    int iTopY;                  // the highest of the wheels' ground this step (1/256 m): where to draw the body so a crowned road does not cut it
+    int iCpX, iCpY, iCpZ, iCpYaw;   // the respawn pose: the last checkpoint taken (the start)
+    enum { KMaxCpBoxes = 96 };
+    int iCpInst[KMaxCpBoxes], iCpGroup[KMaxCpBoxes], iNCp;     // 0.6: the checkpoint boxes and their checkpoint
+    // tuning (set before Reset; 1/256 m/s^2 etc. are computed inside)
+    int iGravity;               // m/s^2 * 256 (27 * 256)
+private:
+    void Race(const TmGround& aG);
+    int iBumpY;                 // the ground's last y (when the probe finds nothing)
+    TmGroundHit iLast[5];       // the faces under the wheels and the middle last time (the probes' hints)
+    int iAirSteps;              // steps running the ground fell away under the car (the car leaves it at the second)
+    };
+
+// the camera that follows a driven car: behind it along its heading, smoothed, kept above the ground
+class TmFollowCam
+    {
+public:
+    TmFollowCam();
+    void Reset(const TmCarState& aS);
+    // after EACH step (0.6: the trail and the smoothing are per step): the camera (1/16 m, yaw, pitch) for TmView::Frame
+    void Update(const TmGround& aG, const TmCarState& aS, int& aX, int& aY, int& aZ, int& aYaw, int& aPitch);
+    // the camera as the last Update left it (a frame with no step)
+    void Current(int& aX, int& aY, int& aZ, int& aYaw, int& aPitch) const { aX = iX >> 4; aY = iY >> 4; aZ = iZ >> 4; aYaw = iViewYaw; aPitch = iViewPitch; }
+private:
+    void Push(int aX, int aY, int aZ);
+    void Target(const TmCarState& aS, int& aX, int& aY, int& aZ) const;
+    int iX, iY, iZ;             // 1/256 m
+    int iYaw16;
+    int iViewYaw, iViewPitch;   // the look, smoothed
+    TmGroundHit iLast;
+    enum { KTrail = 64 };       // the car's trail: a point every 0.4 m (25 m)
+    int iTx[KTrail], iTy[KTrail], iTz[KTrail];
+    int iTn, iTh;               // points held, the newest's index
+    };
+
+#endif

@@ -1,0 +1,46 @@
+Campaign tracks packed by tools/pc/packall.sh (9 Nov 2026, tm9300 0.6). Per track: file size | the ground check
+against the replay (samples with no ground under the car, samples off by more than a metre, of all) | the
+auto-driver's run. Shipped in tm9300_tracks.sis: rallyA1 B1 C1 D2 E, snowA1 B1 C2 D3 E (one of each series).
+
+RallyE   unknown {}      2154256 | 3 none, 97 off by more than a metre, of 1568 | not finished in 0.00 s (the replay: 156.8 s); 8 checkpoints of
+RallyC1  unknown {}       538180 | 0 none, 23 off by more than a metre, of 329 | FINISHED in 38.12 s (the replay: 32.9 s); 4 checkpoints of 4; 
+RallyC2  unknown {}      1194104 | 0 none, 4 off by more than a metre, of 383 | not finished in 0.00 s (the replay: 38.3 s); 0 checkpoints of 
+RallyC3  unknown {}      1302976 | 8 none, 65 off by more than a metre, of 394 | not finished in 0.00 s (the replay: 39.4 s); 5 checkpoints of 
+RallyC4  unknown {}       765688 | 0 none, 42 off by more than a metre, of 435 | not finished in 0.00 s (the replay: 43.5 s); 5 checkpoints of 
+RallyC5  unknown {}      1364836 | 0 none, 35 off by more than a metre, of 527 | not finished in 0.00 s (the replay: 52.7 s); 1 checkpoints of 
+RallyB1  unknown {}       516296 | 0 none, 11 off by more than a metre, of 202 | FINISHED in 20.36 s (the replay: 20.2 s); 2 checkpoints of 2; 
+RallyB2  unknown {}       588800 | 0 none, 5 off by more than a metre, of 221 | FINISHED in 21.56 s (the replay: 22.1 s); 4 checkpoints of 4; 
+RallyB3  unknown {}       824368 | 0 none, 26 off by more than a metre, of 242 | FINISHED in 32.44 s (the replay: 24.2 s); 2 checkpoints of 2; 
+RallyB4  unknown {}       662988 | 0 none, 27 off by more than a metre, of 248 | FINISHED in 26.10 s (the replay: 24.8 s); 4 checkpoints of 4; 
+RallyB5  unknown {}      1262088 | 0 none, 32 off by more than a metre, of 264 | FINISHED in 29.50 s (the replay: 26.4 s); 3 checkpoints of 3; 
+RallyD1  unknown {}      1514632 | 0 none, 59 off by more than a metre, of 474 | not finished in 0.00 s (the replay: 47.4 s); 1 checkpoints of 
+RallyD2  unknown {}       866188 | 0 none, 38 off by more than a metre, of 501 | FINISHED in 68.46 s (the replay: 50.1 s); 7 checkpoints of 7; 
+RallyD3  unknown {}      1303000 | 1 none, 76 off by more than a metre, of 468 | FINISHED in 68.50 s (the replay: 46.8 s); 5 checkpoints of 5; 
+RallyD4  unknown {}      1615624 | 0 none, 54 off by more than a metre, of 575 | FINISHED in 69.26 s (the replay: 57.5 s); 8 checkpoints of 8; 
+RallyD5  unknown {}      1529324 | 0 none, 43 off by more than a metre, of 552 | not finished in 0.00 s (the replay: 55.2 s); 2 checkpoints of 
+RallyA1  unknown {}       788692 | 0 none, 9 off by more than a metre, of 220 | FINISHED in 22.48 s (the replay: 22.0 s); 2 checkpoints of 2; 
+RallyA2  unknown {}       956592 | 0 none, 11 off by more than a metre, of 207 | FINISHED in 25.26 s (the replay: 20.7 s); 1 checkpoints of 1; 
+RallyA3  unknown {}       795260 | 0 none, 46 off by more than a metre, of 204 | FINISHED in 20.28 s (the replay: 20.4 s); 3 checkpoints of 3; 
+RallyA4  unknown {}      1046060 | 0 none, 30 off by more than a metre, of 211 | not finished in 0.00 s (the replay: 21.1 s); 1 checkpoints of 
+RallyA5  unknown {}       796000 | 0 none, 9 off by more than a metre, of 223 | FINISHED in 22.74 s (the replay: 22.3 s); 3 checkpoints of 3; 
+SnowE    unknown {}      1556872 | 0 none, 109 off by more than a metre, of 1877 | not finished in 0.00 s (the replay: 187.7 s); 1 checkpoints of
+SnowC1   unknown {}      1159844 | 6 none, 44 off by more than a metre, of 341 | not finished in 0.00 s (the replay: 34.1 s); 3 checkpoints of 
+SnowC2   unknown {}      1092508 | 1 none, 61 off by more than a metre, of 388 | not finished in 0.00 s (the replay: 38.8 s); 0 checkpoints of 
+SnowC3   unknown {}      1242360 | 1 none, 85 off by more than a metre, of 379 | not finished in 0.00 s (the replay: 37.9 s); 2 checkpoints of 
+SnowC4   unknown {}      1523068 | 0 none, 92 off by more than a metre, of 595 | not finished in 0.00 s (the replay: 59.5 s); 4 checkpoints of 
+SnowC5   unknown {}      1753252 | 13 none, 72 off by more than a metre, of 439 | not finished in 0.00 s (the replay: 43.9 s); 0 checkpoints of 
+SnowB1   unknown {}       511292 | 0 none, 0 off by more than a metre, of 212 | FINISHED in 24.10 s (the replay: 21.2 s); 2 checkpoints of 2; 
+SnowB2   unknown {}       758048 | 0 none, 22 off by more than a metre, of 228 | FINISHED in 30.20 s (the replay: 22.8 s); 2 checkpoints of 2; 
+SnowB3   unknown {}       846524 | 1 none, 23 off by more than a metre, of 289 | FINISHED in 32.70 s (the replay: 28.9 s); 2 checkpoints of 2; 
+SnowB4   unknown {}       926612 | 0 none, 12 off by more than a metre, of 239 | not finished in 0.00 s (the replay: 23.9 s); 1 checkpoints of 
+SnowB5   unknown {}       857180 | 0 none, 30 off by more than a metre, of 252 | not finished in 0.00 s (the replay: 25.2 s); 2 checkpoints of 
+SnowD1   unknown {}      1490052 | 1 none, 76 off by more than a metre, of 443 | not finished in 0.00 s (the replay: 44.3 s); 0 checkpoints of 
+SnowD2   unknown {}      1483756 | 0 none, 69 off by more than a metre, of 511 | not finished in 0.00 s (the replay: 51.1 s); 4 checkpoints of 
+SnowD3   unknown {}       878984 | 0 none, 67 off by more than a metre, of 243 | FINISHED in 29.00 s (the replay: 24.3 s); 1 checkpoints of 1; 
+SnowD4   unknown {}      1393132 | 4 none, 88 off by more than a metre, of 446 | not finished in 0.00 s (the replay: 44.6 s); 0 checkpoints of 
+SnowD5   unknown {}      1429744 | 9 none, 86 off by more than a metre, of 586 | not finished in 0.00 s (the replay: 58.6 s); 2 checkpoints of 
+SnowA1   unknown {}      1093172 | 0 none, 18 off by more than a metre, of 210 | FINISHED in 17.54 s (the replay: 21.0 s); 2 checkpoints of 2; 
+SnowA2   unknown {}       824808 | 0 none, 34 off by more than a metre, of 191 | not finished in 0.00 s (the replay: 19.1 s); 0 checkpoints of 
+SnowA3   unknown {}       653728 | 0 none, 22 off by more than a metre, of 255 | not finished in 0.00 s (the replay: 25.5 s); 0 checkpoints of 
+SnowA4   unknown {}       492016 | 0 none, 0 off by more than a metre, of 203 | FINISHED in 17.48 s (the replay: 20.3 s); 0 checkpoints of 0; 
+SnowA5   unknown {}      1053468 | 0 none, 0 off by more than a metre, of 215 | FINISHED in 24.26 s (the replay: 21.5 s); 1 checkpoints of 1; 

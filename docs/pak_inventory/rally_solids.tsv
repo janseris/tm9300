@@ -1,0 +1,723 @@
+file	lods	tris_lod0	tris_lod1	tris_lod2	tris_last	coll_tris	sprites	farz	materials
+Races/Media/Solid/RallyRoadCastleTriggerCheckpointAir.Solid.Gbx	1	0	0	0	0	12	0		
+Races/Media/Solid/RallyRoadCastleTriggerCheckpointGround.Solid.Gbx	1	0	0	0	0	12	0		
+Races/Media/Solid/RallyRoadCastleTriggerFinishAir.Solid.Gbx	1	0	0	0	0	12	0		
+Races/Media/Solid/RallyRoadCastleTriggerFinishGround.Solid.Gbx	1	0	0	0	0	12	0		
+Races/Media/Solid/RallyRoadHighTriggerCheckpoint.Solid.Gbx	1	0	0	0	0	12	0		
+Races/Media/Solid/RallyRoadHighTriggerFinish.Solid.Gbx	1	0	0	0	0	12	0		
+Races/Media/Solid/RallyRoadLowTriggerCheckpoint.Solid.Gbx	1	0	0	0	0	12	0		
+Races/Media/Solid/RallyRoadLowTriggerFinish.Solid.Gbx	1	0	0	0	0	12	0		
+Races/Media/Solid/RallyRoadTunnelTriggerCheckpoint.Solid.Gbx	1	0	0	0	0	12	0		
+Races/Media/Solid/RallyTriggerMultiLapAir.Solid.Gbx	1	0	0	0	0	12	0		
+Races/Media/Solid/RallyTriggerMultiLapGround.Solid.Gbx	1	0	0	0	0	12	0		
+Races/Mobil/RallyTriggerMultiLapAir.Solid.Gbx	NOT_SOLID CSceneMobil
+Rally/Media/Solid/Base/10x150.Solid.Gbx	1	6910	6910	6910	6910	5398	0		RallyWarpCliff|RallyWarpGrass|RallyWarpLake|RallyWarpTrees
+Rally/Media/Solid/Base/10x150FarClip.Solid.Gbx	1	0	0	0	0	0	0		RallyWarpGrass
+Rally/Media/Solid/Base/10x150ShadowCaster.Solid.Gbx	1	8	8	8	8	0	0		RallyWarpShadowCaster
+Rally/Media/Solid/Base/20x60.Solid.Gbx	1	6543	6543	6543	6543	5015	0		RallyWarpCliff|RallyWarpGrass|RallyWarpLake|RallyWarpTrees
+Rally/Media/Solid/Base/20x60FarClip.Solid.Gbx	1	0	0	0	0	0	0		RallyWarpGrass
+Rally/Media/Solid/Base/20x60ShadowCaster.Solid.Gbx	1	8	8	8	8	0	0		RallyWarpShadowCaster
+Rally/Media/Solid/Base/30x30.Solid.Gbx	1	6636	6636	6636	6636	5077	0		RallyWarpCliff|RallyWarpGrass|RallyWarpLake|RallyWarpTrees
+Rally/Media/Solid/Base/30x30FarClip.Solid.Gbx	1	0	0	0	0	0	0		RallyWarpGrass
+Rally/Media/Solid/Base/30x30ShadowCaster.Solid.Gbx	1	8	8	8	8	0	0		RallyWarpShadowCaster
+Rally/Media/Solid/Base/32x32ShadowCaster.Solid.Gbx	1	8	8	8	8	0	0		RallyWarpShadowCaster
+Rally/Media/Solid/Base/45x45.Solid.Gbx	1	8619	8619	8619	8619	5935	0		RallyWarpCliff|RallyWarpGrass|RallyWarpLake|RallyWarpTrees
+Rally/Media/Solid/Base/45x45FarClip.Solid.Gbx	1	178	178	178	178	0	0		RallyWarpGrass
+Rally/Media/Solid/Base/45x45ShadowCaster.Solid.Gbx	1	8	8	8	8	0	0		RallyWarpShadowCaster
+Rally/Media/Solid/FreeWheeling/Air.Solid.Gbx	2	224	168	168	168	224	0	64	RallyCastle|RallyHouse|RallyRoadMediumFreeWheeling
+Rally/Media/Solid/FreeWheeling/Ground.Solid.Gbx	2	144	88	88	88	144	0	64	RallyGrass2|RallyGrass2Borders|RallyHouse|RallyRoadMediumFreeWheeling
+Rally/Media/Solid/Moulin.Solid.Gbx	1	334	334	334	334	334	0		RallyGrass2|RallyWindMill
+Rally/Media/Solid/Pale2.Solid.Gbx	1	482	482	482	482	482	0		RallyWindMillWings
+Rally/Media/Solid/RallyAdvertAir.Solid.Gbx	1	208	208	208	208	208	0		RallyCastle
+Rally/Media/Solid/RallyAdvertGround.Solid.Gbx	1	365	365	365	365	365	0		RallyCastle|RallyCastleArrow|RallyCliff|RallyGrass2
+Rally/Media/Solid/RallyAdvertPillarAir.Solid.Gbx	1	44	44	44	44	44	0		RallyCastle
+Rally/Media/Solid/RallyAdvertPillarAirA.Solid.Gbx	1	44	44	44	44	44	0		RallyCastle
+Rally/Media/Solid/RallyAdvertPillarAirB.Solid.Gbx	1	44	44	44	44	44	0		RallyCastle
+Rally/Media/Solid/RallyAdvertPillarAirC.Solid.Gbx	1	44	44	44	44	44	0		RallyCastle
+Rally/Media/Solid/RallyAdvertPillarAirD.Solid.Gbx	1	44	44	44	44	44	0		RallyCastle
+Rally/Media/Solid/RallyAdvertPillarAirE.Solid.Gbx	1	44	44	44	44	44	0		RallyCastle
+Rally/Media/Solid/RallyAdvertPillarGround.Solid.Gbx	1	176	176	176	176	176	0		RallyCastle|RallyCliff|RallyGrass2
+Rally/Media/Solid/RallyBase.Solid.Gbx	2	460	2	2	2	2	0	20|40	RallyGrass2|RallyVegetation
+Rally/Media/Solid/RallyBridgeHighground.Solid.Gbx	1	510	510	510	510	494	0		DirtyRoad|RallyGrass2|RallyGrass2Borders|RallyLakeGround|RallyLakeWaterBorders|RallyWater|RallyWhiteWood|RallyWoodBridge
+Rally/Media/Solid/RallyBridgeLowGround.Solid.Gbx	1	250	250	250	250	230	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater|RallyWoodBridge
+Rally/Media/Solid/RallyBridgeMediumGround.Solid.Gbx	1	566	566	566	566	518	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyRoadMedium|RallyStoneBridge|RallyStoneBridgeUnderWater|RallyWater
+Rally/Media/Solid/RallyCastleBiSlopeEndAir.Solid.Gbx	1	268	268	268	268	268	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyCastleBiSlopeEndGround.Solid.Gbx	1	162	162	162	162	162	0		RallyCastle|RallyGrass2|RallyRoadMedium
+Rally/Media/Solid/RallyCastleBiSlopePillarAir.Solid.Gbx	1	20	20	20	20	20	0		RallyCastle
+Rally/Media/Solid/RallyCastleBiSlopePillarAirBis.Solid.Gbx	1	20	20	20	20	20	0		RallyCastle
+Rally/Media/Solid/RallyCastleBiSlopePillarAirQua.Solid.Gbx	1	20	20	20	20	20	0		RallyCastle
+Rally/Media/Solid/RallyCastleBiSlopePillarAirQui.Solid.Gbx	1	20	20	20	20	20	0		RallyCastle
+Rally/Media/Solid/RallyCastleBiSlopePillarAirTer.Solid.Gbx	1	20	20	20	20	20	0		RallyCastle
+Rally/Media/Solid/RallyCastleBiSlopePillarGround.Solid.Gbx	1	50	50	50	50	50	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyCastleBiSlopeStartAir.Solid.Gbx	1	267	267	267	267	267	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyCastleBiSlopeStartGround.Solid.Gbx	1	132	132	132	132	132	0		RallyCastle|RallyGrass2|RallyRoadMedium
+Rally/Media/Solid/RallyCastleBridgeAir.Solid.Gbx	1	350	350	350	350	350	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyCastleBridgePillarAir.Solid.Gbx	1	76	76	76	76	76	0		RallyCastle
+Rally/Media/Solid/RallyCastleBridgePillarGround.Solid.Gbx	1	116	116	116	116	116	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyCastleCrossAir.Solid.Gbx	1	314	314	314	314	314	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyCastleCrossGround.Solid.Gbx	1	234	234	234	234	234	0		RallyCastle|RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyCastleCrossPillarAir.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RallyCastleCrossPillarGround.Solid.Gbx	1	52	52	52	52	52	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyCastleDrawBridgeAir.Solid.Gbx	1	600	600	600	600	600	0		RallyCastle|RallyCastleArrow|RallyCastleBridge|RallyRoadMedium
+Rally/Media/Solid/RallyCastleDrawBridgePillarAir.Solid.Gbx	1	84	84	84	84	84	0		RallyCastle|RallyCastleArrow
+Rally/Media/Solid/RallyCastleDrawBridgePillarAirBis.Solid.Gbx	1	84	84	84	84	84	0		RallyCastle|RallyCastleArrow
+Rally/Media/Solid/RallyCastleDrawBridgePillarGround.Solid.Gbx	1	314	314	314	314	296	0		RallyCastle|RallyCastleArrow|RallyCastleBridge|RallyGrass2|RallyGrass2Borders|RallyLakeGround|RallyLakeWaterBorders|RallyRoadMedium|RallyStoneBridge|RallyWater
+Rally/Media/Solid/RallyCastleGridAir.Solid.Gbx	1	212	212	212	212	212	0		RallyCastle|RallyCastleArrow|RallyRoadMedium
+Rally/Media/Solid/RallyCastleGridPillarAir.Solid.Gbx	1	38	38	38	38	38	0		RallyCastle|RallyCastleArrow
+Rally/Media/Solid/RallyCastleGridPillarGround.Solid.Gbx	1	60	60	60	60	60	0		RallyCastle|RallyCastleArrow|RallyGrass2
+Rally/Media/Solid/RallyCastleHillBridgeAir.Solid.Gbx	1	341	341	341	341	373	0		RallyCastle|RallyCastleArrow|RallyCastleBridge|RallyRoadMedium
+Rally/Media/Solid/RallyCastleHillBridgeGround.Solid.Gbx	1	334	334	334	334	334	0		RallyCastle|RallyCastleArrow|RallyGrass2|RallyRoadMedium
+Rally/Media/Solid/RallyCastleHillBridgePillarAir.Solid.Gbx	1	24	24	24	24	24	0		RallyCastle
+Rally/Media/Solid/RallyCastleHillBridgePillarGround.Solid.Gbx	1	273	273	273	273	285	0		RallyCastle|RallyCastleArrow|RallyGrass2
+Rally/Media/Solid/RallyCastleRampAir.Solid.Gbx	1	203	203	203	203	203	0		RallyCastle|RallyCastleArrow|RallyCastleBridge|RallyRoadMedium
+Rally/Media/Solid/RallyCastleRampGround.Solid.Gbx	1	154	154	154	154	154	0		RallyCastle|RallyCastleArrow|RallyCastleBridge|RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyCastleRampPillarAir.Solid.Gbx	1	14	14	14	14	14	0		RallyCastle
+Rally/Media/Solid/RallyCastleRampPillarGround.Solid.Gbx	1	28	28	28	28	28	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyCastleTowerAir.Solid.Gbx	1	368	368	368	368	368	0		RallyCastle
+Rally/Media/Solid/RallyCastleTowerGround.Solid.Gbx	1	156	156	156	156	156	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyCheckpointLowGround.Solid.Gbx	1	242	242	242	242	186	0		DirtyRoad|RallyCliff|RallyFlags|RallyGrass2|RallyGrass2Borders|RallyWoodBridge
+Rally/Media/Solid/RallyCheckpointLowGroundEditorArrow.Solid.Gbx	1	98	98	98	98	0	0		EditorHelpers
+Rally/Media/Solid/RallyCheckpointLowGroundEditorHelper.Solid.Gbx	1	384	384	384	384	0	0		EditorHelpers
+Rally/Media/Solid/RallyFarClip32x32.Solid.Gbx	1	0	0	0	0	0	0		RallyWarpGrass
+Rally/Media/Solid/RallyField/FieldClipLeft.Solid.Gbx	2	1123	503	503	503	1413	6	64|128	RallyCastle|RallyFieldBorders|RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2
+Rally/Media/Solid/RallyField/FieldClipRight.Solid.Gbx	2	1135	501	501	501	1493	7	64|128	RallyCastle|RallyFieldBorders|RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2
+Rally/Media/Solid/RallyField/FieldCornerInA.Solid.Gbx	2	2160	1036	1036	1036	1728	0	64	RallyField|RallyFieldBorders|RallyFieldRouleau|RallyFieldVegetation|RallyGrass2
+Rally/Media/Solid/RallyField/FieldCornerOutA.Solid.Gbx	2	2364	1176	1176	1176	1942	0	64	RallyField|RallyFieldBorders|RallyFieldRouleau|RallyFieldVegetation|RallyGrass2
+Rally/Media/Solid/RallyField/FieldGrassCornerInA.Solid.Gbx	2	1491	1059	1059	1059	1623	0	64	RallyFieldBorders|RallyGrass2|RallyRoadSigns|RallyVegetation
+Rally/Media/Solid/RallyField/FieldGrassCornerOutA.Solid.Gbx	2	1448	1052	1052	1052	1616	0	64	RallyFieldBorders|RallyGrass2|RallyRoadSigns|RallyVegetation
+Rally/Media/Solid/RallyField/FieldGrassStraight3x3A.Solid.Gbx	2	1336	550	550	550	1576	0	64	RallyFieldBorders|RallyGrass2|RallyRoadSigns|RallyVegetation
+Rally/Media/Solid/RallyField/FieldGrassStraight3x3B.Solid.Gbx	2	1336	550	550	550	1576	0	64	RallyFieldBorders|RallyGrass2|RallyRoadSigns|RallyVegetation
+Rally/Media/Solid/RallyField/FieldGrassStraight3x3C.Solid.Gbx	2	1336	550	550	550	1576	0	64	RallyFieldBorders|RallyGrass2|RallyRoadSigns|RallyVegetation
+Rally/Media/Solid/RallyField/FieldGrassStraight3x3D.Solid.Gbx	2	1340	550	550	550	1576	0	64	RallyFieldBorders|RallyGrass2|RallyRoadSigns|RallyVegetation
+Rally/Media/Solid/RallyField/FieldGrassStraightA.Solid.Gbx	2	1019	442	442	442	1475	0	64	RallyFieldBorders|RallyGrass2|RallyRoadSigns|RallyVegetation
+Rally/Media/Solid/RallyField/FieldGrassStraightB.Solid.Gbx	2	1019	442	442	442	1475	0	64	RallyFieldBorders|RallyGrass2|RallyRoadSigns|RallyVegetation
+Rally/Media/Solid/RallyField/FieldGrassStraightC.Solid.Gbx	2	1019	442	442	442	1475	0	64	RallyFieldBorders|RallyGrass2|RallyRoadSigns|RallyVegetation
+Rally/Media/Solid/RallyField/FieldGrassStraightD.Solid.Gbx	2	1019	442	442	442	1475	0	64	RallyFieldBorders|RallyGrass2|RallyRoadSigns|RallyVegetation
+Rally/Media/Solid/RallyField/FieldStraightA.Solid.Gbx	2	948	498	498	498	840	0	64	RallyField|RallyFieldBorders|RallyFieldRouleau|RallyFieldVegetation|RallyGrass2
+Rally/Media/Solid/RallyField/FieldStraightB.Solid.Gbx	2	704	370	370	370	596	0	64	RallyField|RallyFieldBorders|RallyFieldRouleau|RallyFieldVegetation|RallyGrass2
+Rally/Media/Solid/RallyField/FieldStraightC.Solid.Gbx	2	706	372	372	372	598	0	64	RallyField|RallyFieldBorders|RallyFieldRouleau|RallyFieldVegetation|RallyGrass2
+Rally/Media/Solid/RallyField/FieldStraightD.Solid.Gbx	2	922	498	498	498	814	0	64	RallyField|RallyFieldBorders|RallyFieldRouleau|RallyFieldVegetation|RallyGrass2
+Rally/Media/Solid/RallyFieldAuto/FieldAutoCornerA.Solid.Gbx	2	70	22	22	22	22	0	64	RallyField|RallyFieldBorders|RallyFieldVegetation|RallyGrass2|RallyVegetation
+Rally/Media/Solid/RallyFieldAuto/FieldAutoCornerB.Solid.Gbx	2	72	24	24	24	24	0	64	RallyField|RallyFieldBorders|RallyFieldVegetation|RallyGrass2|RallyVegetation
+Rally/Media/Solid/RallyFieldAuto/FieldAutoCross.Solid.Gbx	2	36	2	2	2	2	0	64	RallyField|RallyFieldVegetation
+Rally/Media/Solid/RallyFieldAuto/FieldAutoCrossRouleauA.Solid.Gbx	2	276	134	134	134	242	0	64	RallyField|RallyFieldRouleau|RallyFieldVegetation
+Rally/Media/Solid/RallyFieldAuto/FieldAutoCrossRouleauB.Solid.Gbx	2	516	266	266	266	482	0	64	RallyField|RallyFieldRouleau|RallyFieldVegetation
+Rally/Media/Solid/RallyFieldAuto/FieldAutoCrossRouleauC.Solid.Gbx	2	518	268	268	268	484	0	64	RallyField|RallyFieldRouleau|RallyFieldVegetation
+Rally/Media/Solid/RallyFieldAuto/FieldAutoFenceCorner.Solid.Gbx	2	330	116	116	116	476	0	64	RallyField|RallyFieldBorders|RallyFieldVegetation|RallyGrass2|RallyRoadSigns|RallyVegetation
+Rally/Media/Solid/RallyFieldAuto/FieldAutoFenceCornerA.Solid.Gbx	2	352	330	330	330	633	2	64|128	RallyField|RallyFieldBorders|RallyFieldVegetation|RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldAuto/FieldAutoFenceCornerB.Solid.Gbx	2	342	136	136	136	552	1	64|128	RallyField|RallyFieldBorders|RallyFieldVegetation|RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldAuto/FieldAutoFenceTShaped.Solid.Gbx	2	191	68	68	68	245	0	64	RallyField|RallyFieldBorders|RallyFieldVegetation|RallyGrass2|RallyRoadSigns|RallyVegetation
+Rally/Media/Solid/RallyFieldAuto/FieldAutoFenceTShapedA.Solid.Gbx	2	225	82	82	82	279	0	64	RallyField|RallyFieldBorders|RallyFieldVegetation|RallyGrass2|RallyRoadSigns|RallyVegetation
+Rally/Media/Solid/RallyFieldAuto/FieldAutoFenceTShapedB.Solid.Gbx	2	213	68	68	68	402	2	64|128	RallyField|RallyFieldBorders|RallyFieldVegetation|RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldAuto/FieldAutoFenceTShapedC.Solid.Gbx	2	203	74	74	74	325	1	64|128	RallyField|RallyFieldBorders|RallyFieldVegetation|RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldAuto/FieldAutoTShapedA.Solid.Gbx	2	58	18	18	18	18	0	64	RallyField|RallyFieldBorders|RallyFieldVegetation|RallyGrass2|RallyVegetation
+Rally/Media/Solid/RallyFieldAuto/FieldAutoTShapedB.Solid.Gbx	2	60	20	20	20	20	0	64	RallyField|RallyFieldBorders|RallyFieldVegetation|RallyGrass2|RallyVegetation
+Rally/Media/Solid/RallyFieldAuto/FieldAutoTShapedC.Solid.Gbx	2	56	16	16	16	16	0	64	RallyField|RallyFieldBorders|RallyFieldVegetation|RallyGrass2|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceBushCornerOutA.Solid.Gbx	2	368	176	176	176	663	1	64|128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceBushCornerOutB.Solid.Gbx	2	454	182	182	182	785	3	64|128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceBushCornerOutC.Solid.Gbx	2	462	182	182	182	859	4	64|128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceBushCornerOutD.Solid.Gbx	2	392	176	176	176	823	3	64|128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceBushStraightA.Solid.Gbx	2	215	94	94	94	326	1	64|128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceBushStraightAdvert.Solid.Gbx	2	481	461	461	461	763	2	128	RallyAdvertising|RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceBushStraightB.Solid.Gbx	2	227	94	94	94	406	2	64|128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceBushStraightC.Solid.Gbx	2	263	100	100	100	443	2	64|128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceCornerOut.Solid.Gbx	2	356	176	176	176	584	0	64	RallyGrass2|RallyRoadSigns|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceCornerOutA.Solid.Gbx	2	420	182	182	182	548	0	64	RallyGrass2|RallyRoadSigns|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceDiagA.Solid.Gbx	2	322	244	244	244	453	2	128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceDiagB.Solid.Gbx	2	424	255	255	255	512	3	128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceDiagC.Solid.Gbx	2	313	232	232	232	434	2	128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceRampA.Solid.Gbx	2	598	461	461	461	583	2	128	DirtyRoad|RallyGrass2|RallyGrass2Borders|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceStraight.Solid.Gbx	2	205	94	94	94	249	0	64	RallyGrass2|RallyRoadSigns|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceStraightA.Solid.Gbx	2	239	100	100	100	283	0	64	RallyGrass2|RallyRoadSigns|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceTreeCornerOutA.Solid.Gbx	2	562	212	212	212	944	5	64|128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceTreeCornerOutB.Solid.Gbx	2	760	254	254	254	911	6	64|128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceTreeCornerOutC.Solid.Gbx	2	647	229	229	229	852	4	64|128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceTreeCornerOutD.Solid.Gbx	2	480	196	196	196	887	4	64|128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceTreeStraightA.Solid.Gbx	2	421	130	130	130	617	5	64|128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceTreeStraightB.Solid.Gbx	2	519	165	165	165	448	4	64|128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceTreeStraightC.Solid.Gbx	2	451	145	145	145	494	3	64|128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceTreeStraightD.Solid.Gbx	2	574	167	167	167	727	6	64|128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2|RallyVegetation
+Rally/Media/Solid/RallyFieldFenceTreeStraightE.Solid.Gbx	2	452	143	143	143	552	5	64|128	RallyGrass2|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2|RallyVegetation
+Rally/Media/Solid/RallyFieldTetris/DiagRoadLowToRoadHigh.Solid.Gbx	2	3582	1305	1305	1305	4799	18	64|128	DirtyRoad|RallyField|RallyFieldBorders|RallyGrass2|RallyGrass2Borders|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2|RallyVegetation
+Rally/Media/Solid/RallyFieldTetris/DiagRoadLowToRoadHighMirror.Solid.Gbx	2	3471	1314	1314	1314	4585	15	64|128	DirtyRoad|RallyField|RallyFieldBorders|RallyGrass2|RallyGrass2Borders|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2|RallyVegetation
+Rally/Media/Solid/RallyFieldTetris/DiagRoadMedium.Solid.Gbx	2	1990	962	962	962	2396	0	64	RallyField|RallyFieldBorders|RallyFieldRouleau|RallyFieldVegetation|RallyGrass2|RallyGrass2Borders|RallyRoadMedium|RallyRoadSigns
+Rally/Media/Solid/RallyFieldTetris/DiagRoadMediumMirror.Solid.Gbx	2	1504	708	708	708	1910	0	64	RallyField|RallyFieldBorders|RallyFieldVegetation|RallyGrass2|RallyGrass2Borders|RallyRoadMedium|RallyRoadSigns
+Rally/Media/Solid/RallyFieldTetris/StraightRoadMedium.Solid.Gbx	2	1276	478	478	478	1812	0	64	RallyFieldBorders|RallyGrass2|RallyGrass2Borders|RallyRoadMedium|RallyRoadSigns
+Rally/Media/Solid/RallyFieldTetris/URoadLow.Solid.Gbx	2	3929	1588	1588	1588	4775	13	64|128	DirtyRoad|RallyCliff|RallyField|RallyFieldBorders|RallyFieldRouleau|RallyFieldVegetation|RallyGrass2|RallyGrass2Borders|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2|RallyVegetation
+Rally/Media/Solid/RallyFieldTetris/URoadLowMirror.Solid.Gbx	2	3981	1596	1596	1596	4895	14	64|128	DirtyRoad|RallyCliff|RallyField|RallyFieldBorders|RallyFieldRouleau|RallyFieldVegetation|RallyGrass2|RallyGrass2Borders|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2|RallyVegetation
+Rally/Media/Solid/RallyFieldTetris/URoadMedium.Solid.Gbx	2	3051	1236	1236	1236	3876	7	64|128	RallyCliff|RallyField|RallyFieldBorders|RallyFieldRouleau|RallyFieldVegetation|RallyGrass2|RallyGrass2Borders|RallyRoadMedium|RallyRoadSigns|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyVegetation
+Rally/Media/Solid/RallyFieldTetris/URoadMediumMirror.Solid.Gbx	2	2240	1048	1048	1048	2776	0	64	RallyCliff|RallyField|RallyFieldBorders|RallyFieldVegetation|RallyGrass2|RallyGrass2Borders|RallyRoadMedium|RallyRoadSigns|RallyVegetation
+Rally/Media/Solid/RallyFinishLowGround.Solid.Gbx	1	203	203	203	203	139	0		DirtyRoad|RallyFlags|RallyGrass2|RallyGrass2Borders|RallyWoodBridge
+Rally/Media/Solid/RallyFinishLowGroundHelper.Solid.Gbx	1	384	384	384	384	0	0		EditorHelpers
+Rally/Media/Solid/RallyGT1.Solid.Gbx	2	514	136	136	136	514	0	40	RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyGT1Air.Solid.Gbx	1	544	544	544	544	544	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyGT1PillarAir.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RallyGT1PillarAirBis.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RallyGT1PillarAirQua.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RallyGT1PillarAirQui.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RallyGT1PillarAirSix.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RallyGT1PillarAirTer.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RallyGT1PillarGround.Solid.Gbx	1	118	118	118	118	118	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyGT3.Solid.Gbx	2	884	246	246	246	884	0	40	RallyCliff|RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyGT3Air.Solid.Gbx	1	884	884	884	884	884	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyGT3PillarAir.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGT3PillarAirBis.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGT3PillarAirQua.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGT3PillarAirQui.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGT3PillarAirSix.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGT3PillarAirTer.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGT3PillarGround.Solid.Gbx	1	316	316	316	316	316	0		RallyCastle|RallyCliff|RallyGrass2
+Rally/Media/Solid/RallyGT4.Solid.Gbx	2	1080	276	276	276	1080	0	40	RallyCliff|RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyGT4Air.Solid.Gbx	1	589	589	589	589	589	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyGT4PillarAir.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RallyGT4PillarAirBis.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RallyGT4PillarAirQua.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RallyGT4PillarAirQui.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RallyGT4PillarAirSix.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RallyGT4PillarAirTer.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RallyGT4PillarGround.Solid.Gbx	1	199	199	199	199	199	0		RallyCastle|RallyCliff|RallyGrass2
+Rally/Media/Solid/RallyGT5.Solid.Gbx	2	1082	242	242	242	1082	0	40	RallyCliff|RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyGT5Air.Solid.Gbx	1	884	884	884	884	884	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyGT5PillarAir.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGT5PillarAirBis.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGT5PillarAirQua.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGT5PillarAirQui.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGT5PillarAirSix.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGT5PillarAirTer.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGT5PillarGround.Solid.Gbx	1	216	216	216	216	216	0		RallyCastle|RallyCliff|RallyGrass2
+Rally/Media/Solid/RallyGT6.Solid.Gbx	2	1082	242	242	242	1082	0	40	RallyCliff|RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyGT6Air.Solid.Gbx	1	884	884	884	884	884	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyGT6PillarAir.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGT6PillarAirBis.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGT6PillarAirQua.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGT6PillarAirQui.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGT6PillarAirSix.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGT6PillarAirTer.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGT6PillarGround.Solid.Gbx	1	216	216	216	216	216	0		RallyCastle|RallyCliff|RallyGrass2
+Rally/Media/Solid/RallyGT8.Solid.Gbx	2	764	204	204	204	764	0	40	RallyCliff|RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyGT8Air.Solid.Gbx	1	1088	1088	1088	1088	1088	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyGT8PillarAir.Solid.Gbx	1	128	128	128	128	128	0		RallyCastle
+Rally/Media/Solid/RallyGT8PillarAirBis.Solid.Gbx	1	128	128	128	128	128	0		RallyCastle
+Rally/Media/Solid/RallyGT8PillarAirQua.Solid.Gbx	1	128	128	128	128	128	0		RallyCastle
+Rally/Media/Solid/RallyGT8PillarAirQui.Solid.Gbx	1	128	128	128	128	128	0		RallyCastle
+Rally/Media/Solid/RallyGT8PillarAirSix.Solid.Gbx	1	128	128	128	128	128	0		RallyCastle
+Rally/Media/Solid/RallyGT8PillarAirTer.Solid.Gbx	1	128	128	128	128	128	0		RallyCastle
+Rally/Media/Solid/RallyGT8PillarGround.Solid.Gbx	1	274	274	274	274	274	0		RallyCastle|RallyCliff|RallyGrass2
+Rally/Media/Solid/RallyGTCurve2Air.Solid.Gbx	1	884	884	884	884	884	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyGTCurve2PillarAir.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGTCurve2PillarAirBis.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGTCurve2PillarAirQua.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGTCurve2PillarAirQui.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGTCurve2PillarAirSix.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGTCurve2PillarAirTer.Solid.Gbx	1	104	104	104	104	104	0		RallyCastle
+Rally/Media/Solid/RallyGTCurve2PillarGround.Solid.Gbx	1	316	316	316	316	316	0		RallyCastle|RallyCliff|RallyGrass2
+Rally/Media/Solid/RallyGrassCheckpoint.Solid.Gbx	2	230	190	190	190	142	0	40	RallyFlags|RallyGrass2|RallyVegetation|RallyWoodBridge
+Rally/Media/Solid/RallyGtCurve2.Solid.Gbx	2	884	246	246	246	884	0	40	RallyCliff|RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyHighOverLowCrossGround.Solid.Gbx	1	168	168	168	168	168	0		DirtyRoad|RallyCliff|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyHill1Ground.Solid.Gbx	2	548	108	108	108	548	0	40	RallyCliff|RallyGrass2
+Rally/Media/Solid/RallyHill2Ground.Solid.Gbx	2	398	112	112	112	398	0	40	RallyCliff|RallyGrass2
+Rally/Media/Solid/RallyHill3Ground.Solid.Gbx	2	634	126	126	126	634	0	40	RallyCliff|RallyGrass2
+Rally/Media/Solid/RallyHouseGround.Solid.Gbx	1	247	247	247	247	247	0		RallyGrass2|RallyHouse
+Rally/Media/Solid/RallyHouseGround2.Solid.Gbx	1	167	167	167	167	167	0		RallyGrass2|RallyHouse
+Rally/Media/Solid/RallyHouseGround3.Solid.Gbx	1	123	123	123	123	123	0		RallyGrass2|RallyHouse
+Rally/Media/Solid/RallyHouseGround4.Solid.Gbx	1	315	315	315	315	315	0		RallyGrass2|RallyHouse
+Rally/Media/Solid/RallyHouseGround5.Solid.Gbx	1	427	427	427	427	427	0		DirtyRoad|RallyGrass2|RallyGrass2Borders|RallyHouse
+Rally/Media/Solid/RallyLakeBase.Solid.Gbx	1	40	40	40	40	40	0		RallyLakeGround|RallyWater
+Rally/Media/Solid/RallyLowToMediumGround.Solid.Gbx	1	44	44	44	44	44	0		RallyGrass2|RallyGrass2Borders|RallyRoadLowtoMedium|RallyRoadMediumToLow
+Rally/Media/Solid/RallyMediumOverLowCrossGround.Solid.Gbx	1	334	334	334	334	334	0		DirtyRoad|RallyGrass2|RallyGrass2Borders|RallyRoadMedium|RallyStoneBridge
+Rally/Media/Solid/RallyMediumOverLowCrossPillarGround.Solid.Gbx	1	112	112	112	112	112	0		DirtyRoad|RallyCastle|RallyCastleArrow|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyMediumToHighGround.Solid.Gbx	1	44	44	44	44	44	0		RallyGrass2|RallyGrass2Borders|RallyRoadLowtoMedium|RallyRoadMediumToLow
+Rally/Media/Solid/RallyMultiLapAir.Solid.Gbx	1	824	824	824	824	808	0		RallyCastle|RallyFlags|RallyRoadMedium|RallyRoadSigns
+Rally/Media/Solid/RallyMultiLapAirEditorHelper.Solid.Gbx	1	577	577	577	577	0	0		EditorHelpers
+Rally/Media/Solid/RallyMultiLapEditorHelperArrow.Solid.Gbx	1	98	98	98	98	0	0		EditorHelpers
+Rally/Media/Solid/RallyMultiLapGround.Solid.Gbx	1	645	645	645	645	625	0		RallyCastle|RallyFlags|RallyGrass2|RallyGrass2Borders|RallyRoadMedium|RallyRoadSigns
+Rally/Media/Solid/RallyMultiLapGroundEditorHelper.Solid.Gbx	1	577	577	577	577	0	0		EditorHelpers
+Rally/Media/Solid/RallyMultiLapPillarAir.Solid.Gbx	1	40	40	40	40	40	0		RallyCastle
+Rally/Media/Solid/RallyMultiLapPillarAirA.Solid.Gbx	1	40	40	40	40	40	0		RallyCastle
+Rally/Media/Solid/RallyMultiLapPillarAirB.Solid.Gbx	1	40	40	40	40	40	0		RallyCastle
+Rally/Media/Solid/RallyMultiLapPillarAirC.Solid.Gbx	1	40	40	40	40	40	0		RallyCastle
+Rally/Media/Solid/RallyMultiLapPillarAirD.Solid.Gbx	1	40	40	40	40	40	0		RallyCastle
+Rally/Media/Solid/RallyMultiLapPillarAirE.Solid.Gbx	1	40	40	40	40	40	0		RallyCastle
+Rally/Media/Solid/RallyMultiLapPillarGround.Solid.Gbx	1	76	76	76	76	76	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyRampartAir.Solid.Gbx	1	150	150	150	150	150	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyRampartAirBis.Solid.Gbx	1	150	150	150	150	150	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyRoaHighFinishGround.Solid.Gbx	1	369	369	369	369	319	0		DirtyRoad|RallyFlags|RallyGrass2|RallyGrass2Borders|RallyWoodBridge
+Rally/Media/Solid/RallyRoadCastleBaseAir.Solid.Gbx	1	272	272	272	272	272	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleBasePillarAir.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleBasePillarAirBis.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleBasePillarAirTer.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleBasePillarGround.Solid.Gbx	1	44	44	44	44	44	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyRoadCastleBasePillarGroundBis.Solid.Gbx	1	44	44	44	44	44	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyRoadCastleCheckpointAir.Solid.Gbx	1	334	334	334	334	287	0		RallyCastle|RallyFlags|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleCheckpointAirEditorHelper.Solid.Gbx	1	384	384	384	384	0	0		EditorHelpers
+Rally/Media/Solid/RallyRoadCastleCheckpointEditorArrow.Solid.Gbx	1	98	98	98	98	0	0		EditorHelpers
+Rally/Media/Solid/RallyRoadCastleCheckpointPillarAir.Solid.Gbx	1	28	28	28	28	28	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleCheckpointPillarAirBis.Solid.Gbx	1	28	28	28	28	28	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleCheckpointPillarAirQua.Solid.Gbx	1	28	28	28	28	28	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleCheckpointPillarAirQui.Solid.Gbx	1	28	28	28	28	28	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleCheckpointPillarAirSix.Solid.Gbx	1	28	28	28	28	28	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleCheckpointPillarAirTer.Solid.Gbx	1	28	28	28	28	28	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleCheckpointPillarGround.Solid.Gbx	1	46	46	46	46	46	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyRoadCastleClipAir.Solid.Gbx	1	130	130	130	130	130	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleClipAirBis.Solid.Gbx	1	130	130	130	130	130	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleClipAirEditorHelper.Solid.Gbx	1	384	384	384	384	0	0		EditorHelpers
+Rally/Media/Solid/RallyRoadCastleClipPillarAir.Solid.Gbx	1	16	16	16	16	16	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleClipPillarAirBis.Solid.Gbx	1	16	16	16	16	16	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleClipPillarAirEditorHelper.Solid.Gbx	1	18	18	18	18	0	0		EditorHelpers
+Rally/Media/Solid/RallyRoadCastleClipPillarAirQua.Solid.Gbx	1	16	16	16	16	16	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleClipPillarAirQui.Solid.Gbx	1	16	16	16	16	16	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleClipPillarAirSix.Solid.Gbx	1	16	16	16	16	16	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleClipPillarAirTer.Solid.Gbx	1	16	16	16	16	16	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleClipPillarGround.Solid.Gbx	1	22	22	22	22	22	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyRoadCastleClipPillarGroundBis.Solid.Gbx	1	22	22	22	22	22	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyRoadCastleClipPillarGroundEditorHelper.Solid.Gbx	1	194	194	194	194	0	0		EditorHelpers
+Rally/Media/Solid/RallyRoadCastleCornerAir.Solid.Gbx	1	272	272	272	272	272	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleCornerAirBis.Solid.Gbx	1	272	272	272	272	272	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleCornerPillarAir.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleCornerPillarAirBis.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleCornerPillarAirQua.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleCornerPillarAirQui.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleCornerPillarAirSix.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleCornerPillarAirTer.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleCornerPillarGround.Solid.Gbx	1	44	44	44	44	44	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyRoadCastleCornerPillarGroundBis.Solid.Gbx	1	44	44	44	44	44	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyRoadCastleCrossAir.Solid.Gbx	1	564	564	564	564	564	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleCrossPillarAir.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleCrossPillarAirBis.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleCrossPillarAirTer.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleCrossPillarGround.Solid.Gbx	1	80	80	80	80	80	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyRoadCastleDeadendAir.Solid.Gbx	1	164	164	164	164	164	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleDeadendAirBis.Solid.Gbx	1	164	164	164	164	164	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleDeadendPillarAir.Solid.Gbx	1	20	20	20	20	20	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleDeadendPillarAirBis.Solid.Gbx	1	20	20	20	20	20	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleDeadendPillarAirQua.Solid.Gbx	1	20	20	20	20	20	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleDeadendPillarAirQui.Solid.Gbx	1	20	20	20	20	20	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleDeadendPillarAirSix.Solid.Gbx	1	20	20	20	20	20	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleDeadendPillarAirTer.Solid.Gbx	1	20	20	20	20	20	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleDeadendPillarGround.Solid.Gbx	1	29	29	29	29	29	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyRoadCastleDeadendPillarGroundBis.Solid.Gbx	1	29	29	29	29	29	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyRoadCastleFinishAir.Solid.Gbx	1	854	854	854	854	726	0		RallyCastle|RallyFlags|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleFinishAirEditorHelper.Solid.Gbx	1	384	384	384	384	0	0		EditorHelpers
+Rally/Media/Solid/RallyRoadCastleFinishPillarAir.Solid.Gbx	1	36	36	36	36	36	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleFinishPillarAirBis.Solid.Gbx	1	36	36	36	36	36	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleFinishPillarAirQua.Solid.Gbx	1	36	36	36	36	36	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleFinishPillarAirQui.Solid.Gbx	1	36	36	36	36	36	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleFinishPillarAirSix.Solid.Gbx	1	36	36	36	36	36	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleFinishPillarAirTer.Solid.Gbx	1	36	36	36	36	36	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleFinishPillarGround.Solid.Gbx	1	57	57	57	57	57	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyRoadCastleSlopeAir.Solid.Gbx	1	36	36	36	36	36	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleSlopeAirBis.Solid.Gbx	1	36	36	36	36	36	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleSlopeGround.Solid.Gbx	1	54	54	54	54	54	0		RallyCastle|RallyGrass2|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleSlopeGroundBis.Solid.Gbx	1	54	54	54	54	54	0		RallyCastle|RallyGrass2|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleStartAir.Solid.Gbx	1	790	790	790	790	726	0		RallyCastle|RallyFlags|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleStartAirEditorHelper.Solid.Gbx	1	384	384	384	384	0	0		EditorHelpers
+Rally/Media/Solid/RallyRoadCastleStartPillarAir.Solid.Gbx	1	36	36	36	36	36	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleStartPillarAirBis.Solid.Gbx	1	36	36	36	36	36	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleStartPillarAirQua.Solid.Gbx	1	36	36	36	36	36	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleStartPillarAirQui.Solid.Gbx	1	36	36	36	36	36	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleStartPillarAirSix.Solid.Gbx	1	36	36	36	36	36	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleStartPillarAirTer.Solid.Gbx	1	36	36	36	36	36	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleStartPillarGround.Solid.Gbx	1	57	57	57	57	57	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyRoadCastleStraightAir.Solid.Gbx	1	34	34	34	34	34	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleStraightAirBis.Solid.Gbx	1	34	34	34	34	34	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleStraightPillarAir.Solid.Gbx	1	4	4	4	4	4	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleStraightPillarAirBis.Solid.Gbx	1	4	4	4	4	4	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleStraightPillarAirQua.Solid.Gbx	1	4	4	4	4	4	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleStraightPillarAirQui.Solid.Gbx	1	4	4	4	4	4	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleStraightPillarAirSix.Solid.Gbx	1	4	4	4	4	4	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleStraightPillarAirTer.Solid.Gbx	1	4	4	4	4	4	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleStraightPillarGround.Solid.Gbx	1	8	8	8	8	8	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyRoadCastleStraightPillarGroundBis.Solid.Gbx	1	8	8	8	8	8	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyRoadCastleTShapedAir.Solid.Gbx	1	311	311	311	311	311	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleTShapedAirBis.Solid.Gbx	1	311	311	311	311	311	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyRoadCastleTShapedPillarAir.Solid.Gbx	1	34	34	34	34	34	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleTShapedPillarAirBis.Solid.Gbx	1	34	34	34	34	34	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleTShapedPillarAirQua.Solid.Gbx	1	34	34	34	34	34	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleTShapedPillarAirQui.Solid.Gbx	1	34	34	34	34	34	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleTShapedPillarAirSix.Solid.Gbx	1	34	34	34	34	34	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleTShapedPillarAirTer.Solid.Gbx	1	34	34	34	34	34	0		RallyCastle
+Rally/Media/Solid/RallyRoadCastleTShapedPillarGround.Solid.Gbx	1	44	44	44	44	44	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyRoadCastleTShapedPillarGroundBis.Solid.Gbx	1	44	44	44	44	44	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RallyRoadCastleTurboAir.Solid.Gbx	1	34	34	34	34	34	0		RallyCastle|RallyRoadMediumTurbo
+Rally/Media/Solid/RallyRoadCastleTurboGround.Solid.Gbx	1	10	10	10	10	10	0		RallyGrass2|RallyGrass2Borders|RallyRoadMediumTurbo
+Rally/Media/Solid/RallyRoadCastleTurboRouletteAir.Solid.Gbx	2	224	168	168	168	224	0	64	RallyCastle|RallyHouse|RallyTurboRoulette
+Rally/Media/Solid/RallyRoadCastleTurboRouletteGround.Solid.Gbx	2	144	88	88	88	144	0	64	RallyGrass2|RallyGrass2Borders|RallyHouse|RallyTurboRoulette
+Rally/Media/Solid/RallyRoadHighAdvertAir.Solid.Gbx	1	356	356	356	356	356	0		RallyAdvertising|RallyWoodBridge
+Rally/Media/Solid/RallyRoadHighAdvertGround.Solid.Gbx	1	340	340	340	340	340	0		DirtyRoad|RallyAdvertising|RallyCliff|RallyGrass2|RallyGrass2Borders|RallyWoodBridge
+Rally/Media/Solid/RallyRoadHighBaseGround.Solid.Gbx	1	62	62	62	62	62	0		DirtyRoad|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyRoadHighCheckpoint.Solid.Gbx	1	242	242	242	242	178	0		DirtyRoad|RallyCliff|RallyFlags|RallyGrass2|RallyGrass2Borders|RallyWoodBridge
+Rally/Media/Solid/RallyRoadHighCheckpointEditorArrow.Solid.Gbx	1	98	98	98	98	0	0		EditorHelpers
+Rally/Media/Solid/RallyRoadHighCheckpointEditorHelper.Solid.Gbx	1	384	384	384	384	0	0		EditorHelpers
+Rally/Media/Solid/RallyRoadHighClip.Solid.Gbx	1	75	75	75	75	85	0		DirtyRoad|RallyGrass2|RallyGrass2Borders|RallyWhiteWood
+Rally/Media/Solid/RallyRoadHighClipEditorHelper.Solid.Gbx	1	384	384	384	384	0	0		EditorHelpers
+Rally/Media/Solid/RallyRoadHighCornerGround.Solid.Gbx	1	40	40	40	40	40	0		DirtyRoad|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyRoadHighCornerRock.Solid.Gbx	1	180	180	180	180	180	0		DirtyRoad|RallyCliff|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyRoadHighCornerRockInside.Solid.Gbx	1	118	118	118	118	118	0		DirtyRoad|RallyCliff|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyRoadHighCornerRockOutside.Solid.Gbx	1	118	118	118	118	118	0		DirtyRoad|RallyCliff|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyRoadHighCrossGround.Solid.Gbx	1	84	84	84	84	84	0		DirtyRoad|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyRoadHighDeadendGround.Solid.Gbx	1	39	39	39	39	39	0		DirtyRoad|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyRoadHighFinishEditorHelper.Solid.Gbx	1	384	384	384	384	0	0		EditorHelpers
+Rally/Media/Solid/RallyRoadHighGT1.Solid.Gbx	1	180	180	180	180	180	0		DirtyRoad|RallyCliff|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyRoadHighGT2.Solid.Gbx	1	180	180	180	180	180	0		DirtyRoad|RallyCliff|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyRoadHighHillSlopeGround.Solid.Gbx	1	108	108	108	108	108	0		DirtyRoad|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyRoadHighStartGround.Solid.Gbx	1	369	369	369	369	319	0		DirtyRoad|RallyFlags|RallyGrass2|RallyGrass2Borders|RallyWoodBridge
+Rally/Media/Solid/RallyRoadHighStartGroundEditorHelper.Solid.Gbx	1	384	384	384	384	0	0		EditorHelpers
+Rally/Media/Solid/RallyRoadHighStraightGround.Solid.Gbx	1	14	14	14	14	14	0		DirtyRoad|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyRoadHighStraightRock.Solid.Gbx	1	60	60	60	60	60	0		DirtyRoad|RallyCliff|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyRoadHighToLowCurveGround.Solid.Gbx	1	665	665	665	665	717	0		DirtyRoad|RallyCliff|RallyGrass2|RallyGrass2Borders|RallyRoadSigns
+Rally/Media/Solid/RallyRoadHighToLowCurveMirrorGround.Solid.Gbx	1	665	665	665	665	717	0		DirtyRoad|RallyCliff|RallyGrass2|RallyGrass2Borders|RallyRoadSigns
+Rally/Media/Solid/RallyRoadHighToLowGround.Solid.Gbx	1	46	46	46	46	46	0		DirtyRoad|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyRoadHighTshapedGround.Solid.Gbx	1	60	60	60	60	60	0		DirtyRoad|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyRoadLowBaseGround.Solid.Gbx	1	62	62	62	62	62	0		DirtyRoad|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyRoadLowClipGround.Solid.Gbx	1	51	51	51	51	51	0		DirtyRoad|RallyCliff|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyRoadLowClipGroundEditorHelper.Solid.Gbx	1	384	384	384	384	0	0		EditorHelpers
+Rally/Media/Solid/RallyRoadLowCornerGround.Solid.Gbx	2	450	153	153	153	313	5	128	DirtyRoad|RallyGrass2|RallyGrass2Borders|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2
+Rally/Media/Solid/RallyRoadLowCrossGround.Solid.Gbx	2	490	197	197	197	374	4	128	DirtyRoad|RallyGrass2|RallyGrass2Borders|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2
+Rally/Media/Solid/RallyRoadLowDeadendGround.Solid.Gbx	2	236	80	80	80	179	2	128	DirtyRoad|RallyGrass2|RallyGrass2Borders|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2
+Rally/Media/Solid/RallyRoadLowHillSlopeGround.Solid.Gbx	1	108	108	108	108	108	0		DirtyRoad|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyRoadLowStraightGround.Solid.Gbx	2	388	95	95	95	272	4	128	DirtyRoad|RallyGrass2|RallyGrass2Borders|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2
+Rally/Media/Solid/RallyRoadLowStraightGroundA.Solid.Gbx	2	420	104	104	104	285	5	128	DirtyRoad|RallyGrass2|RallyGrass2Borders|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2
+Rally/Media/Solid/RallyRoadLowStraightGroundB.Solid.Gbx	2	334	86	86	86	223	4	128	DirtyRoad|RallyGrass2|RallyGrass2Borders|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2
+Rally/Media/Solid/RallyRoadLowStraightGroundC.Solid.Gbx	2	302	77	77	77	210	3	128	DirtyRoad|RallyGrass2|RallyGrass2Borders|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2
+Rally/Media/Solid/RallyRoadLowTshapedGround.Solid.Gbx	2	355	127	127	127	253	4	128	DirtyRoad|RallyGrass2|RallyGrass2Borders|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2
+Rally/Media/Solid/RallyRoadMediumBaseGround.Solid.Gbx	1	58	58	58	58	58	0		RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyRoadMediumCheckPointGround.Solid.Gbx	1	492	492	492	492	444	0		RallyCastle|RallyFlags|RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyRoadMediumCheckPointGroundEditorHelper.Solid.Gbx	1	384	384	384	384	0	0		EditorHelpers
+Rally/Media/Solid/RallyRoadMediumClipGround.Solid.Gbx	1	78	78	78	78	88	0		RallyGrass2|RallyGrass2Borders|RallyRoadMedium|RallyWhiteWood
+Rally/Media/Solid/RallyRoadMediumClipGroundEditorHelper.Solid.Gbx	1	384	384	384	384	0	0		EditorHelpers
+Rally/Media/Solid/RallyRoadMediumCornerGround.Solid.Gbx	1	54	54	54	54	54	0		RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyRoadMediumCrossGround.Solid.Gbx	1	84	84	84	84	84	0		RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyRoadMediumDeadendGround.Solid.Gbx	1	34	34	34	34	34	0		RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyRoadMediumFinishGround.Solid.Gbx	1	640	640	640	640	512	0		RallyCastle|RallyFlags|RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyRoadMediumFinishGroundEditorHelper.Solid.Gbx	1	381	381	381	381	0	0		EditorHelpers
+Rally/Media/Solid/RallyRoadMediumHillSlopeGround.Solid.Gbx	1	76	76	76	76	76	0		RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyRoadMediumStartGround.Solid.Gbx	1	576	576	576	576	512	0		RallyCastle|RallyFlags|RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyRoadMediumStartGroundEditorHelper.Solid.Gbx	1	381	381	381	381	0	0		EditorHelpers
+Rally/Media/Solid/RallyRoadMediumStraightGround.Solid.Gbx	1	10	10	10	10	10	0		RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyRoadMediumTshapedGround.Solid.Gbx	1	59	59	59	59	59	0		RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RallyRockDecor.Solid.Gbx	1	128	128	128	128	128	0		RallyCliff|RallyGrass2
+Rally/Media/Solid/RallyRockDecor2.Solid.Gbx	1	204	204	204	204	204	0		RallyCliff|RallyGrass2
+Rally/Media/Solid/RallyRockGround.Solid.Gbx	1	146	146	146	146	146	0		DirtyRoad|RallyCliff|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallyRockMirrorGround.Solid.Gbx	1	146	146	146	146	146	0		DirtyRoad|RallyCliff|RallyGrass2|RallyGrass2Borders
+Rally/Media/Solid/RallySignLeftWayAir.Solid.Gbx	1	132	132	132	132	147	0		RallyRoadSigns
+Rally/Media/Solid/RallySignLeftWayGround.Solid.Gbx	1	176	176	176	176	191	0		RallyCliff|RallyGrass2|RallyRoadSigns
+Rally/Media/Solid/RallySignPillarAir.Solid.Gbx	1	136	136	136	136	151	0		RallyRoadSigns
+Rally/Media/Solid/RallySignPillarGround.Solid.Gbx	1	312	312	312	312	364	0		RallyCliff|RallyGrass2|RallyRoadSigns
+Rally/Media/Solid/RallySignRightWayAir.Solid.Gbx	1	132	132	132	132	147	0		RallyRoadSigns
+Rally/Media/Solid/RallySignRightWayGround.Solid.Gbx	1	176	176	176	176	191	0		RallyCliff|RallyGrass2|RallyRoadSigns
+Rally/Media/Solid/RallySignWarningAir.Solid.Gbx	1	132	132	132	132	147	0		RallyRoadSigns
+Rally/Media/Solid/RallySignWarningGround.Solid.Gbx	1	176	176	176	176	191	0		RallyCliff|RallyGrass2|RallyRoadSigns
+Rally/Media/Solid/RallySignWrongWayAir.Solid.Gbx	1	132	132	132	132	147	0		RallyRoadSigns
+Rally/Media/Solid/RallySignWrongWayGround.Solid.Gbx	1	176	176	176	176	191	0		RallyCliff|RallyGrass2|RallyRoadSigns
+Rally/Media/Solid/RallySquare32.Solid.Gbx	1	6631	6631	6631	6631	5044	0		RallyWarpCliff|RallyWarpGrass|RallyWarpLake|RallyWarpTrees
+Rally/Media/Solid/RallyStartLowGround.Solid.Gbx	1	203	203	203	203	139	0		DirtyRoad|RallyFlags|RallyGrass2|RallyGrass2Borders|RallyWoodBridge
+Rally/Media/Solid/RallyStartLowGroundEditorHelper.Solid.Gbx	1	384	384	384	384	0	0		EditorHelpers
+Rally/Media/Solid/RallyStoneBridgeAir.Solid.Gbx	1	1124	1124	1124	1124	1124	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/RallyStoneBridgePillarAir.Solid.Gbx	1	96	96	96	96	96	0		RallyCastle
+Rally/Media/Solid/RallyStoneBridgePillarGround.Solid.Gbx	1	486	486	486	486	470	0		RallyCastle|RallyCastleUnderWater|RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerrainClipGround.Solid.Gbx	1	1	1	1	1	1	0		RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillBase1.Solid.Gbx	2	166	30	30	30	166	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillBase15.Solid.Gbx	2	360	64	64	64	360	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillBase15Bis.Solid.Gbx	2	396	68	68	68	396	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillBase15Ter.Solid.Gbx	2	396	70	70	70	396	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillBase1Bis.Solid.Gbx	2	162	30	30	30	162	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillBase1Ter.Solid.Gbx	2	162	30	30	30	162	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillBase3.Solid.Gbx	2	191	35	35	35	191	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillBase3Bis.Solid.Gbx	2	183	35	35	35	183	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillBase3Ter.Solid.Gbx	2	183	35	35	35	183	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillBase5.Solid.Gbx	2	284	52	52	52	284	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillBase5Bis.Solid.Gbx	2	288	52	52	52	288	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillBase5Ter.Solid.Gbx	2	280	52	52	52	280	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillBase7.Solid.Gbx	2	340	64	64	64	340	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillBase7Bis.Solid.Gbx	2	360	64	64	64	360	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillBase7Ter.Solid.Gbx	2	64	64	64	64	64	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillCorner.Solid.Gbx	2	166	30	30	30	166	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillCorner8.Solid.Gbx	2	214	38	38	38	214	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillCorner8Bis.Solid.Gbx	2	214	38	38	38	214	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillCorner8Ter.Solid.Gbx	2	214	38	38	38	214	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillCornerBis.Solid.Gbx	2	166	30	30	30	166	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillCornerTer.Solid.Gbx	2	226	40	40	40	226	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillCross.Solid.Gbx	2	140	24	24	24	140	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillCrossBis.Solid.Gbx	2	140	24	24	24	140	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillCrossTer.Solid.Gbx	2	236	40	40	40	236	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillDeadend.Solid.Gbx	2	166	30	30	30	166	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillDeadend12.Solid.Gbx	2	263	47	47	47	263	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillDeadend12Bis.Solid.Gbx	2	263	47	47	47	263	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillDeadend12Ter.Solid.Gbx	2	255	47	47	47	255	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillDeadend4.Solid.Gbx	2	263	47	47	47	263	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillDeadend4Bis.Solid.Gbx	2	263	47	47	47	263	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillDeadend4Ter.Solid.Gbx	2	259	47	47	47	259	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillDeadend8.Solid.Gbx	2	263	47	47	47	263	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillDeadend8Bis.Solid.Gbx	2	263	47	47	47	263	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillDeadend8Ter.Solid.Gbx	2	259	47	47	47	259	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillDeadendBis.Solid.Gbx	2	166	30	30	30	166	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillDeadendTer.Solid.Gbx	2	166	30	30	30	166	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillStraight.Solid.Gbx	2	238	42	42	42	238	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillStraightBis.Solid.Gbx	2	238	42	42	42	238	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillStraightTer.Solid.Gbx	2	238	42	42	42	238	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillTShaped.Solid.Gbx	2	181	39	39	39	181	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillTShapedBis.Solid.Gbx	2	237	41	41	41	237	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoHillTShapedTer.Solid.Gbx	2	237	41	41	41	237	0	40	RallyGrass2
+Rally/Media/Solid/RallyTerraintoLakeBase1.Solid.Gbx	1	62	62	62	62	56	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeBase15.Solid.Gbx	1	200	200	200	200	176	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeBase15Bis.Solid.Gbx	1	176	176	176	176	152	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeBase1Bis.Solid.Gbx	1	64	64	64	64	58	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeBase1Ter.Solid.Gbx	1	62	62	62	62	56	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeBase3.Solid.Gbx	1	116	116	116	116	104	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeBase3Bis.Solid.Gbx	1	116	116	116	116	104	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeBase3Ter.Solid.Gbx	1	116	116	116	116	104	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeBase5.Solid.Gbx	1	136	136	136	136	124	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeBase7.Solid.Gbx	1	128	128	128	128	110	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeCorner.Solid.Gbx	1	96	96	96	96	84	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeCorner8.Solid.Gbx	1	134	134	134	134	116	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeCorner8Bis.Solid.Gbx	1	134	134	134	134	116	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeCorner8Ter.Solid.Gbx	1	134	134	134	134	116	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeCornerBis.Solid.Gbx	1	96	96	96	96	84	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeCornerTer.Solid.Gbx	1	96	96	96	96	84	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeCross.Solid.Gbx	1	108	108	108	108	92	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeDeadEnd.Solid.Gbx	1	81	81	81	81	73	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeDeadEnd12.Solid.Gbx	1	135	135	135	135	115	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeDeadEnd12Bis.Solid.Gbx	1	135	135	135	135	115	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeDeadEnd12Ter.Solid.Gbx	1	135	135	135	135	115	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeDeadEnd4.Solid.Gbx	1	111	111	111	111	97	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeDeadEnd4Bis.Solid.Gbx	1	111	111	111	111	97	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeDeadEnd4Ter.Solid.Gbx	1	111	111	111	111	97	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeDeadEnd8.Solid.Gbx	1	111	111	111	111	97	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeDeadEnd8Bis.Solid.Gbx	1	111	111	111	111	97	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeDeadEnd8Ter.Solid.Gbx	1	111	111	111	111	97	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeDeadEndBis.Solid.Gbx	1	75	75	75	75	67	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeDeadEndTer.Solid.Gbx	1	75	75	75	75	67	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeStraight.Solid.Gbx	1	114	114	114	114	98	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeStraightBis.Solid.Gbx	1	114	114	114	114	98	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeStraightTer.Solid.Gbx	1	114	114	114	114	98	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTerraintoLakeTshaped.Solid.Gbx	1	102	102	102	102	86	0		RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RallyTreesGround1.Solid.Gbx	2	416	123	123	123	300	4	128	RallyGrass2|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2
+Rally/Media/Solid/RallyTreesGround2.Solid.Gbx	2	448	132	132	132	313	5	128	RallyGrass2|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2
+Rally/Media/Solid/RallyTreesGround3.Solid.Gbx	2	359	110	110	110	237	4	128	RallyGrass2|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2
+Rally/Media/Solid/RallyTreesGround4.Solid.Gbx	2	226	69	69	69	158	2	128	RallyGrass2|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2
+Rally/Media/Solid/RallyTreesGroundBig.Solid.Gbx	2	125	43	43	43	68	3	128	RallyGrass2|RallyTreeBranchAlpha|RallyTreeSpriteAlpha|RallyTreeSpriteAlpha2
+Rally/Media/Solid/RallyTruncGround.Solid.Gbx	1	242	242	242	242	242	0		DirtyRoad|RallyCliff|RallyGrass2|RallyGrass2Borders|RallyTrunk
+Rally/Media/Solid/RallyTruncMirrorGround.Solid.Gbx	1	234	234	234	234	234	0		DirtyRoad|RallyCliff|RallyGrass2|RallyGrass2Borders|RallyTrunk
+Rally/Media/Solid/RallyTunnelEntry.Solid.Gbx	2	1095	871	871	871	865	0	40	RallyCastle|RallyGrass2|RallyGrass2Borders|RallyTunnelCastle|RallyTunnelGlowVolume|RallyTunnelRoadMedium
+Rally/Media/Solid/RallyTunnelExit.Solid.Gbx	2	1256	1032	1032	1032	1028	0	40	RallyCastle|RallyGrass2|RallyGrass2Borders|RallyTunnelCastle|RallyTunnelGlowVolume|RallyTunnelRoadMedium
+Rally/Media/Solid/RallyTunnelGTCurve2.Solid.Gbx	1	1796	1796	1796	1796	1780	0		RallyTunnelCastle|RallyTunnelGlowVolume|RallyTunnelRoadMedium
+Rally/Media/Solid/RallyTunnelGTCurve3.Solid.Gbx	1	2820	2820	2820	2820	2796	0		RallyTunnelCastle|RallyTunnelGlowVolume|RallyTunnelRoadMedium
+Rally/Media/Solid/RallyTunnelRoadBase.Solid.Gbx	1	368	368	368	368	360	0		RallyTunnelCastle|RallyTunnelGlowVolume|RallyTunnelRoadMedium
+Rally/Media/Solid/RallyTunnelRoadCheckpoint.Solid.Gbx	2	746	482	482	482	280	0	40	RallyTunnelCastle|RallyTunnelFlags|RallyTunnelGlowVolume|RallyTunnelRoadMedium
+Rally/Media/Solid/RallyTunnelRoadClip.Solid.Gbx	1	54	54	54	54	54	0		RallyTunnelCastle|RallyTunnelRoadMedium
+Rally/Media/Solid/RallyTunnelRoadClipEditorHelper.Solid.Gbx	1	300	300	300	300	0	0		EditorHelpers
+Rally/Media/Solid/RallyTunnelRoadCorner.Solid.Gbx	2	686	494	494	494	486	0	40	RallyTunnelCastle|RallyTunnelGlowVolume|RallyTunnelRoadMedium
+Rally/Media/Solid/RallyTunnelRoadCross.Solid.Gbx	2	816	704	704	704	696	0	40	RallyTunnelCastle|RallyTunnelGlowVolume|RallyTunnelRoadMedium
+Rally/Media/Solid/RallyTunnelRoadDeadend.Solid.Gbx	2	800	386	386	386	378	0	40	RallyTunnelCastle|RallyTunnelGlowVolume|RallyTunnelRoadMedium
+Rally/Media/Solid/RallyTunnelRoadSlopeStraight.Solid.Gbx	2	700	364	364	364	356	0	40	RallyTunnelCastle|RallyTunnelGlowVolume|RallyTunnelRoadMedium
+Rally/Media/Solid/RallyTunnelRoadStraight.Solid.Gbx	2	700	364	364	364	356	0	40	RallyTunnelCastle|RallyTunnelGlowVolume|RallyTunnelRoadMedium
+Rally/Media/Solid/RallyTunnelRoadTShaped.Solid.Gbx	2	719	537	537	537	529	0	40	RallyTunnelCastle|RallyTunnelGlowVolume|RallyTunnelRoadMedium
+Rally/Media/Solid/RallyTunnelTurbo.Solid.Gbx	2	1173	900	900	900	1157	0	16	RallyTunnelCastle|RallyTunnelGlowVolume|RallyTunnelTurbo
+Rally/Media/Solid/Replacement/Arch/RallyCastleArchAir.Solid.Gbx	1	161	161	161	161	161	0		RallyCastle
+Rally/Media/Solid/Replacement/Arch/RallyCastleArchPillarAir.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/Replacement/Arch/RallyCastleArchPillarGround.Solid.Gbx	1	66	66	66	66	66	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/Replacement/Cross/RallyCastleReplaceCrossAir.Solid.Gbx	1	254	254	254	254	254	0		RallyCastle|RallyRoadMedium
+Rally/Media/Solid/Replacement/Cross/RallyCastleReplaceCrossGround.Solid.Gbx	1	272	272	272	272	272	0		RallyCastle|RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RoadLamp/Air/Base.Solid.Gbx	2	480	368	368	368	480	0	64	RallyCastle|RallyHouse|RallyRoadMedium
+Rally/Media/Solid/RoadLamp/Air/Corner.Solid.Gbx	2	360	304	304	304	360	0	64	RallyCastle|RallyHouse|RallyRoadMedium
+Rally/Media/Solid/RoadLamp/Air/Cross.Solid.Gbx	2	740	628	628	628	740	0	64	RallyCastle|RallyHouse|RallyRoadMedium
+Rally/Media/Solid/RoadLamp/Air/Deadend.Solid.Gbx	2	289	233	233	233	289	0	64	RallyCastle|RallyHouse|RallyRoadMedium
+Rally/Media/Solid/RoadLamp/Air/Straight.Solid.Gbx	2	224	168	168	168	224	0	64	RallyCastle|RallyHouse|RallyRoadMedium
+Rally/Media/Solid/RoadLamp/Air/TShaped.Solid.Gbx	2	480	396	396	396	480	0	64	RallyCastle|RallyHouse|RallyRoadMedium
+Rally/Media/Solid/RoadLamp/Ground/Base.Solid.Gbx	1	58	58	58	58	58	0		RallyGrass2|RallyGrass2Borders|RallyRoadMedium
+Rally/Media/Solid/RoadLamp/Ground/Corner.Solid.Gbx	2	156	100	100	100	156	0	64	RallyGrass2|RallyGrass2Borders|RallyHouse|RallyRoadMedium
+Rally/Media/Solid/RoadLamp/Ground/Cross.Solid.Gbx	2	294	182	182	182	294	0	64	RallyGrass2|RallyGrass2Borders|RallyHouse|RallyRoadMedium
+Rally/Media/Solid/RoadLamp/Ground/Deadend.Solid.Gbx	2	168	112	112	112	168	0	64	RallyGrass2|RallyGrass2Borders|RallyHouse|RallyRoadMedium
+Rally/Media/Solid/RoadLamp/Ground/Straight.Solid.Gbx	2	144	88	88	88	144	0	64	RallyGrass2|RallyGrass2Borders|RallyHouse|RallyRoadMedium
+Rally/Media/Solid/RoadLamp/Ground/TShaped.Solid.Gbx	2	232	148	148	148	232	0	64	RallyGrass2|RallyGrass2Borders|RallyHouse|RallyRoadMedium
+Rally/Media/Solid/RoadWood/RallyHighBridgeAir.Solid.Gbx	1	464	464	464	464	464	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyHighBridgePillarAir.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyHighBridgePillarAirA.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyHighBridgePillarAirB.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyHighBridgePillarAirC.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyHighBridgePillarAirD.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyHighBridgePillarAirE.Solid.Gbx	1	64	64	64	64	64	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyHighBridgePillarGround.Solid.Gbx	1	538	538	538	538	490	0		RallyCastle|RallyCastleUnderWater|RallyGrass2|RallyLakeGround|RallyLakeWaterBorders|RallyWater
+Rally/Media/Solid/RoadWood/RallyRoadWoodBaseAir.Solid.Gbx	1	64	64	64	64	64	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodBaseAirA.Solid.Gbx	1	64	64	64	64	64	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodBaseAirB.Solid.Gbx	1	64	64	64	64	64	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodBaseAirC.Solid.Gbx	1	64	64	64	64	64	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodCheckpointAir.Solid.Gbx	1	276	276	276	276	212	0		RallyFlags|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodClipAir.Solid.Gbx	1	164	164	164	164	164	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodCornerAir.Solid.Gbx	1	96	96	96	96	96	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodCornerAirA.Solid.Gbx	1	96	96	96	96	96	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodCornerAirB.Solid.Gbx	1	96	96	96	96	96	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodCornerAirC.Solid.Gbx	1	96	96	96	96	96	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodCornerPillarAir.Solid.Gbx	1	24	24	24	24	24	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodCornerPillarAirA.Solid.Gbx	1	24	24	24	24	24	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodCornerPillarAirB.Solid.Gbx	1	24	24	24	24	24	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodCornerPillarAirC.Solid.Gbx	1	24	24	24	24	24	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodCornerPillarAirD.Solid.Gbx	1	24	24	24	24	24	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodCornerPillarAirE.Solid.Gbx	1	24	24	24	24	24	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodCornerPillarGround.Solid.Gbx	1	56	56	56	56	56	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RoadWood/RallyRoadWoodCornerPillarGroundA.Solid.Gbx	1	56	56	56	56	56	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RoadWood/RallyRoadWoodCrossAir.Solid.Gbx	1	200	200	200	200	200	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodCrossAirA.Solid.Gbx	1	200	200	200	200	200	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodCrossAirB.Solid.Gbx	1	200	200	200	200	200	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodCrossAirC.Solid.Gbx	1	200	200	200	200	200	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodCrossPillarAir.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodCrossPillarAirA.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodCrossPillarAirB.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodCrossPillarAirC.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodCrossPillarAirD.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodCrossPillarAirE.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodCrossPillarGround.Solid.Gbx	1	74	74	74	74	74	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RoadWood/RallyRoadWoodCrossPillarGroundA.Solid.Gbx	1	74	74	74	74	74	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RoadWood/RallyRoadWoodDeadendAir.Solid.Gbx	1	52	52	52	52	52	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodDeadendAirA.Solid.Gbx	1	52	52	52	52	52	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodDeadendAirB.Solid.Gbx	1	52	52	52	52	52	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodFinishAir.Solid.Gbx	1	288	288	288	288	224	0		RallyFlags|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodGT1Air.Solid.Gbx	1	136	136	136	136	136	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodGT2Air.Solid.Gbx	1	136	136	136	136	136	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSlopeStartGround.Solid.Gbx	1	231	231	231	231	231	0		DirtyRoad|RallyGrass2|RallyGrass2Borders|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSlopeStraightAir.Solid.Gbx	1	40	40	40	40	40	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSlopeStraightAirA.Solid.Gbx	1	40	40	40	40	40	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSlopeStraightAirB.Solid.Gbx	1	40	40	40	40	40	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSlopeStraightAirC.Solid.Gbx	1	40	40	40	40	40	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodStartAir.Solid.Gbx	1	288	288	288	288	224	0		RallyFlags|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodStraightAir.Solid.Gbx	1	40	40	40	40	40	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodStraightAirA.Solid.Gbx	1	40	40	40	40	40	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodStraightAirB.Solid.Gbx	1	40	40	40	40	40	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodStraightPillarAir.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodStraightPillarAirA.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodStraightPillarAirB.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodStraightPillarAirC.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodStraightPillarAirD.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodStraightPillarAirE.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodStraightPillarGround.Solid.Gbx	1	74	74	74	74	74	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RoadWood/RallyRoadWoodStraightPillarGroundA.Solid.Gbx	1	74	74	74	74	74	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportBaseAir.Solid.Gbx	1	240	240	240	240	240	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportBaseAirA.Solid.Gbx	1	240	240	240	240	240	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportBaseAirB.Solid.Gbx	1	240	240	240	240	240	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportBaseAirC.Solid.Gbx	1	240	240	240	240	240	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportCheckpointAir.Solid.Gbx	1	452	452	452	452	388	0		RallyCastle|RallyFlags|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportCornerAir.Solid.Gbx	1	234	234	234	234	234	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportCornerAirA.Solid.Gbx	1	234	234	234	234	234	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportCornerAirB.Solid.Gbx	1	234	234	234	234	234	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportCornerAirC.Solid.Gbx	1	234	234	234	234	234	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportCrossAir.Solid.Gbx	1	352	352	352	352	352	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportCrossAirA.Solid.Gbx	1	352	352	352	352	352	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportCrossAirB.Solid.Gbx	1	352	352	352	352	352	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportCrossAirC.Solid.Gbx	1	352	352	352	352	352	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportDeadendAir.Solid.Gbx	1	248	248	248	248	248	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportDeadendAirA.Solid.Gbx	1	248	248	248	248	248	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportDeadendAirB.Solid.Gbx	1	248	248	248	248	248	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportFinishAir.Solid.Gbx	1	484	484	484	484	420	0		RallyCastle|RallyFlags|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportSlopeStraightAir.Solid.Gbx	1	240	240	240	240	240	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportSlopeStraightAirA.Solid.Gbx	1	240	240	240	240	240	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportSlopeStraightAirB.Solid.Gbx	1	240	240	240	240	240	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportSlopeStraightAirC.Solid.Gbx	1	240	240	240	240	240	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportStartAir.Solid.Gbx	1	484	484	484	484	420	0		RallyCastle|RallyFlags|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportStraightAir.Solid.Gbx	1	216	216	216	216	216	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportStraightAirA.Solid.Gbx	1	216	216	216	216	216	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportStraightAirB.Solid.Gbx	1	216	216	216	216	216	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportTShapedAir.Solid.Gbx	1	306	306	306	306	306	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodSupportTShapedAirA.Solid.Gbx	1	306	306	306	306	306	0		RallyCastle|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodTShapedAir.Solid.Gbx	1	130	130	130	130	130	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodTShapedAirA.Solid.Gbx	1	130	130	130	130	130	0		RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodTShapedPillarAir.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodTShapedPillarAirA.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodTShapedPillarAirB.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodTShapedPillarAirC.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodTShapedPillarAirD.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodTShapedPillarAirE.Solid.Gbx	1	32	32	32	32	32	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodTShapedPillarGround.Solid.Gbx	1	76	76	76	76	76	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RoadWood/RallyRoadWoodTShapedPillarGroundA.Solid.Gbx	1	76	76	76	76	76	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RoadWood/RallyRoadWoodToCastleAir.Solid.Gbx	1	254	254	254	254	254	0		RallyCastle|RallyRoadMedium|RallyWoodBridge
+Rally/Media/Solid/RoadWood/RallyRoadWoodToCastlePillarAir.Solid.Gbx	1	20	20	20	20	20	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodToCastlePillarAirA.Solid.Gbx	1	20	20	20	20	20	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodToCastlePillarAirB.Solid.Gbx	1	20	20	20	20	20	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodToCastlePillarAirC.Solid.Gbx	1	20	20	20	20	20	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodToCastlePillarAirD.Solid.Gbx	1	20	20	20	20	20	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodToCastlePillarAirE.Solid.Gbx	1	20	20	20	20	20	0		RallyCastle
+Rally/Media/Solid/RoadWood/RallyRoadWoodToCastlePillarGround.Solid.Gbx	1	29	29	29	29	29	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/RoadWood/RallyRoadWoodToCastlePillarGroundA.Solid.Gbx	1	29	29	29	29	29	0		RallyCastle|RallyGrass2
+Rally/Media/Solid/Zone/RockyGrass/Base.Solid.Gbx	1	2	2	2	2	2	0		RallyRockyGrass
+Rally/Media/Solid/Zone/RockyGrass/Clip.Solid.Gbx	1	1	1	1	1	1	0		RallyRockyGrass
+Rally/Media/Solid/Zone/RockyGrassCliff/Base15A.Solid.Gbx	1	160	160	160	160	160	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Base15B.Solid.Gbx	1	136	136	136	136	136	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Base15C.Solid.Gbx	1	152	152	152	152	152	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Base15D.Solid.Gbx	1	224	224	224	224	224	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Base1A.Solid.Gbx	1	100	100	100	100	100	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Base1B.Solid.Gbx	1	128	128	128	128	128	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Base1C.Solid.Gbx	1	152	152	152	152	152	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Base1D.Solid.Gbx	1	124	124	124	124	124	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Base3A.Solid.Gbx	1	132	132	132	132	132	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Base3B.Solid.Gbx	1	185	185	185	185	185	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Base3C.Solid.Gbx	1	187	187	187	187	187	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Base3D.Solid.Gbx	1	175	175	175	175	175	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Base5A.Solid.Gbx	1	134	134	134	134	134	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Base5B.Solid.Gbx	1	200	200	200	200	200	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Base5C.Solid.Gbx	1	176	176	176	176	176	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Base5D.Solid.Gbx	1	176	176	176	176	176	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Base7A.Solid.Gbx	1	164	164	164	164	164	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Base7B.Solid.Gbx	1	240	240	240	240	240	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Base7C.Solid.Gbx	1	216	216	216	216	216	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Corner8A.Solid.Gbx	1	98	98	98	98	98	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Corner8B.Solid.Gbx	1	122	122	122	122	122	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Corner8C.Solid.Gbx	1	112	112	112	112	112	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Corner8D.Solid.Gbx	1	130	130	130	130	130	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/CornerA.Solid.Gbx	1	200	200	200	200	200	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/CornerB.Solid.Gbx	1	182	182	182	182	182	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/CornerC.Solid.Gbx	1	216	216	216	216	216	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/CornerD.Solid.Gbx	1	186	186	186	186	186	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/CrossA.Solid.Gbx	1	130	130	130	130	130	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/CrossB.Solid.Gbx	1	168	168	168	168	168	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/CrossC.Solid.Gbx	1	130	130	130	130	130	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/CrossD.Solid.Gbx	1	168	168	168	168	168	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Deadend12A.Solid.Gbx	1	117	117	117	117	117	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Deadend12B.Solid.Gbx	1	125	125	125	125	125	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Deadend12C.Solid.Gbx	1	135	135	135	135	135	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Deadend12D.Solid.Gbx	1	187	187	187	187	187	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Deadend4A.Solid.Gbx	1	201	201	201	201	201	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Deadend4B.Solid.Gbx	1	221	221	221	221	221	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Deadend8A.Solid.Gbx	1	201	201	201	201	201	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Deadend8B.Solid.Gbx	1	221	221	221	221	221	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/DeadendA.Solid.Gbx	1	152	152	152	152	152	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/DeadendB.Solid.Gbx	1	162	162	162	162	162	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/DeadendC.Solid.Gbx	1	152	152	152	152	152	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/DeadendD.Solid.Gbx	1	162	162	162	162	162	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/StraightA.Solid.Gbx	1	162	162	162	162	162	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/StraightB.Solid.Gbx	1	194	194	194	194	194	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/StraightC.Solid.Gbx	1	158	158	158	158	158	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/StraightD.Solid.Gbx	1	196	196	196	196	196	0		RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/TShapedA.Solid.Gbx	1	117	117	117	117	117	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/TShapedB.Solid.Gbx	1	141	141	141	141	141	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/TShapedC.Solid.Gbx	1	121	121	121	121	121	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/TShapedD.Solid.Gbx	1	111	111	111	111	111	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/TShapedE.Solid.Gbx	1	175	175	175	175	175	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/TShapedF.Solid.Gbx	1	155	155	155	155	155	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/TShapedG.Solid.Gbx	1	169	169	169	169	169	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/TShapedH.Solid.Gbx	1	145	145	145	145	145	0		RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassCliff/Transition/CastleToRoadWood.Solid.Gbx	1	533	533	533	533	533	0		RallyCastle|RallyRoadMedium|RallyRockyGrassCliff|RallyWoodBridge
+Rally/Media/Solid/Zone/RockyGrassCliff/Transition/TunnelEntry.Solid.Gbx	2	1040	816	816	816	1040	0	16	RallyCastle|RallyGrass2Borders|RallyRockyGrassCliff|RallyTunnelCastle|RallyTunnelGlowVolume|RallyTunnelRoadMedium
+Rally/Media/Solid/Zone/RockyGrassHill/Base15A.Solid.Gbx	1	136	136	136	136	136	0		RallyGrass2|RallyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/Base15B.Solid.Gbx	1	176	176	176	176	176	0		RallyGrass2|RallyGrassCliff|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/Base1A.Solid.Gbx	1	120	120	120	120	120	0		RallyGrass2|RallyGrassCliff|RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/Base1B.Solid.Gbx	1	120	120	120	120	120	0		RallyGrass2|RallyGrassCliff|RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/Base3A.Solid.Gbx	1	123	123	123	123	123	0		RallyGrass2|RallyGrassCliff|RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/Base3B.Solid.Gbx	1	145	145	145	145	145	0		RallyGrass2|RallyGrassCliff|RallyRockyGrass|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/Base5A.Solid.Gbx	1	172	172	172	172	172	0		RallyGrass2|RallyGrassCliff|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/Base7A.Solid.Gbx	1	176	176	176	176	176	0		RallyGrass2|RallyGrassCliff|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/Corner8A.Solid.Gbx	1	66	66	66	66	66	0		RallyGrass2|RallyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/CornerA.Solid.Gbx	1	102	102	102	102	102	0		RallyGrass2|RallyGrassCliff|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/CornerB.Solid.Gbx	1	80	80	80	80	80	0		RallyGrass2|RallyGrassCliff|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/CrossA.Solid.Gbx	1	132	132	132	132	132	0		RallyGrass2|RallyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/Deadend12A.Solid.Gbx	1	90	90	90	90	90	0		RallyGrass2|RallyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/Deadend4A.Solid.Gbx	1	121	121	121	121	121	0		RallyGrass2|RallyGrassCliff|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/Deadend8A.Solid.Gbx	1	121	121	121	121	121	0		RallyGrass2|RallyGrassCliff|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/DeadendA.Solid.Gbx	1	110	110	110	110	110	0		RallyGrass2|RallyGrassCliff|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/DeadendB.Solid.Gbx	1	72	72	72	72	72	0		RallyGrass2|RallyGrassCliff|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/StraightA.Solid.Gbx	1	56	56	56	56	56	0		RallyGrass2|RallyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/StraightB.Solid.Gbx	1	38	38	38	38	38	0		RallyGrass2|RallyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/TShapedA.Solid.Gbx	1	67	67	67	67	67	0		RallyGrass2|RallyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/TShapedB.Solid.Gbx	1	67	67	67	67	67	0		RallyGrass2|RallyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/Transition/RoadHighToRoadMedium.Solid.Gbx	1	360	360	360	360	360	0		RallyCastle|RallyGrass2|RallyGrass2Borders|RallyGrassCliff|RallyRoadLowtoMedium|RallyRoadMediumToLow|RallyRockyGrassCliff
+Rally/Media/Solid/Zone/RockyGrassHill/Transition/RoadMediumToCastle.Solid.Gbx	1	292	292	292	292	292	0		RallyCastle|RallyGrass2|RallyGrassCliff|RallyRoadMedium|RallyRockyGrassCliff
+Speed/Media/Solid/SkyDome.Solid.Gbx	1	540	540	540	540	0	0		SpeedSky
+Vehicles/Media/Solid/RallyCar.Solid.Gbx	1	5028	5028	5028	5028	0	0		RallyCarDetails|RallyCarGlass|RallyCarRearLights|RallyCarSkin
