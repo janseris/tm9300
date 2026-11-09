@@ -273,7 +273,7 @@ int main(int argc, char** argv)
         if (every && step % every == 0)
             {
             s.Slopes(v.iCarSlopeF, v.iCarSlopeR);
-            if (getenv("GHOST")) { v.iGhostOn = ghost.At(step + 1, v.iGhostX, v.iGhostY, v.iGhostZ, v.iGhostYaw, v.iGhostSlopeF, v.iGhostSlopeR) ? 1 : 0; }
+            if (getenv("GHOST")) { TmView::TGhostCar& c = v.iGhosts[0]; v.iNGhosts = ghost.At(step + 1, c.x, c.y, c.z, c.yaw, c.slopeF, c.slopeR) ? 1 : 0; }
             v.Frame(frame, 320, t, cx, cy, cz, yaw, pitch, 200, s.x >> 4, (s.y >> 4) + 3, s.z >> 4, s.yaw, 1);
             char name[256]; sprintf(name, "%s_%04d.ppm", argv[2], step);
             Save(name, frame, 320, 200); frames++;

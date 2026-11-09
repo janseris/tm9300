@@ -31,6 +31,18 @@ int main(int argc, char** argv)
     sprintf(p, "%s/big.fnt", argv[1]); LoadFont(p, big);
     sprintf(p, "%s/text.fnt", argv[1]); LoadFont(p, text);
     sprintf(p, "%s/small.fnt", argv[1]); LoadFont(p, small);
+    {
+    // the game's font, when its sheet is there, at the same heights
+    int fn; sprintf(p, "%s/united.fnt", argv[1]); unsigned char* fd = ReadAll(p, fn);
+    TmFont sheet;
+    if (fd && TmFontLoad(fd, fn, sheet))
+        {
+        TmFont nb, nt, ns;
+        TmFontScale(sheet, big.iH, true, nb); TmFontScale(sheet, text.iH, false, nt); TmFontScale(sheet, small.iH, false, ns);
+        big = nb; text = nt; small = ns;
+        printf("the game's font: %d %d %d\n", big.iH, text.iH, small.iH);
+        }
+    }
     int pn; unsigned char* pd = ReadAll(argv[2], pn);
     TmUiPack pack; if (!pack.Load(pd, pn)) printf("no pack\n");
     TmUiTrack tr[64]; int nt = 0;
@@ -64,6 +76,35 @@ int main(int argc, char** argv)
             }
         mm.Draw(frame, 640);
         sprintf(p, "%s_%s.ppm", argv[4], shots[s].name); Save(p, frame);
+        }
+    // 0.14: the hot seat's chooser and the race's dialogs (over a grey 3D view)
+    {
+    TmMenu mm; mm.iVersion = "0.14"; mm.Init(&big, &text, &small, tr, nt, &pack);
+    const char* prof[] = { "KNUCKLES", "PAVEL", "TERE", "ANNA", "BOB", "CYRIL", "DORA", "EMIL", "FRANZ" };
+    for (int i = 0; i < 9; i++) { strcpy(mm.iProfiles[i], prof[i]); } mm.iNProfiles = 9;
+    mm.Key(EUiOk); mm.Key(EUiDown); mm.Key(EUiOk); mm.Key(EUiOk);    // party, hot seat
+    mm.Key(EUiOk); mm.Key(EUiOk);                     // slot 1: chooser, KNUCKLES
+    mm.Key(EUiRight); mm.Key(EUiOk); mm.Key(EUiDown); mm.Key(EUiOk);     // slot 2: PAVEL... TERE
+    mm.Key(EUiDown); mm.Key(EUiOk);                   // slot 3: chooser open
+    for (int i = 0; i < 9; i++) mm.Key(EUiDown);
+    mm.Draw(frame, 640); sprintf(p, "%s_chooser.ppm", argv[4]); Save(p, frame);
+    mm.Key(EUiBack); mm.Key(EUiUp); mm.Key(EUiUp); mm.Key(EUiRight); mm.Key(EUiDown); mm.Key(EUiRight); mm.Key(EUiRight);
+    mm.Draw(frame, 640); sprintf(p, "%s_hotseat2.ppm", argv[4]); Save(p, frame);
+    }
+    for (int d = 0; d < 4; d++)
+        {
+        for (int y = 0; y < 200; y++) for (int x = 0; x < 640; x++) frame[y * 640 + x] = (x < 160 || x >= 480) ? 0x0841 : (TmPix) (0x4208 + ((y >> 3) & 1) * 0x0841);
+        if (d == 0) { const char* r[] = { "Choose opponents", "Restart", "Race panels: on", "Continue|Quit" }; TmDlg::Buttons(frame, 640, text, small, 170, 470, "Race menu", r, 4, 3, true); }
+        if (d == 1) { const char* r[] = { "Continue", "Give up", "Quit" }; TmDlg::Buttons(frame, 640, text, small, 170, 470, "Hot Seat", r, 3, 0, true); }
+        if (d == 2)
+            {
+            TmDlg::TRow r[] = { { "Bronze medal", 25070, false }, { "Silver medal", 20350, true }, { "Your record", 19910, false }, { "Your last run", 21000, false },
+                { "Gold medal", 17830, true }, { "Nadeo medal", 16020, false }, { "Show names", -1, true } };
+            TmDlg::Ghosts(frame, 640, text, small, 170, 470, r, 7, 4);
+            }
+        if (d == 3) TmDlg::Message(frame, 640, text, 170, 470, "Now it's player KNUCKLES's turn!");
+        static const char* nm[] = { "dlg_race", "dlg_hotseat", "dlg_ghosts", "dlg_msg" };
+        sprintf(p, "%s_%s.ppm", argv[4], nm[d]); Save(p, frame);
         }
     return 0;
     }

@@ -1,6 +1,8 @@
 ; TrackMania 9300 - track viewer (phase 3: the flythrough)
 &EN
-#{"TM9300"},(0x0E3D9310),0,13,0
+#{"TM9300"},(0x0E3D9310),0,14,0
 (0x101F8ED2), 0, 0, 0, {"Series80ProductID"}
 "tm9300.app"-"!:\system\apps\tm9300\tm9300.app"
 "tm9300.rsc"-"!:\system\apps\tm9300\tm9300.rsc"
+; the game's font (tools/tmfont.py from GameData/Menu/Media/Font/United_Textures/United_00.dds: never in git)
+"../data/tm9300.fnt"-"!:\system\apps\tm9300\tm9300.fnt"

@@ -28,8 +28,8 @@ extern "C" int emu_frame(R3Pix* aFrame, int aSample, int* aStats)
     gV->ChaseCamera(*gT, aSample, 0, cx, cy, cz, yaw, pitch);
     int carx, cary, carz, caryaw;
     gV->CarAt(*gT, aSample, 0, carx, cary, carz, caryaw);
-    gV->iGhostOn = 0;
-    if (gGhost) { int gs = aSample + gGhost; if (gs >= gT->iNPath) gs = gT->iNPath - 1; gV->CarAt(*gT, gs, 0, gV->iGhostX, gV->iGhostY, gV->iGhostZ, gV->iGhostYaw); gV->iGhostSlopeF = gV->iGhostSlopeR = 0; gV->iGhostOn = 1; }
+    gV->iNGhosts = 0;
+    if (gGhost) { int gs = aSample + gGhost; if (gs >= gT->iNPath) gs = gT->iNPath - 1; TmView::TGhostCar& c = gV->iGhosts[0]; gV->CarAt(*gT, gs, 0, c.x, c.y, c.z, c.yaw); c.slopeF = c.slopeR = 0; gV->iNGhosts = 1; }
     gV->Frame(aFrame, gW, *gT, cx, cy, cz, yaw, pitch, gFocal, carx, cary, carz, caryaw, 1);
     const int* s = (const int*) &gV->iStats; for (int i = 0; i < 8; i++) aStats[i] = s[i];
     return gV->iStats.drawn;

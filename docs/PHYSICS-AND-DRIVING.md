@@ -321,6 +321,27 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   the result (the time in the medal's colour, the medal, the gap) with "Press Enter to restart". Esc pauses
   (continue, restart, opponent, the race panels, back to the menu).
 
+## 0.14: the race menus and the hot seat as the game's, the game's font (9 Nov 2026)
+- Every dialog is measured against the 200 lines before it is drawn: the text font if all of it fits, else the
+  small one, and a list longer than that scrolls to keep its selection in view (`TmDlg` in `tmui.cpp`). The menus'
+  left column takes its row and title heights from the fonts (`TmMenu::RowY`). The PC preview is checked with
+  fonts bigger than the phone's (24/18/17) as well.
+- Esc in a solo race: "Race menu" (Choose opponents, Restart, Race panels, Continue | Quit), small, over the
+  paused race (only lightly darkened). "Choose opponents" is the game's ghost list: the medals, your record and
+  your last run, slowest first, with their times; up to four at once (`TmView::iGhosts`), the fastest chosen one
+  the reference for the checkpoint times.
+- The hot seat as the game's: settings Game mode (Attempts or Time) and its value (1..10 attempts, or 1:00..15:00
+  a player), eight player slots; a slot opens "Choose a profile" (the saved profiles, "Create a new profile",
+  "Cancel"; Del removes a profile; kept in `C:\Data\TM9300\profiles.txt`). In the race a player's turn is all his
+  attempts (or his time: the run on when it runs out may still finish), after "Now it's player X's turn! OK";
+  his best run of the turn is his ghost; the orange bar under the players shows what is left of the turn. Esc:
+  "Hot Seat" (Continue, Give up, Quit). After the last player the standings, then the series' next track.
+- The game's own font (Gill Sans from `GameData/Menu/Media/Font/United_Textures/United_00.dds`): `tools/pc/tmfont.py`
+  cuts ASCII out of the sheet into `tm9300.fnt` (never in git); the phone scales it to the heights of its own three
+  fonts at start-up (the title's in bold). Without the file the phone's fonts are used as before.
+- The menus' picture pack is no longer a writable static (the phone's programs may not have one: petran had
+  refused it), it sits in the thread's slot.
+
 ## Next
 
 1. **Speed on Snow**: SnowA1 draws ~2,000 triangles a frame (3.8 M instructions: ~18 fps on the phone), the

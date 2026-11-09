@@ -16,6 +16,12 @@ struct TmFont
     int Width(const char* aText) const;
     };
 
+// 0.14: the game's own font, from its sheet (tmfont.py: the sheet's scale) made the height wanted, the picture
+// averaged down (a stroke a little darker, as small type needs); aBold: each stroke a pixel wider. aOut.iMask is
+// new[]; aSrc's points into the caller's data (TmFontLoad)
+bool TmFontLoad(const unsigned char* aData, int aLen, TmFont& aOut);
+bool TmFontScale(const TmFont& aSrc, int aH, bool aBold, TmFont& aOut);
+
 // a picture from the menu's pack (tm9300.ui: cut from the game's own files on the PC)
 struct TmImage { int w, h; const TmPix* px; const unsigned char* a; };
 class TmUiPack
@@ -70,7 +76,14 @@ public:
     int iRaceOpp;               // TmUiOpp
     int iPlayers;               // 1: solo; 2..8 the hot seat
     char iNames[KMaxPlayers][KNameLen + 1];
-    int iAttempts;              // the hot seat: rounds per track
+    int iAttempts;              // the hot seat: attempts a player
+    int iHsMode;                // 0.14: the hot seat's game mode: 0 attempts, 1 time (iTimeLimit seconds a player)
+    int iTimeLimit;
+    // 0.14: the players' profiles (kept by the app in a file: iProfilesChanged when one is made or removed)
+    enum { KMaxProfiles = 16 };
+    char iProfiles[KMaxProfiles][KNameLen + 1];
+    int iNProfiles;
+    bool iProfilesChanged;
     int iSeriesFiles[8], iSeriesN;   // the hot seat: the series' tracks in order
     int Medals() const;         // medals won over all tracks (a medal counts with those under it)
 private:
@@ -102,11 +115,31 @@ private:
     bool iInGrid;               // Solo: the focus in the track grid
     int iGridCol, iGridRow;
     int iOppSel;
-    int iHsRow;                 // hot seat: 0 attempts, 1..8 the player slots, 9 start
-    int iEditing;               // hot seat: the slot whose name is being typed (-1 none)
+    int iHsRow;                 // hot seat: 0 the mode, 1 its value, 2..9 the player slots, 10 start, 11 back
+    bool iChooser;              // hot seat: the profile chooser open over the slots
+    int iChooserSel;            // its row: the free profiles, then "Create a new profile", "Cancel"
+    void ChooserRows(int* aRows, int& aN) const;     // the profiles not in a slot yet (-1 create, -2 cancel)
+    void DrawChooser(TmPix* aF, int aS);
+    int iRowH, iPlateH;         // the left list's row and title plate heights (from the fonts)
+    int RowY(int aRow) const;
+    int iEditing;               // hot seat: a new profile's name being typed (-1 none; the slot it goes to)
     int iSeriesSel;
     int iTitleTick;
     };
+
+// 0.14: the race's dialogs as the game's, each fitted into the 200 lines (a list longer than fits scrolls)
+namespace TmDlg
+    {
+    // a box with a green title over pill buttons; aRows: a row's label, or two ("Continue|Quit": two buttons side by
+    // side); aSel counts the buttons over the rows; aGapLast: a space before the last row (the game's foot buttons)
+    void Buttons(TmPix* aF, int aS, const TmFont& aText, const TmFont& aSmall, int aX0, int aX1, const char* aTitle,
+        const char* const* aRows, int aNRows, int aSel, bool aGapLast);
+    // the ghosts to race against: a list (name, time, chosen), scrolled to show the selected row, OK at the foot
+    struct TRow { const char* iName; int iMs; bool iOn; };
+    void Ghosts(TmPix* aF, int aS, const TmFont& aText, const TmFont& aSmall, int aX0, int aX1, const TRow* aRows, int aN, int aSel);
+    // a message and OK ("Now it's player X's turn!")
+    void Message(TmPix* aF, int aS, const TmFont& aText, int aX0, int aX1, const char* aMsg);
+    }
 
 // drawing helpers shared with the race's panel
 namespace TmDraw

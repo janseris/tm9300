@@ -114,7 +114,7 @@ const unsigned int* TmTrack::PvsCell(int aCamX, int aCamZ) const
     return (const unsigned int*) (iPvs + (cz * iPvsW + cx) * iPvsWords * 4);
     }
 
-TmView::TmView() : iCarSlopeF(0), iCarSlopeR(0), iGhostOn(0), iGhostX(0), iGhostY(0), iGhostZ(0), iGhostYaw(0), iGhostSlopeF(0), iGhostSlopeR(0), iIdMode(0), iUsePvs(1), iFarCut(0), iFlipWinding(0), iMeshMode(1), iSkipEnd(0), iR(0), iGhostXyz(0), iGhostCol(0), iGhostN(0), iW(0), iH(0), iMaxPolys(0), iOrder(0), iKey(0), iFar(0), iVtx(0), iXyz(0), iUv0(0), iFlipIdx(0), iIdCol(0), iVtxCap(0), iUvCap(0) {}
+TmView::TmView() : iCarSlopeF(0), iCarSlopeR(0), iNGhosts(0), iIdMode(0), iUsePvs(1), iFarCut(0), iFlipWinding(0), iMeshMode(1), iSkipEnd(0), iR(0), iGhostXyz(0), iGhostCol(0), iGhostN(0), iW(0), iH(0), iMaxPolys(0), iOrder(0), iKey(0), iFar(0), iVtx(0), iXyz(0), iUv0(0), iFlipIdx(0), iIdCol(0), iVtxCap(0), iUvCap(0) {}
 TmView::~TmView() { delete iR; delete[] iOrder; delete[] iKey; delete[] iFar; delete[] iVtx; delete[] iXyz; delete[] iUv0; delete[] iFlipIdx; delete[] iIdCol; delete[] iGhostXyz; delete[] iGhostCol; }
 
 bool TmView::Init(int aW, int aH, int aMaxPolys)
@@ -308,33 +308,42 @@ void TmView::Frame(R3Pix* aFrame, int aStride, const TmTrack& aT, int aCamX, int
         Reserve(m.nv, m.nf);
         if (iXyz && iUv0) DrawCar(m, iXyz, (const R3Pix*) m.col, aCarX, aCarY, aCarZ, aCarYaw, iCarSlopeF, iCarSlopeR);
         }
-    // 0.8: the ghost: its distance as the instances' key; drawn before the first instance further away
-    int ghostKey = -1;
-    if (car && iGhostOn)
+    // the ghosts: their distance as the instances' key; each drawn before the first instance further away
+    int ghostKey[KMaxGhosts], ng = 0, gi[KMaxGhosts];
+    if (car && iNGhosts > 0)
         {
-        const int gdx = (iGhostX - aCarX) >> 4, gdz = (iGhostZ - aCarZ) >> 4, gdy = (iGhostY - aCarY) >> 4;
-        const int cdx = (iGhostX - aCamX) >> 4, cdz = (iGhostZ - aCamZ) >> 4;
-        const int gfwd = cdx * fs + cdz * fc;                  // m * 1024 along the view
-        if ((gdx * gdx + gdz * gdz > 9 || gdy * gdy > 9) && gfwd > -3 * 1024 && cdx * cdx + cdz * cdz <= far2)
+        const TmMesh& m = aT.iMesh[aT.iCar];
+        if (iGhostN < m.nv || iGhostN < m.nf)
             {
-            const TmMesh& m = aT.iMesh[aT.iCar];
-            if (iGhostN < m.nv || iGhostN < m.nf)
+            delete[] iGhostXyz; delete[] iGhostCol; iGhostN = m.nv > m.nf ? m.nv : m.nf;
+            iGhostXyz = new short[iGhostN * 3]; iGhostCol = new unsigned short[iGhostN];
+            if (!iGhostXyz || !iGhostCol) { delete[] iGhostXyz; delete[] iGhostCol; iGhostXyz = 0; iGhostCol = 0; iGhostN = 0; }
+            // the car's colours halfway to a pale blue
+            else for (int k = 0; k < m.nf; k++) iGhostCol[k] = (unsigned short) (((((const unsigned short*) m.col)[k] >> 1) & 0x7BEF) + ((0xA5DF >> 1) & 0x7BEF));
+            }
+        for (int g = 0; g < iNGhosts && g < KMaxGhosts && iGhostXyz; g++)
+            {
+            const TGhostCar& c = iGhosts[g];
+            const int gdx = (c.x - aCarX) >> 4, gdz = (c.z - aCarZ) >> 4, gdy = (c.y - aCarY) >> 4;
+            const int cdx = (c.x - aCamX) >> 4, cdz = (c.z - aCamZ) >> 4;
+            const int gfwd = cdx * fs + cdz * fc;                  // m * 1024 along the view
+            if ((gdx * gdx + gdz * gdz > 9 || gdy * gdy > 9) && gfwd > -3 * 1024 && cdx * cdx + cdz * cdz <= far2)
                 {
-                delete[] iGhostXyz; delete[] iGhostCol; iGhostN = m.nv > m.nf ? m.nv : m.nf;
-                iGhostXyz = new short[iGhostN * 3]; iGhostCol = new unsigned short[iGhostN];
-                if (!iGhostXyz || !iGhostCol) { delete[] iGhostXyz; delete[] iGhostCol; iGhostXyz = 0; iGhostCol = 0; iGhostN = 0; }
-                // the car's colours halfway to a pale blue
-                else for (int k = 0; k < m.nf; k++) iGhostCol[k] = (unsigned short) (((((const unsigned short*) m.col)[k] >> 1) & 0x7BEF) + ((0xA5DF >> 1) & 0x7BEF));
+                // in order of distance (insertion)
+                int k = ng++;
+                const int key = cdx * cdx + cdz * cdz;
+                while (k > 0 && ghostKey[k - 1] > key) { ghostKey[k] = ghostKey[k - 1]; gi[k] = gi[k - 1]; k--; }
+                ghostKey[k] = key; gi[k] = g;
                 }
-            if (iGhostXyz) ghostKey = cdx * cdx + cdz * cdz;
             }
         }
+    int gnext = 0;
     for (int oi = 0; oi <= n; oi++)
         {
-        if (ghostKey >= 0 && (oi == n || iKey[oi] >= ghostKey))
+        while (gnext < ng && (oi == n || iKey[oi] >= ghostKey[gnext]))
             {
-            DrawCar(aT.iMesh[aT.iCar], iGhostXyz, (const R3Pix*) iGhostCol, iGhostX, iGhostY + 3, iGhostZ, iGhostYaw, iGhostSlopeF, iGhostSlopeR);
-            ghostKey = -1;
+            const TGhostCar& c = iGhosts[gi[gnext++]];
+            DrawCar(aT.iMesh[aT.iCar], iGhostXyz, (const R3Pix*) iGhostCol, c.x, c.y + 3, c.z, c.yaw, c.slopeF, c.slopeR);
             }
         if (oi == n) break;
         const TmInst& t = aT.iInst[iOrder[oi]];

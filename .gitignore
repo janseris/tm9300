@@ -6,3 +6,5 @@ phone/emu/out/
 *.tmb
 *.tmt
 *.ui
+*.fnt
+_to_delete/

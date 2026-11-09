@@ -83,9 +83,12 @@ public:
         int aCarX = 0, int aCarY = 0, int aCarZ = 0, int aCarYaw = 0, int aDrawCar = 0);
     // the car's tilt for the next Frame: the ground's slope along its heading and to its right (* 4096; 0 level)
     int iCarSlopeF, iCarSlopeR;
-    // 0.8: a ghost car for the next Frame (iGhostOn): its place (1/16 m), heading and tilt; drawn in its colours
-    // paled, in its place among the instances by distance, not when within 3 m of the car
-    int iGhostOn, iGhostX, iGhostY, iGhostZ, iGhostYaw, iGhostSlopeF, iGhostSlopeR;
+    // 0.8: ghost cars for the next Frame (0.14: up to four): each one's place (1/16 m), heading and tilt; drawn in the
+    // car's colours paled, in its place among the instances by distance, not when within 3 m of the car
+    enum { KMaxGhosts = 4 };
+    struct TGhostCar { int x, y, z, yaw, slopeF, slopeR; };
+    TGhostCar iGhosts[KMaxGhosts];
+    int iNGhosts;
     int iIdMode;                // 1: every face in the colour (instance index + 1), no fog, no car (the PVS tool)
     int iUsePvs;                // 1: instances the track's PVS rules out from the camera's cell are skipped
     // the car's place and heading at a path sample (interpolated)
