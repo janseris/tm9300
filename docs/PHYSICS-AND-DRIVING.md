@@ -341,8 +341,8 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   proportions against the menus' rows (titles 15 lines in bold, text 11, small 10; the phone's own fonts filled the
   rows). Without the file the phone's fonts are used as before.
 - The campaign as the game's: each series' first track is open, the next opens with a medal on the one before it in
-  the same series (bronze on White and Green, silver on Blue, gold on Red and Black; a track before it that is not
-  installed does not hold it shut). A locked track shows a padlock and "(conditions)"; Enter on it says which medal
+  the same series (bronze on White, silver on Green and Blue, gold on Red; a track before it that is not installed
+  does not hold it shut); Black opens with gold on every track of White to Red. A locked track shows a padlock and "(conditions)"; Enter on it says which medal
   opens it. After a medal the result offers the next track (Enter; Backspace retries), "Next track open!" when the
   run has just opened it.
 - The camera further from the car: 9.5 m back and 5.6 m up (0.10: 7.8 m and 5 m, still too close).

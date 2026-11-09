@@ -390,7 +390,7 @@ static const char* const KEnvName[2] = { "Rally", "Snow" };
 enum { LEFT_W = 196, RIGHT_X = 204 };
 
 TmMenu::TmMenu() : iDirty(true), iScreen(ETitle), iVersion(""), iRaceFile(-1), iRaceOpp(EOppGold), iPlayers(1), iAttempts(3), iHsMode(0), iTimeLimit(300), iNProfiles(0), iProfilesChanged(false), iSeriesN(0),
-    iPack(0), iBig(0), iText(0), iSmall(0), iNTracks(0), iBg(0), iInGrid(false), iGridCol(0), iGridRow(0), iOppSel(0), iHsRow(2), iChooser(false), iChooserSel(0), iLockMsg(false), iRowH(24), iPlateH(29), iEditing(-1), iSeriesSel(0), iTitleTick(0)
+    iLockMsg(false), iPack(0), iBig(0), iText(0), iSmall(0), iNTracks(0), iBg(0), iInGrid(false), iGridCol(0), iGridRow(0), iOppSel(0), iHsRow(2), iChooser(false), iChooserSel(0), iRowH(24), iPlateH(29), iEditing(-1), iSeriesSel(0), iTitleTick(0)
     {
     for (int i = 0; i < 10; i++) iSel[i] = 0;
     for (int p = 0; p < KMaxPlayers; p++) iNames[p][0] = 0;
@@ -567,12 +567,17 @@ void TmMenu::DrawMedalsPanel(TmPix* f, int s)
     }
 
 // the game's campaign: each series' first track is open; the next one opens with a medal on the one before it in
-// the same series: bronze on White and Green, silver on Blue, gold on Red and Black (a track before it that is not
-// installed does not hold it shut)
-static const int KNeedMedal[5] = { 3, 3, 2, 1, 1 };
-static const char* const KNeedMsg[4] = { "To unlock this track you need the Nadeo medal on the previous track",
+// the same series: bronze on White (A), silver on Green and Blue (B, C), gold on Red (D) (a track before it that is
+// not installed does not hold it shut); Black (E) opens with gold on every track of White to Red
+static const int KNeedMedal[5] = { 3, 2, 2, 1, 1 };
+static const char* const KNeedMsg[5] = { "To unlock this track you need the Nadeo medal on the previous track",
     "To unlock this track you need a gold medal on the previous track", "To unlock this track you need a silver medal on the previous track",
-    "To unlock this track you need a bronze medal on the previous track" };
+    "To unlock this track you need a bronze medal on the previous track", "To unlock this track you need a gold medal on all the previous tracks" };
+static bool HasMedal(const TmUiTrack& t, int aMedal)
+    {
+    const int m = t.iMedal[aMedal];
+    return t.iBest > 0 && (m <= 0 || t.iBest * 20 <= m);
+    }
 
 int TmMenu::PrevTrack(int ti) const
     {
@@ -584,11 +589,13 @@ int TmMenu::PrevTrack(int ti) const
 
 bool TmMenu::Unlocked(int ti) const
     {
+    if (iTracks[ti].iSeries == 4)
+        {
+        for (int i = 0; i < iNTracks; i++) if (iTracks[i].iEnv == iTracks[ti].iEnv && iTracks[i].iSeries < 4 && !HasMedal(iTracks[i], 1)) return false;
+        return true;
+        }
     const int p = PrevTrack(ti);
-    if (p < 0) return true;
-    const TmUiTrack& t = iTracks[p];
-    const int m = t.iMedal[KNeedMedal[t.iSeries]];
-    return t.iBest > 0 && (m <= 0 || t.iBest * 20 <= m);
+    return p < 0 || HasMedal(iTracks[p], KNeedMedal[iTracks[p].iSeries]);
     }
 
 bool TmMenu::FileUnlocked(int aFile) const
@@ -883,7 +890,7 @@ void TmMenu::Draw(TmPix* f, int s)
             if (iLockMsg)
                 {
                 Shade(f, s, 0, 0, 640, 200, 110, 0);
-                TmDlg::Message(f, s, *iText, 150, 560, KNeedMsg[KNeedMedal[iSel[ESolo] < 5 ? iSel[ESolo] : 0]]);
+                TmDlg::Message(f, s, *iText, 150, 560, (iSel[ESolo] == 4 ? KNeedMsg[4] : KNeedMsg[KNeedMedal[iSel[ESolo] < 5 ? iSel[ESolo] : 0]]));
                 }
             break;
         case EParty: DrawLeft(f, s, "Party Mode", "Choose a mode", EIcoParty); DrawList(f, s, EParty, true); break;
