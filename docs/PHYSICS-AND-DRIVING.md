@@ -340,6 +340,7 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   cuts ASCII out of the sheet into `tm9300.fnt` (never in git); the phone scales it at start-up to the game's
   proportions against the menus' rows (titles 15 lines in bold, text 11, small 10; the phone's own fonts filled the
   rows). Without the file the phone's fonts are used as before.
+- The camera further from the car: 9.5 m back and 5.6 m up (0.10: 7.8 m and 5 m, still too close).
 - The menus' picture pack is no longer a writable static (the phone's programs may not have one: petran had
   refused it), it sits in the thread's slot.
 

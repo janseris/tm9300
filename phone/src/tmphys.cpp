@@ -665,7 +665,7 @@ void TmCar::Race(const TmGround& aG)
 
 // ---- the camera --------------------------------------------------------------------------------------------
 
-TmFollowCam::TmFollowCam() : iBack(7 * 256 + 205), iUp(5 * 256), iLookUp(256), iLookAhead(7 * 256), iX(0), iY(0), iZ(0), iYaw16(0), iViewYaw(0), iViewPitch(0), iTn(0), iTh(0) { iLast.cinst = -1; iLast.face = -1; iLast.y = 0; }
+TmFollowCam::TmFollowCam() : iBack(9 * 256 + 128), iUp(5 * 256 + 154), iLookUp(256), iLookAhead(7 * 256), iX(0), iY(0), iZ(0), iYaw16(0), iViewYaw(0), iViewPitch(0), iTn(0), iTh(0) { iLast.cinst = -1; iLast.face = -1; iLast.y = 0; }
 
 // 0.6: the camera rides on the car's own trail: a point every 0.4 m of the car's way (KTrail of them: 25 m), the camera
 // 8 m back along it and 3 m over where the car was, looking at a point 1 m over the car. 0.8: 6.5 m back and 5.2 m up
