@@ -8,3 +8,4 @@ phone/emu/out/
 *.ui
 *.fnt
 _to_delete/
+__pycache__/
