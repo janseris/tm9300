@@ -1,6 +1,8 @@
-// tm9300_app.cpp - Series 80 (Nokia 9300) application shell for the TrackMania 9300 track viewer (phase 3:
-// a flythrough of a packed track along its replay path, to measure the frame rate on the phone).
-// After Hrimfell's shell: direct screen access when the phone allows it, a CIdle loop, keys by scan code.
+// tm9300_app.cpp - Series 80 (Nokia 9300) application shell for TrackMania 9300.
+// 0.11: the game's menus (tmui: the title, Play Solo with its colours and tracks, the opponent, Party Mode's hot seat)
+// and the race laid out as the game's (the LED timer, the countdown, the opponent and the players on the left, the
+// track and the speed on the right). After Hrimfell's shell: direct screen access when the phone allows it, a CIdle
+// loop, keys by scan code.
 #include <eikapp.h>
 #include <eikdoc.h>
 #include <eikappui.h>
@@ -19,23 +21,24 @@
 #include <in_sock.h>
 #include "tmcore.h"
 #include "tmphys.h"
+#include "tmui.h"
 #include "fastmem.h"
 
 const TUid KUidTm9300 = { 0x0E3D9310 };
 enum { SCR_W = 640, SCR_H = 200 };
-enum { VIEW_W = 320, VIEW_H = 200 };        // the 3D view, in the middle of the screen (Maps 9300's layout)
+enum { VIEW_W = 320, VIEW_H = 200, VIEW_X = (SCR_W - VIEW_W) / 2 };   // the 3D view, in the middle of the screen
 _LIT(KTrackDir, "?:\\system\\apps\\tm9300\\");
 _LIT(KTrackPattern, "*.tmb");
+_LIT(KUiPack, "tm9300.ui");
 _LIT(KBenchDir, "C:\\Data\\TM9300\\");
 _LIT(KBenchFile, "C:\\Data\\TM9300\\bench.txt");
 _LIT8(KBenchHost, "192.168.137.1");
 const TInt KBenchPort = 8000;
 enum { BENCH_VARIANTS = 5, BENCH_LOG = 6144 };
-enum { BAR_W = 64, BAR_H = 152 };           // the counters, top left
-enum { HUD_X = (SCR_W + VIEW_W) / 2, HUD_W = SCR_W - HUD_X };     // 0.8: the race's panel on the right, in the phone's fonts
-enum { RES_W = 260, RES_H = 100, RES_X = (SCR_W - RES_W) / 2, RES_Y = 24 };
-enum { MENU_W = 280, MENU_H = 184, MENU_X = (SCR_W - MENU_W) / 2, MENU_Y = (SCR_H - MENU_H) / 2 };
-_LIT(KVersion, "0.10");
+enum { BAR_W = 64, BAR_H = 152 };           // the counters, top left (F)
+enum { SIDE_W = VIEW_X, RIGHT_X = VIEW_X + VIEW_W };
+static const char* const KVersionC = "0.11";
+enum { KMaxFiles = 64 };
 
 // the benchmark's log to the PC (the local server's /results, into its uploads folder), after Hrimfell's
 class CBenchSender : public CActive
@@ -89,8 +92,8 @@ private:
     TSockXfrLength iLen;
     };
 
-// keys: driving: the arrows (up throttle, down brake / reverse, left / right steer), Enter restart; V the flythrough
-// (then: Space pause, arrows look round, R restart, 1-9 speed); F the counters, M mesh / polygon mode, +/- the far cut, B benchmark
+// keys: driving: the arrows (up throttle, down brake / reverse, left / right steer), Enter back to the last checkpoint,
+// Backspace the start, Esc the pause; H the race's panels, F the counters; V the flythrough, B the benchmark
 enum { KEY_LEFT = 1, KEY_RIGHT = 2, KEY_UP = 4, KEY_DOWN = 8 };
 
 // a 3 x 5 font for the counters (digits, a few letters), drawn into the frame
@@ -110,28 +113,7 @@ static void DrawDigit(TUint16* aFrame, TInt aStride, TInt aX, TInt aY, TInt aD, 
                 p[0] = p[1] = p[aStride] = p[aStride + 1] = aCol;
                 }
     }
-static const TUint16 KLetters[26] = { 0x2BED, 0x6BAE, 0x3923, 0x6B6E, 0x79A7, 0x79A4, 0x396B, 0x5BED, 0x7497, 0x126A, 0x5BAD, 0x4927, 0x5FED, 0x6B6D, 0x2B6A, 0x6BA4, 0x2B73, 0x6BAD, 0x388E, 0x7492, 0x5B6B, 0x5B6A, 0x5BFD, 0x5AAD, 0x5A92, 0x72A7 };   // A-Z, as KFont
-static const TUint16 KLower[26] = { 0x076B, 0x4D6E, 0x0723, 0x176B, 0x2BE3, 0x15D2, 0x075E, 0x4D6D, 0x2092, 0x106A, 0x4BAD, 0x6497, 0x0DED, 0x0D6D, 0x056A, 0x0D74, 0x0759, 0x0724, 0x388E, 0x2E93, 0x0B6B, 0x0B7A, 0x0B7F, 0x0A95, 0x5ACE, 0x0EF7 };   // 0.6: a-z, 3 x 5 (the HUD's words)
-// 0.7: words in single size letters (3 x 5 pixels, 4 a letter: 18 in the bar), small and capital letters, digits, ':'
-static void DrawWords(TUint16* aFrame, TInt aStride, TInt aX, TInt aY, const TDesC& aText, TUint16 aCol)
-    {
-    for (TInt i = 0; i < aText.Length() && i < 18; i++, aX += 4)
-        {
-        TInt c = aText[i];
-        TUint16 g;
-        if (c >= 'a' && c <= 'z') g = KLower[c - 'a'];
-        else if (c >= 'A' && c <= 'Z') g = KLetters[c - 'A'];
-        else if (c >= '0' && c <= '9') g = KFont[c - '0'];
-        else if (c == ':') g = 0x0410;
-        else if (c == '-' || c == '_') g = 0x01C0;
-        else continue;
-        for (TInt r = 0; r < 5; r++)
-            {
-            TUint16* p = aFrame + (aY + r) * aStride + aX;
-            for (TInt k = 0; k < 3; k++) if (g & (1 << (14 - r * 3 - k))) p[k] = aCol;
-            }
-        }
-    }
+
 static void DrawNumber(TUint16* aFrame, TInt aStride, TInt aX, TInt aY, TInt aN, TUint16 aCol)
     {
     TInt d[10], n = 0;
@@ -209,77 +191,40 @@ public:
     TInt iW, iH;
     };
 
-// 0.9: glyphs pre-drawn once per font ("0123456789:.+-" and " km/h"): the clock and the speed are copied from these
-// into the frame every frame with no font calls (drawn with the fonts each frame the panel cost a few fps)
-class TGlyphs
-    {
-public:
-    TGlyphs() : iMask(0), iW(0), iH(0), iCell(0) {}
-    ~TGlyphs() { delete[] iMask; }
-    TBool Build(const CFont* aFont)
-        {
-        _LIT(KChars, "0123456789:.+-");
-        _LIT(KKmh, " km/h");
-        TInt x = 0;
-        for (TInt i = 0; i < 15; i++)
-            {
-            iWd[i] = i < 14 ? aFont->TextWidthInPixels(KChars().Mid(i, 1)) : aFont->TextWidthInPixels(KKmh);
-            if (i < 10 && iWd[i] > iCell) iCell = iWd[i];
-            iX[i] = x; x += iWd[i] + 2;
-            }
-        iW = x; iH = aFont->HeightInPixels();
-        CTextCanvas c;
-        if (!c.Create(iW, iH)) return EFalse;
-        for (TInt i = 0; i < 15; i++) c.Text(aFont, i < 14 ? KChars().Mid(i, 1) : TPtrC(KKmh), iX[i], 0, 0xFFFF);
-        iMask = new TUint8[iW * iH];
-        if (!iMask) return EFalse;
-        c.iBmp->LockHeap();
-        const TUint16* p = (const TUint16*) c.iBmp->DataAddress();
-        const TInt st = CFbsBitmap::ScanLineLength(iW, EColor64K) / 2;
-        for (TInt y = 0; y < iH; y++) for (TInt k = 0; k < iW; k++) iMask[y * iW + k] = p[y * st + k] ? 1 : 0;
-        c.iBmp->UnlockHeap();
-        return ETrue;
-        }
-    // the text (digits, ':', '.', '+', '-', 'k' for " km/h") at (aX, aY) in aCol; digits in equal cells
-    void Put(TUint16* aFrame, TInt aStride, TInt aX, TInt aY, const TDesC& aText, TUint16 aCol, TInt aMaxX) const
-        {
-        for (TInt i = 0; i < aText.Length(); i++)
-            {
-            const TInt c = aText[i];
-            TInt g = -1;
-            if (c >= '0' && c <= '9') g = c - '0';
-            else if (c == ':') g = 10; else if (c == '.') g = 11; else if (c == '+') g = 12; else if (c == '-') g = 13; else if (c == 'k') g = 14;
-            if (g < 0) { aX += iCell / 2; continue; }
-            const TInt w = iWd[g], dx = g < 10 ? (iCell - w) / 2 : 0;
-            if (aX + dx + w > aMaxX) return;
-            for (TInt y = 0; y < iH; y++)
-                {
-                const TUint8* m = iMask + y * iW + iX[g];
-                TUint16* q = aFrame + (aY + y) * aStride + aX + dx;
-                for (TInt k = 0; k < w; k++) if (m[k]) q[k] = aCol;
-                }
-            aX += g < 10 ? iCell : w;
-            }
-        }
-    TUint8* iMask;
-    TInt iW, iH, iCell;
-    TInt iX[15], iWd[15];
-    };
 
-// times as the game shows them: m:ss.cc (a step is 20 ms); a difference with its sign (+ slower, - faster)
-static void AppendTime(TDes& aOut, TInt aSteps)
+// 0.11: a phone font as the menus' atlas (ASCII drawn once into a strip; the coverage from the green channel)
+static TBool BuildFont(const CFont* aFont, TmFont& aOut)
     {
-    if (aSteps < 0) aSteps = 0;
-    const TInt cs = aSteps * 2;
-    aOut.AppendFormat(_L("%d:%02d.%02d"), cs / 6000, (cs / 100) % 60, cs % 100);
+    aOut.iMask = 0;
+    if (!aFont) return EFalse;
+    aOut.iH = aFont->HeightInPixels(); aOut.iAsc = aFont->AscentInPixels();
+    TInt x = 0;
+    for (TInt c = 0; c < 95; c++) { TBuf<1> b; b.Append(TChar(32 + c)); aOut.iW[c] = aFont->TextWidthInPixels(b); aOut.iX[c] = x; x += aOut.iW[c] + 1; }
+    aOut.iStripW = x;
+    CTextCanvas cv;
+    if (!cv.Create(x, aOut.iH)) return EFalse;
+    for (TInt c = 0; c < 95; c++) { TBuf<1> b; b.Append(TChar(32 + c)); cv.Text(aFont, b, aOut.iX[c], 0, 0xFFFF); }
+    aOut.iMask = new TUint8[x * aOut.iH];
+    if (!aOut.iMask) return EFalse;
+    cv.iBmp->LockHeap();
+    const TUint16* p = (const TUint16*) cv.iBmp->DataAddress();
+    const TInt st = CFbsBitmap::ScanLineLength(x, EColor64K) / 2;
+    for (TInt y = 0; y < aOut.iH; y++)
+        for (TInt k = 0; k < x; k++)
+            {
+            const TUint16 c = p[y * st + k];
+            aOut.iMask[y * x + k] = c == 0xFFFF ? 255 : (TUint8) (((c >> 5) & 63) * 4);
+            }
+    cv.iBmp->UnlockHeap();
+    return ETrue;
     }
-static void AppendDiff(TDes& aOut, TInt aSteps)
+
+static void ToC(char* aOut, const TDesC& aIn, TInt aMax)
     {
-    aOut.Append(aSteps < 0 ? '-' : '+');
-    const TInt cs = (aSteps < 0 ? -aSteps : aSteps) * 2;
-    if (cs >= 6000) aOut.AppendFormat(_L("%d:%02d.%02d"), cs / 6000, (cs / 100) % 60, cs % 100);
-    else aOut.AppendFormat(_L("%d.%02d"), cs / 100, cs % 100);
+    TInt i = 0; for (; i < aIn.Length() && i < aMax; i++) aOut[i] = (char) aIn[i];
+    aOut[i] = 0;
     }
+static void CCat(char* aD, const char* aS) { while (*aD) aD++; while (*aS) *aD++ = *aS++; *aD = 0; }
 
 class CTmView : public CCoeControl, public MDirectScreenAccess
     {
@@ -294,18 +239,35 @@ public:
     void AbortNow(RDirectScreenAccess::TTerminationReasons aReason);
     void Restart(RDirectScreenAccess::TTerminationReasons aReason);
 private:
+    // 0.11: the installed tracks and the menus
+    void ScanTracks();
+    void MenuKeyL(const TKeyEvent& aKey);
+    void StartRace();
+    void BackToMenu();
+    TFileName iDir;                 // the program's folder: the tracks, their pictures, the menus' pictures
+    TBuf<20> iFiles[KMaxFiles];
+    TInt iNFiles;
+    TmUiTrack iUiTracks[KMaxFiles];
+    TUint8* iThumbs[KMaxFiles];
+    TUint8* iPackData;
+    TmUiPack iPack;
+    TmFont iFBig, iFText, iFSmall;
+    TmMenu* iUi;
+    TBool iInMenu;
+    // the race
     TBool LoadTrack(TInt aIndex);
     void UnloadTrack();
     TInt iTrackIndex, iTrackCount;
-    TBuf<16> iTrackName;        // the file's name without .tmb
+    TBuf<16> iTrackName;            // the file's name without .tmb
+    char iTrackC[20];
     TBool StartDirect();
     void StopDirect();
-    void Blit(const TUint16* aSrc);
+    void Blit(const TUint16* aSrc, TBool aAll);
     CFbsBitmap* iBmp;
     CIdle* iIdle;
     RChunk iChunk;
     TUint8* iData; TInt iDataSize;
-    TUint16* iBack;
+    TUint16* iBack;                 // the screen's picture (640 x 200), kept for the program's life
     TmTrack* iTrack;
     TmView* iView;
     TBool iLoaded, iRunning, i4K, iDsaOn, iFirstBlit;
@@ -313,83 +275,71 @@ private:
     TUint8* iFb;
     TInt iFbStride, iFbBpp;
     TTime iStart, iSecond;
-    TInt iPauseAt, iSpeed;      // ms into the path when paused (-1 running); speed % (100 = real time)
+    TInt iPauseAt, iSpeed;          // the flythrough: ms into the path when paused (-1 running); speed %
     TInt iFrames, iFps, iDrawMs, iBlitMs, iDrawSum, iBlitSum, iTris;
     TUint32 iKeys;
     TInt iYawOff, iPitchOff;
     TBool iShowInfo;
     TInt iFarM, iDrawCar;
     TBuf<64> iStatus;
-    // driving: the car on the track (TmPhys), stepped 50 times a second by the clock
     TBool iDriving;
     TmGround* iGround;
     TmCar* iCar;
     TmFollowCam* iCam;
-    TTime iDriveStart;          // the clock when the car was reset
-    TInt iDriveSteps;           // steps done since
+    TTime iDriveStart;
+    TInt iDriveSteps;
     void DriveReset();
     void DriveFrame(TInt& aCx, TInt& aCy, TInt& aCz, TInt& aYaw, TInt& aPitch, TInt& aCarX, TInt& aCarY, TInt& aCarZ, TInt& aCarYaw);
-    // the benchmark: the replay once per variant, the figures into iLog, then the file and the PC
     void BenchStart();
     void BenchVariant(TInt aV);
     void BenchFrame(TInt aPos, TInt aDrawUs, TInt aBlitUs);
     void BenchEnd();
-    TInt iBench;                // the variant running (-1: off)
+    TInt iBench;
     TInt iBenchFrames, iBenchDrawUs, iBenchBlitUs, iBenchMaxUs, iBenchDrawn, iBenchPolys, iBenchVis, iBenchLastPos, iBenchSecFrames, iBenchSec;
     TBuf8<BENCH_LOG> iLog;
     TBuf8<160> iSecs;
     CBenchSender* iSender;
     TInt iSendShown;
-    // 0.8: the race's panel and the menu, in the phone's fonts
-    enum { KHudLines = 11 };
-    CTextCanvas iHud, iMenuCv;
-    const CFont* iFontBig;
-    const CFont* iFontText;
-    const CFont* iFontSmall;
-    TBuf<40> iHudText[KHudLines];
-    TUint16 iHudCol[KHudLines];
-    TBool iHudValid;
-    TGlyphs iGlyBig, iGlyText;  // 0.9: the clock's and the speed's glyphs
-    TBool iHudOn;               // 0.9: the panel shown (H, the menu); off it costs nothing
-    TInt iPanelR0, iPanelR1;    // the panel's rows changed since the last copy to the screen
-    void PanelRows(TInt aR0, TInt aR1) { if (aR0 < iPanelR0) iPanelR0 = aR0; if (aR1 > iPanelR1) iPanelR1 = aR1; }
-    void SetHud(TBool aOn);
-    void DrawHud();
-    void HudLine(TInt aLine, const TDesC& aText, TUint16 aCol, TInt& aY, TInt& aDirty0, TInt& aDirty1);
-    // the menu (Esc): the race stands still while it is open
-    enum { EMContinue, EMRestart, EMGhost, EMPlayers, EMPanel, EMNext, EMPrev, EMQuit, EMItems };
-    TBool iMenu, iMenuDirty;
-    TInt iMenuSel;
-    TTime iMenuAt;
-    void MenuOpen();
-    void MenuClose();
-    void MenuKeyL(TInt aDir, TBool aSelect);
-    void DrawMenu();
-    // ghosts: the track's replay (the author), the record (saved per track), the last finished run; the run being driven
-    // 0.8: the medals' ghosts are the author's run (the replay) slowed to the medal's time
+    // 0.11: the race laid out as the game's: the panels at the sides (drawn when something on them changes), the
+    // timer, the countdown, the checkpoints' times, the speed and the result over the view (each frame)
+    TBool iHudOn;
+    TBool iSidesDirty, iSidesBlit;
+    void DrawSides();
+    void DrawOverlay();
+    void DrawResult();
+    // the pause (Esc): the race stands still while it is open
+    enum { EPContinue, EPRestart, EPOpponent, EPPanel, EPMenu, EPItems };
+    TBool iPause, iPauseDirty;
+    TInt iPauseSel;
+    TTime iPauseSince;
+    void PauseOpen();
+    void PauseClose();
+    void PauseKeyL(TInt aKey);
+    void DrawPause();
+    // the ghosts: the track's replay (the author; the medals are it on a slower clock), the record, the last run
     enum { EGhostOff, EGhostNadeo, EGhostGold, EGhostSilver, EGhostBronze, EGhostRecord, EGhostLast, EGhostModes };
     TmGhost iGhostAuthor, iGhostRecord, iGhostLast, iRun;
     TInt iGhostMode;
     const TmGhost* Ghost() const { TInt n, d; return Ghost(n, d); }
-    const TmGhost* Ghost(TInt& aNum, TInt& aDen) const;     // the run, and its clock: its step = the race's * aNum / aDen
-    TInt GhostFinish() const;                               // its finish (steps; 0 none): a medal's own time
-    TInt GhostCp(TInt aK) const;                            // when it took its aK-th checkpoint (steps; 0 none)
-    // after the finish: the result over the view (the time, the medal, against the ghost, what Enter does)
-    CTextCanvas iResultCv;
-    TBool iResultDirty;
-    void DrawResult();
-    void GhostName(TDes& aOut, TInt aMode) const;
-    TInt iRaceSteps;            // steps since the start (the ghost's clock; the race clock stops at the finish)
-    TInt iSeenCps;              // checkpoints already shown
+    const TmGhost* Ghost(TInt& aNum, TInt& aDen) const;
+    TInt GhostFinish() const;
+    TInt GhostCp(TInt aK) const;
+    const char* GhostName(TInt aMode) const;
+    TInt iRaceSteps;                // steps since the start; negative during the countdown
+    TInt iSeenCps;
     TBool iSeenFinish;
-    TInt iSplitUntil, iSplitDiff, iSplitTime, iSplitCp, iSplitHas;     // the last checkpoint's (or the finish's) time and difference, shown 3 s
+    TInt iSplitUntil, iSplitDiff, iSplitTime, iSplitCp, iSplitHas;
     void SaveRecord();
     void LoadRecord();
     void GhostFile(TDes& aName) const;
-    // hot seat: players take turns (Enter after the finish), each one's best kept
-    TInt iPlayers, iPlayer;
-    TInt iPlayerBest[4];
-    TBool iRunIsRecord;         // this run set the record (saved again with its last points when the next starts)
+    TBool iRunIsRecord;
+    // the hot seat: the players take turns, each a run a turn, for the attempts; then the standings and the
+    // series' next track
+    TInt iPlayers, iPlayer, iAttempts, iRound;
+    char iNames[8][16];
+    TInt iPlayerBest[8];
+    TInt iSeries[8], iSeriesN, iSeriesPos;
+    TBool iStandings;
     void NextRun();
     };
 
@@ -402,7 +352,7 @@ void CTmView::ConstructL(const TRect& aRect)
     i4K = (mode == EColor4K);
     User::LeaveIfError(iBmp->Create(TSize(SCR_W, SCR_H), i4K ? EColor4K : EColor64K));
     iIdle = CIdle::NewL(CActive::EPriorityIdle);
-    iSpeed = 100; iPauseAt = -1; iShowInfo = ETrue; iFarM = 180; iDrawCar = 1;
+    iSpeed = 100; iPauseAt = -1; iShowInfo = EFalse; iFarM = 180; iDrawCar = 1;
     iFirstBlit = ETrue;
     TInt addr = 0, off = 0, w = 0, h = 0;
     if (HAL::Get(HALData::EDisplayMemoryAddress, addr) == KErrNone &&
@@ -417,14 +367,18 @@ void CTmView::ConstructL(const TRect& aRect)
         if ((TUint32)iFb & 3) iFb = 0;
         }
     if (iFb) iDsa = CDirectScreenAccess::NewL(iCoeEnv->WsSession(), *iCoeEnv->ScreenDevice(), Window(), *this);
-    // 0.8: the panel's and the menu's fonts (the phone's): the clock big, the rest as the phone's text
-    iFontBig = iEikonEnv->TitleFont(); iFontText = iEikonEnv->NormalFont(); iFontSmall = iEikonEnv->DenseFont();
-    if (!iFontBig || !iFontText || !iFontSmall || !iHud.Create(HUD_W, SCR_H) || !iMenuCv.Create(MENU_W, MENU_H)) iFontBig = 0;
-    if (iFontBig && !iResultCv.Create(RES_W, RES_H)) iFontBig = 0;
-    if (iFontBig && (!iGlyBig.Build(iFontBig) || !iGlyText.Build(iFontText))) iFontBig = 0;
-    iHudOn = ETrue; iPanelR0 = 0; iPanelR1 = SCR_H;
-    iPlayers = 1; iGhostMode = EGhostNadeo;
-    iLoaded = LoadTrack(0);
+    iBack = (TUint16*) User::AllocL(SCR_W * SCR_H * 2);
+    for (TInt i = 0; i < SCR_W * SCR_H; i++) iBack[i] = 0;
+    iHudOn = ETrue; iPlayers = 1; iGhostMode = EGhostGold; iAttempts = 1;
+    // the menus: the phone's fonts as atlases, the game's pictures, the tracks and their pictures
+    BuildFont(iEikonEnv->TitleFont(), iFBig); BuildFont(iEikonEnv->NormalFont(), iFText); BuildFont(iEikonEnv->DenseFont(), iFSmall);
+    ScanTracks();
+    iUi = new (ELeave) TmMenu;
+    iUi->iVersion = KVersionC;
+    if (iFBig.iMask && iFText.iMask && iFSmall.iMask) iUi->Init(&iFBig, &iFText, &iFSmall, iUiTracks, iNFiles, iPack.iN ? &iPack : 0);
+    iInMenu = ETrue;
+    iLoaded = iFBig.iMask && iFText.iMask && iFSmall.iMask;
+    if (!iLoaded) iStatus = _L("The fonts could not be prepared");
     ActivateL();
     SetActive(ETrue);
     }
@@ -440,7 +394,94 @@ CTmView::~CTmView()
     delete iCam; delete iCar; delete iGround;
     delete iTrack;
     delete iSender;
+    delete iUi;
+    for (TInt i = 0; i < KMaxFiles; i++) User::Free(iThumbs[i]);
+    User::Free(iPackData);
+    delete[] iFBig.iMask; delete[] iFText.iMask; delete[] iFSmall.iMask;
+    User::Free(iBack);
     iChunk.Close();
+    }
+
+// the tracks beside the program (sorted by name), each one's picture and medals (.tmt) and record (its ghost's
+// finish); the menus' pictures (tm9300.ui)
+void CTmView::ScanTracks()
+    {
+    RFs& fs = iCoeEnv->FsSession();
+    iDir = KTrackDir;
+    TFileName app = iEikonEnv->EikAppUi()->Application()->AppFullName();
+    iDir[0] = app.Length() ? app[0] : (TText)'C';
+    iNFiles = 0;
+    CDir* list = 0;
+    TFileName pat(iDir); pat.Append(KTrackPattern);
+    if (fs.GetDir(pat, KEntryAttNormal, ESortByName, list) == KErrNone && list)
+        for (TInt i = 0; i < list->Count() && iNFiles < KMaxFiles; i++)
+            {
+            TBuf<20> n((*list)[i].iName.Left(20));
+            TInt dot = n.LocateReverse('.'); if (dot > 0) n.SetLength(dot);
+            TmUiTrack& t = iUiTracks[iNFiles];
+            Mem::FillZ(&t, sizeof(t));
+            ToC(t.iName, n, 19);
+            // rallyA1 / snowE: the environment, the series' letter (A White .. E Black), the number
+            TBuf<20> lo(n); lo.LowerCase();
+            TInt k = 0;
+            if (lo.Find(_L("rally")) == 0) { t.iEnv = 0; k = 5; } else if (lo.Find(_L("snow")) == 0) { t.iEnv = 1; k = 4; } else continue;
+            if (k >= n.Length()) continue;
+            TInt letter = n[k]; if (letter >= 'a') letter -= 32;
+            if (letter < 'A' || letter > 'E') continue;
+            t.iSeries = letter - 'A';
+            t.iNum = k + 1 < n.Length() && n[k + 1] >= '1' && n[k + 1] <= '5' ? n[k + 1] - '0' : 1;
+            t.iFile = iNFiles;
+            iFiles[iNFiles] = n;
+            // its picture and medals
+            TFileName tn(iDir); tn.Append(n); tn.Append(_L(".tmt"));
+            RFile f;
+            if (f.Open(fs, tn, EFileRead | EFileShareReadersOnly) == KErrNone)
+                {
+                TInt sz = 0; f.Size(sz);
+                if (sz > 28 && sz < 64000)
+                    {
+                    TUint8* b = (TUint8*) User::Alloc(sz);
+                    TPtr8 p(b, 0, sz);
+                    if (b && f.Read(p) == KErrNone && p.Length() == sz && b[0] == 'T' && b[1] == 'M' && b[2] == 'T')
+                        {
+                        const TInt* hd = (const TInt*) b;
+                        if (hd[1] > 0 && hd[2] > 0 && 28 + hd[1] * hd[2] * 2 <= sz) { t.iThumbW = hd[1]; t.iThumbH = hd[2]; t.iThumb = (const TmPix*) (b + 28); }
+                        for (TInt m = 0; m < 4; m++) t.iMedal[m] = hd[3 + m];
+                        iThumbs[iNFiles] = b;
+                        }
+                    else User::Free(b);
+                    }
+                f.Close();
+                }
+            // its record: the ghost's finish ("TMG1", points, finish)
+            TFileName gn(KBenchDir); gn.Append(n); gn.Append(_L(".ghost"));
+            if (f.Open(fs, gn, EFileRead | EFileShareReadersOnly) == KErrNone)
+                {
+                TBuf8<16> h;
+                if (f.Read(h) == KErrNone && h.Length() == 16 && h[0] == 'T' && h[3] == '1') t.iBest = h[8] | (h[9] << 8) | (h[10] << 16) | (h[11] << 24);
+                f.Close();
+                }
+            iNFiles++;
+            }
+    delete list;
+    iTrackCount = iNFiles;
+    // the menus' pictures
+    TFileName pn(iDir); pn.Append(KUiPack);
+    RFile f;
+    if (f.Open(fs, pn, EFileRead | EFileShareReadersOnly) == KErrNone)
+        {
+        TInt sz = 0; f.Size(sz);
+        if (sz > 8 && sz < 4000000)
+            {
+            iPackData = (TUint8*) User::Alloc(sz);
+            if (iPackData)
+                {
+                TPtr8 p(iPackData, 0, sz);
+                if (f.Read(p) != KErrNone || p.Length() != sz || !iPack.Load(iPackData, sz)) { User::Free(iPackData); iPackData = 0; iPack.iN = 0; }
+                }
+            }
+        f.Close();
+        }
     }
 
 void CTmView::BenchStart()
@@ -448,7 +489,7 @@ void CTmView::BenchStart()
     iLog.Zero();
     TInt f = 0, t = 0; HAL::Get(HALData::EMemoryRAMFree, f); HAL::Get(HALData::EMemoryRAM, t);
     TBuf8<64> name8; name8.Copy(iStatus);
-    iLog.AppendFormat(_L8("tm9300 bench v0.10: %S, %d meshes %d instances %d triangles, display %d bpp direct %d, RAM free %d KB of %d KB\r\n"),
+    iLog.AppendFormat(_L8("tm9300 bench v0.11: %S, %d meshes %d instances %d triangles, display %d bpp direct %d, RAM free %d KB of %d KB\r\n"),
         &name8, iTrack->iNMesh, iTrack->iNInst, iTrack->iTris, iFbBpp, iFb ? 1 : 0, f / 1024, t / 1024);
     iLog.Append(_L8("variant: frames, fps, draw ms (avg), copy ms (avg), slowest frame ms, polys drawn, submitted, instances visible (avg), direct; fps by second\r\n"));
     iShowInfo = EFalse;
@@ -513,74 +554,55 @@ void CTmView::BenchEnd()
     if (iGround) { iDriving = ETrue; DriveReset(); }
     }
 
+
 void CTmView::UnloadTrack()
     {
     delete iCam; iCam = 0; delete iCar; iCar = 0; delete iGround; iGround = 0;
     delete iView; iView = 0; delete iTrack; iTrack = 0;
-    iChunk.Close(); iBack = 0; iData = 0;
-    iLoaded = EFalse; iDriving = EFalse; iBench = -1;
-    iSeenFinish = EFalse; iRunIsRecord = EFalse; iMenu = EFalse;
+    iChunk.Close(); iData = 0;
+    iDriving = EFalse; iBench = -1;
+    iSeenFinish = EFalse; iRunIsRecord = EFalse; iPause = EFalse;
     }
 
 TBool CTmView::LoadTrack(TInt aIndex)
     {
+    if (aIndex < 0 || aIndex >= iNFiles) return EFalse;
     RFs& fs = iCoeEnv->FsSession();
-    // the first .tmb beside the program, on the drive it was installed to (C:, the card)
-    TFileName dir(KTrackDir);
-    TFileName app = iEikonEnv->EikAppUi()->Application()->AppFullName();
-    dir[0] = app.Length() ? app[0] : (TText)'C';
-    CDir* list = 0;
-    TFileName pat(dir); pat.Append(KTrackPattern);
-    if (fs.GetDir(pat, KEntryAttNormal, ESortByName, list) != KErrNone || !list || list->Count() == 0)
-        {
-        delete list;
-        iStatus = _L("No .tmb track beside tm9300.app");
-        return EFalse;
-        }
-    iTrackCount = list->Count();
-    iTrackIndex = ((aIndex % iTrackCount) + iTrackCount) % iTrackCount;
-    TFileName name(dir); name.Append((*list)[iTrackIndex].iName);
-    iStatus = (*list)[iTrackIndex].iName.Left(60);
-    iTrackName = (*list)[iTrackIndex].iName.Left(16);
-    TInt dot = iTrackName.LocateReverse('.'); if (dot > 0) iTrackName.SetLength(dot);
-    delete list;
+    iTrackIndex = aIndex;
+    iTrackName = iFiles[aIndex].Left(16);
+    ToC(iTrackC, iTrackName, 16);
+    TFileName name(iDir); name.Append(iFiles[aIndex]); name.Append(_L(".tmb"));
+    iStatus = iFiles[aIndex];
     RFile f;
     if (f.Open(fs, name, EFileRead | EFileShareReadersOnly) != KErrNone) { iStatus = _L("Cannot open the track"); return EFalse; }
     TInt size = 0;
     f.Size(size);
-    TInt need = size + 64 + SCR_W * SCR_H * 2 + 64;
+    TInt need = size + 64;
     if (iChunk.CreateLocal(need, need) != KErrNone) { f.Close(); iStatus = _L("No memory for the track"); return EFalse; }
-    TUint8* base = iChunk.Base();
-    iBack = (TUint16*)base;
-    iData = base + ((SCR_W * SCR_H * 2 + 63) & ~63);
+    iData = iChunk.Base();
     iDataSize = size;
     TPtr8 p(iData, 0, size);
     TInt err = f.Read(p);
     f.Close();
-    if (err != KErrNone || p.Length() != size) { iStatus = _L("Cannot read the track"); return EFalse; }
+    if (err != KErrNone || p.Length() != size) { iStatus = _L("Cannot read the track"); UnloadTrack(); return EFalse; }
     iTrack = new TmTrack;
     iView = new TmView;
-    if (!iTrack || !iView || !iTrack->Load(iData, size) || !iView->Init(VIEW_W, VIEW_H, 2500)) { iStatus = _L("Bad track file"); return EFalse; }
+    if (!iTrack || !iView || !iTrack->Load(iData, size) || !iView->Init(VIEW_W, VIEW_H, 2500)) { iStatus = _L("Bad track file"); UnloadTrack(); return EFalse; }
     iView->iFarCut = iFarM * 16;
     iView->iMeshMode = 1;
-    // the side bars once
     for (TInt i = 0; i < SCR_W * SCR_H; i++) iBack[i] = 0;
     iFirstBlit = ETrue;
     iBench = -1;
-    // the car, when the track carries its collision (TMB4): driving is the default, V the flythrough
     iDriving = EFalse;
     if (iTrack->iNCInst > 0)
         {
         iGround = new TmGround; iCar = new TmCar; iCam = new TmFollowCam;
         if (iGround && iCar && iCam && iGround->Init(*iTrack)) { iDriving = ETrue; DriveReset(); }
         }
-    // 0.8: the ghosts: the replay's (its checkpoints found by the car's rules), the record from its file; the hot
-    // seat starts over
     iGhostAuthor.Clear(); iGhostRecord.Clear(); iGhostLast.Clear();
     if (iDriving) { iGhostAuthor.FromPath(*iTrack, *iGround, *iCar); LoadRecord(); }
-    iPlayer = 0; for (TInt k = 0; k < 4; k++) iPlayerBest[k] = 0;
-    iHudValid = EFalse; PanelRows(0, SCR_H);
-    if (!iDriving) BenchStart();    // a viewer-only track: the benchmark runs by itself (B runs it again)
+    iSidesDirty = ETrue;
+    if (!iDriving) BenchStart();
     return ETrue;
     }
 
@@ -601,6 +623,7 @@ void CTmView::SetActive(TBool aOn)
         StopDirect();
         }
     }
+
 
 TInt CTmView::IdleCb(TAny* aThis)
     {
@@ -634,9 +657,10 @@ void CTmView::StopDirect()
 void CTmView::AbortNow(RDirectScreenAccess::TTerminationReasons /*aReason*/) { iDsaOn = EFalse; }
 void CTmView::Restart(RDirectScreenAccess::TTerminationReasons /*aReason*/) {}
 
+
 void CTmView::DriveReset()
     {
-    // 0.8: the run before: the last ghost when it finished, the record again with its points past the line
+    // the run before: the last ghost when it finished, the record again with its points past the line
     if (iSeenFinish && iRun.iN) iGhostLast.Copy(iRun);
     if (iRunIsRecord && iRun.iN) { iGhostRecord.Copy(iRun); SaveRecord(); }
     iSeenFinish = EFalse; iRunIsRecord = EFalse;
@@ -644,15 +668,33 @@ void CTmView::DriveReset()
     iCam->Reset(iCar->iS);
     iDriveStart.UniversalTime();
     iDriveSteps = 0;
-    iRaceSteps = 0; iSeenCps = 0; iSplitUntil = 0; iSplitHas = EFalse;
+    // 0.11: the countdown first (3, 2, 1: 1.5 s, the clock running up to zero), then the race
+    iRaceSteps = -75; iSeenCps = 0; iSplitUntil = 0; iSplitHas = EFalse;
     iRun.Begin();
     iView->iGhostOn = 0;
+    iSidesDirty = ETrue;
     }
 
-// Enter after the finish: the next run (in the hot seat the next player's)
+// Enter after the finish: the next run; in the hot seat the next player's turn, after the last attempt the
+// standings, then the series' next track (or the menu)
 void CTmView::NextRun()
     {
-    if (iPlayers > 1) iPlayer = (iPlayer + 1) % iPlayers;
+    if (iPlayers > 1)
+        {
+        if (iStandings)
+            {
+            iStandings = EFalse;
+            if (++iSeriesPos >= iSeriesN) { BackToMenu(); return; }
+            UnloadTrack();
+            if (!LoadTrack(iSeries[iSeriesPos])) { BackToMenu(); return; }
+            iRound = 0; iPlayer = 0; for (TInt k = 0; k < 8; k++) iPlayerBest[k] = 0;
+            iGhostMode = EGhostOff;
+            return;
+            }
+        if (++iPlayer >= iPlayers) { iPlayer = 0; iRound++; }
+        if (iRound >= iAttempts) { iStandings = ETrue; iPlayer = iPlayers - 1; iSidesDirty = ETrue; return; }
+        iGhostMode = EGhostLast;                // the one before, as a ghost
+        }
     DriveReset();
     }
 
@@ -696,17 +738,18 @@ TInt CTmView::GhostCp(TInt aK) const
     return (TInt) (((TInt64) g->CpSteps(aK) * d) / n).Low();
     }
 
-void CTmView::GhostName(TDes& aOut, TInt aMode) const
+
+const char* CTmView::GhostName(TInt aMode) const
     {
     switch (aMode)
         {
-        case EGhostNadeo: aOut.Append(_L("Nadeo")); break;
-        case EGhostGold: aOut.Append(_L("gold")); break;
-        case EGhostSilver: aOut.Append(_L("silver")); break;
-        case EGhostBronze: aOut.Append(_L("bronze")); break;
-        case EGhostRecord: aOut.Append(_L("record")); break;
-        case EGhostLast: aOut.Append(_L("last run")); break;
-        default: aOut.Append(_L("off")); break;
+        case EGhostNadeo: return "Nadeo medal";
+        case EGhostGold: return "Gold medal";
+        case EGhostSilver: return "Silver medal";
+        case EGhostBronze: return "Bronze medal";
+        case EGhostRecord: return "Your record";
+        case EGhostLast: return iPlayers > 1 ? "Previous player" : "Last run";
+        default: return "None";
         }
     }
 
@@ -751,6 +794,7 @@ void CTmView::LoadRecord()
     f.Close();
     }
 
+
 void CTmView::DriveFrame(TInt& aCx, TInt& aCy, TInt& aCz, TInt& aYaw, TInt& aPitch, TInt& aCarX, TInt& aCarY, TInt& aCarZ, TInt& aCarYaw)
     {
     // the steps the clock asks for (20 ms each), at most 4 a frame (a slow frame does not snowball)
@@ -758,22 +802,24 @@ void CTmView::DriveFrame(TInt& aCx, TInt& aCy, TInt& aCz, TInt& aYaw, TInt& aPit
     TInt ms = (TInt)(now.MicroSecondsFrom(iDriveStart).Int64().Low() / 1000);
     TInt want = ms / 20 - iDriveSteps;
     if (want > 4) { iDriveSteps += want - 4; want = 4; }
-    if (iMenu) want = 0;                        // 0.8: the menu holds the race
+    if (iPause || iStandings) want = 0;
     TmCarInput in;
     in.steer = (iKeys & KEY_LEFT ? -256 : 0) + (iKeys & KEY_RIGHT ? 256 : 0);
     in.throttle = (iKeys & KEY_UP) ? 1 : 0;
     in.brake = (iKeys & KEY_DOWN) ? 1 : 0;
-    // 0.8: after the finish the keys do nothing: the car brakes to a stop (and no further: held, it would reverse)
+    // after the finish the keys do nothing: the car brakes to a stop (and no further: held, it would reverse)
     if (iCar->iFinished) { in.steer = 0; in.throttle = 0; in.brake = iCar->iS.speed > 256 ? 1 : 0; }
-    // 0.6: the camera after each step (its trail and smoothing go by steps, not frames)
     for (TInt k = 0; k < want; k++)
         {
-        iCar->Step(*iGround, in); iDriveSteps++; iRaceSteps++;
+        iDriveSteps++;
+        // the countdown: the car waits on the line
+        if (iRaceSteps < 0) { iRaceSteps++; iCam->Update(*iGround, iCar->iS, aCx, aCy, aCz, aYaw, aPitch); continue; }
+        iCar->Step(*iGround, in); iRaceSteps++;
         iRun.Record(*iCar);
         iCam->Update(*iGround, iCar->iS, aCx, aCy, aCz, aYaw, aPitch);
         }
     if (want <= 0) iCam->Current(aCx, aCy, aCz, aYaw, aPitch);
-    // 0.8: a checkpoint taken or the finish: its time, and against the ghost's (- ahead, + behind), shown 3 s
+    // a checkpoint taken or the finish: its time, and against the ghost's (- ahead, + behind), shown 3 s
     TInt gn, gd;
     const TmGhost* g = Ghost(gn, gd);
     while (iSeenCps < iCar->iCheckpoints)
@@ -784,6 +830,7 @@ void CTmView::DriveFrame(TInt& aCx, TInt& aCy, TInt& aCz, TInt& aYaw, TInt& aPit
         iSplitHas = GhostCp(k) > 0;
         if (iSplitHas) iSplitDiff = iSplitTime - GhostCp(k);
         iSplitUntil = iRaceSteps + 150;
+        iSidesDirty = ETrue;
         }
     if (iCar->iFinished && !iSeenFinish)
         {
@@ -792,36 +839,44 @@ void CTmView::DriveFrame(TInt& aCx, TInt& aCy, TInt& aCz, TInt& aYaw, TInt& aPit
         iSplitTime = t; iSplitCp = 0;
         iSplitHas = GhostFinish() > 0;
         if (iSplitHas) iSplitDiff = t - GhostFinish();
-        iSplitUntil = 0x7fffffff;
-        // a new record: kept and saved (again with its last points at the next start)
+        iSplitUntil = 0;
+        // a new record: kept and saved (again with its last points at the next start); the menu's medals
         if (!iGhostRecord.Finish() || t < iGhostRecord.Finish()) { iGhostRecord.Copy(iRun); SaveRecord(); iRunIsRecord = ETrue; }
+        if (iUi) iUi->SetBest(iTrackIndex, t);
         if (!iPlayerBest[iPlayer] || t < iPlayerBest[iPlayer]) iPlayerBest[iPlayer] = t;
-        iResultDirty = ETrue;
+        iSidesDirty = ETrue;
         }
     // the ghost where it was at this step of its run
     iView->iGhostOn = 0;
-    if (g && g->At((TInt) (((TInt64) iRaceSteps * gn) / gd).Low(), iView->iGhostX, iView->iGhostY, iView->iGhostZ, iView->iGhostYaw, iView->iGhostSlopeF, iView->iGhostSlopeR)) iView->iGhostOn = 1;
-    // drawn from the highest of the wheels' ground, 0.15 m up: a crowned or coarse road no longer cuts into the body
-    aCarX = iCar->iS.x >> 4; aCarY = (iCar->iS.y >> 4) + 3; aCarZ = iCar->iS.z >> 4; aCarYaw = iCar->iS.yaw;     // 0.6: the contact point + 0.19 m (the clipping was the depth test, not the height)
+    const TInt gs = iRaceSteps > 0 ? iRaceSteps : 0;
+    if (g && g->At((TInt) (((TInt64) gs * gn) / gd).Low(), iView->iGhostX, iView->iGhostY, iView->iGhostZ, iView->iGhostYaw, iView->iGhostSlopeF, iView->iGhostSlopeR)) iView->iGhostOn = 1;
+    aCarX = iCar->iS.x >> 4; aCarY = (iCar->iS.y >> 4) + 3; aCarZ = iCar->iS.z >> 4; aCarYaw = iCar->iS.yaw;
     iCar->iS.Slopes(iView->iCarSlopeF, iView->iCarSlopeR);
     }
 
 void CTmView::Frame()
     {
-    // 0.8: the menu: drawn again only when it changes (the scene stands still under it)
-    if (iMenu && !iMenuDirty) { User::After(20000); return; }
+    // the menus: drawn when they change, nothing a frame otherwise
+    if (iInMenu)
+        {
+        if (iUi && iUi->iDirty) { iUi->Draw(iBack, SCR_W); Blit(iBack, ETrue); }
+        else User::After(25000);
+        return;
+        }
+    if (iPause && !iPauseDirty) { User::After(20000); return; }
     TTime t0;
     t0.UniversalTime();
-    // where on the path: real time * speed; the path loops
     TInt ms = iPauseAt >= 0 ? iPauseAt : (TInt)(t0.MicroSecondsFrom(iStart).Int64().Low() / 1000);
     TInt pathMs = iTrack->iNPath * 100;
     TInt pos = pathMs > 0 ? (ms * iSpeed / 100) % pathMs : 0;
     TInt sample = pos / 100, frac = ((pos % 100) * 256) / 100;
-    // looking round with the arrows (held)
-    if (iKeys & KEY_LEFT) iYawOff -= 24;
-    if (iKeys & KEY_RIGHT) iYawOff += 24;
-    if (iKeys & KEY_UP) iPitchOff += 8;
-    if (iKeys & KEY_DOWN) iPitchOff -= 8;
+    if (!iDriving)
+        {
+        if (iKeys & KEY_LEFT) iYawOff -= 24;
+        if (iKeys & KEY_RIGHT) iYawOff += 24;
+        if (iKeys & KEY_UP) iPitchOff += 8;
+        if (iKeys & KEY_DOWN) iPitchOff -= 8;
+        }
     TInt cx, cy, cz, yaw, pitch, carX, carY, carZ, carYaw;
     if (iDriving && iBench < 0) DriveFrame(cx, cy, cz, yaw, pitch, carX, carY, carZ, carYaw);
     else
@@ -832,17 +887,21 @@ void CTmView::Frame()
         pitch += iPitchOff; if (pitch > 900) pitch = 900; if (pitch < -900) pitch = -900;
         iView->CarAt(*iTrack, sample, frac, carX, carY, carZ, carYaw);
         }
-    TUint16* view = iBack + (SCR_W - VIEW_W) / 2;
+    TUint16* view = iBack + VIEW_X;
     iView->Frame(view, SCR_W, *iTrack, cx, cy, cz, yaw, pitch, 200, carX, carY, carZ, carYaw, iDrawCar);
     TTime t1;
     t1.UniversalTime();
     TInt drawUs = t1.MicroSecondsFrom(t0).Int64().Low();
     iDrawSum += drawUs / 1000;
+    if (iDriving && iBench < 0)
+        {
+        if (iHudOn && iSidesDirty) DrawSides();
+        DrawOverlay();
+        if (iPause) { DrawPause(); iPauseDirty = EFalse; }
+        }
     if (iShowInfo)
         {
-        // the left bar cleared (the digits would pile up), then: fps, draw ms, copy ms, polygons drawn,
-        // submitted, the path's second, the far cut, 1 when the screen is written directly
-        for (TInt y = 0; y < 136; y++) { TUint16* q = iBack + y * SCR_W; for (TInt x = 0; x < 64; x++) q[x] = 0; }
+        for (TInt y = 0; y < 136; y++) { TUint16* q = iBack + y * SCR_W; for (TInt x = 0; x < BAR_W; x++) q[x] = 0; }
         const TUint16 white = 0xFFFF, yel = 0xFFE0;
         DrawNumber(iBack, SCR_W, 8, 8, iFps, white);
         DrawNumber(iBack, SCR_W, 8, 24, iDrawMs, yel);
@@ -852,31 +911,17 @@ void CTmView::Frame()
         DrawNumber(iBack, SCR_W, 8, 88, pos / 1000, white);
         DrawNumber(iBack, SCR_W, 8, 104, iFarM, white);
         DrawNumber(iBack, SCR_W, 8, 120, iDsaOn ? 1 : 0, yel);
-        // the benchmark's result: 1 sent, 2 saved only (the PC did not answer), 0 not run
         if (iSender) DrawNumber(iBack, SCR_W, 8, 136, iSender->iResult == 1 ? 1 : iSender->iResult < 0 ? 2 : 3, yel);
         }
     else if (iBench >= 0)
         {
-        for (TInt y = 0; y < 24; y++) { TUint16* q = iBack + y * SCR_W; for (TInt x = 0; x < 64; x++) q[x] = 0; }
-        DrawNumber(iBack, SCR_W, 8, 8, iBench + 1, 0xF800);     // which variant runs (red), of BENCH_VARIANTS
+        for (TInt y = 0; y < 24; y++) { TUint16* q = iBack + y * SCR_W; for (TInt x = 0; x < BAR_W; x++) q[x] = 0; }
+        DrawNumber(iBack, SCR_W, 8, 8, iBench + 1, 0xF800);
         DrawNumber(iBack, SCR_W, 32, 8, BENCH_VARIANTS, 0xF800);
-        // the lap's progress as a bar
         TInt w = pathMs > 0 ? (pos * 56) / pathMs : 0;
         for (TInt y = 20; y < 23; y++) { TUint16* q = iBack + y * SCR_W + 4; for (TInt x = 0; x < w; x++) q[x] = 0xF800; }
         }
-    if (iDriving && iBench < 0 && iHudOn) DrawHud();
-    if (iDriving && iBench < 0 && iSeenFinish && iResultCv.Ok())
-        {
-        if (iResultDirty) { DrawResult(); iResultDirty = EFalse; }
-        iResultCv.CopyTo(iBack, SCR_W, RES_X, RES_Y, 0, RES_H);
-        }
-    if (iMenu)
-        {
-        DrawMenu();
-        if (iMenuCv.Ok()) iMenuCv.CopyTo(iBack, SCR_W, MENU_X, MENU_Y, 0, MENU_H);
-        iMenuDirty = EFalse;
-        }
-    if (!(iBench == 4)) Blit(iBack);
+    if (!(iBench == 4)) Blit(iBack, EFalse);
     TTime t2;
     t2.UniversalTime();
     TInt blitUs = t2.MicroSecondsFrom(t1).Int64().Low();
@@ -891,260 +936,328 @@ void CTmView::Frame()
     User::ResetInactivityTime();
     }
 
-// 0.8: the result after the finish, over the view as the game shows it: the time in the medal's colour, the medal,
-// against the ghost, and what Enter does (the car no longer answers the keys)
+// ---- the race's layout (0.11) ----
+using namespace TmDraw;
+
+// the sides: on the left the opponent and the player (the hot seat: every player and his best), on the right the
+// track and its author, the checkpoints; drawn when something on them changes
+void CTmView::DrawSides()
+    {
+    iSidesDirty = EFalse; iSidesBlit = ETrue;
+    const TmPix bg0 = Rgb(12, 26, 36), bg1 = Rgb(4, 10, 16);
+    for (TInt y = 0; y < SCR_H; y++) { const TmPix c = Mix(bg0, bg1, (y * 256) / SCR_H); Fill(iBack, SCR_W, 0, y, SIDE_W, 1, c); Fill(iBack, SCR_W, RIGHT_X, y, SCR_W - RIGHT_X, 1, c); }
+    char b[48];
+    TInt y = 4;
+    // the opponent: its medal, its name, its time
+    const TmGhost* g = Ghost();
+    if (g || iGhostMode != EGhostOff)
+        {
+        Round(iBack, SCR_W, 3, y, SIDE_W - 6, 36, 8, Rgb(150, 156, 160), Rgb(96, 102, 108));
+        const TInt kind = iGhostMode == EGhostNadeo ? 0 : iGhostMode == EGhostGold ? 1 : iGhostMode == EGhostSilver ? 2 : iGhostMode == EGhostBronze ? 3 : 4;
+        Coin(iBack, SCR_W, 18, y + 18, 12, kind);
+        Text(iBack, SCR_W, iFText, 34, y + 2, GhostName(iGhostMode), Rgb(255, 255, 255), SIDE_W - 4);
+        const TInt gf = GhostFinish();
+        Round(iBack, SCR_W, 34, y + 3 + iFText.iH, SIDE_W - 42, iFSmall.iH + 3, 5, Rgb(70, 76, 82), Rgb(50, 56, 62));
+        if (gf) { FormatTime(b, gf * 20); Clock(iBack, SCR_W, iFSmall, 40, y + 4 + iFText.iH, b, Rgb(220, 226, 232)); }
+        else Text(iBack, SCR_W, iFSmall, 40, y + 4 + iFText.iH, "not yet", Rgb(200, 200, 200));
+        y += 40;
+        }
+    // the player(s)
+    const TInt n = iPlayers > 1 ? iPlayers : 1;
+    for (TInt p = 0; p < n; p++)
+        {
+        const TBool me = p == iPlayer;
+        const TInt h = me ? 34 : iFSmall.iH + 6;
+        if (y + h > SCR_H - 16) break;
+        Round(iBack, SCR_W, 3, y, SIDE_W - 6, h, 8, me ? Rgb(60, 110, 200) : Rgb(40, 60, 80), me ? Rgb(30, 60, 140) : Rgb(26, 40, 54));
+        const char* nm = iPlayers > 1 ? iNames[p] : "PLAYER";
+        if (me)
+            {
+            Icon(iBack, SCR_W, 6, y + 5, EIcoFlagBlack);
+            Text(iBack, SCR_W, iFText, 34, y + 2, nm, Rgb(255, 255, 255), SIDE_W - 4);
+            Round(iBack, SCR_W, 34, y + 3 + iFText.iH, SIDE_W - 42, iFSmall.iH + 3, 5, Rgb(200, 210, 230), Rgb(150, 170, 200));
+            if (iPlayerBest[p]) { FormatTime(b, iPlayerBest[p] * 20); Clock(iBack, SCR_W, iFSmall, 40, y + 4 + iFText.iH, b, Rgb(20, 30, 50)); }
+            else Text(iBack, SCR_W, iFSmall, 40, y + 4 + iFText.iH, "--:--.--", Rgb(60, 70, 90));
+            }
+        else
+            {
+            Text(iBack, SCR_W, iFSmall, 10, y + 3, nm, Rgb(220, 226, 232), SIDE_W - 70);
+            if (iPlayerBest[p]) { FormatTime(b, iPlayerBest[p] * 20); Clock(iBack, SCR_W, iFSmall, SIDE_W - 62, y + 3, b, Rgb(220, 226, 232)); }
+            }
+        y += h + 3;
+        }
+    if (iPlayers > 1)
+        {
+        b[0] = 0; CCat(b, "attempt "); TBuf8<8> d; d.AppendNum(iRound < iAttempts ? iRound + 1 : iAttempts); d.Append('/'); d.AppendNum(iAttempts); d.Append(0);
+        CCat(b, (const char*) d.Ptr());
+        Text(iBack, SCR_W, iFSmall, 8, SCR_H - iFSmall.iH - 3, b, Rgb(240, 200, 60));
+        }
+    // the right: the track and its author, as the game's corner
+    Round(iBack, SCR_W, RIGHT_X + 4, 4, SCR_W - RIGHT_X - 8, iFText.iH + iFSmall.iH + 8, 8, Rgb(150, 156, 160), Rgb(96, 102, 108));
+    Text(iBack, SCR_W, iFText, SCR_W - 10 - iFText.Width(iTrackC), 7, iTrackC, Rgb(255, 255, 255));
+    Text(iBack, SCR_W, iFSmall, SCR_W - 10 - iFSmall.Width("Nadeo"), 8 + iFText.iH, "Nadeo", Rgb(240, 240, 240));
+    // the checkpoints
+    b[0] = 0; CCat(b, "checkpoints ");
+    { TBuf8<12> d; d.AppendNum(iCar->iCheckpoints); d.Append('/'); d.AppendNum(iCar->iTotalCps); d.Append(0); CCat(b, (const char*) d.Ptr()); }
+    Text(iBack, SCR_W, iFSmall, RIGHT_X + 10, 16 + iFText.iH + iFSmall.iH, b, Rgb(200, 220, 240));
+    Text(iBack, SCR_W, iFSmall, RIGHT_X + 10, SCR_H - iFSmall.iH - 3, "km/h", Rgb(160, 180, 200));
+    }
+
+// over the view each frame: the countdown, the timer, the checkpoint's time against the ghost, the result; and the
+// speed at the right's foot
+void CTmView::DrawOverlay()
+    {
+    char b[24];
+    // the timer on its plate, bottom middle (negative in the countdown, still after the finish)
+    const TmImage* plate = iPack.Find("timerbg");
+    const TInt pw = plate ? plate->w : 118, ph = plate ? plate->h : 26;
+    const TInt px = VIEW_X + (VIEW_W - pw) / 2, py = SCR_H - ph;
+    if (plate) TmDraw::Blit(iBack, SCR_W, px, py, plate); else Round(iBack, SCR_W, px, py, pw, ph, 6, Rgb(20, 60, 200), Rgb(0, 20, 90));
+    if (iRaceSteps < 0) { b[0] = '-'; FormatTime(b + 1, -iRaceSteps * 20); }
+    else FormatTime(b, (iCar->iFinished ? iCar->iFinishSteps : iCar->iSteps) * 20);
+    if (iPack.iN) Led(iBack, SCR_W, px + (pw - LedWidth(b)) / 2, py + (ph - 18) / 2 + 1, b);
+    else Clock(iBack, SCR_W, iFBig, px + (pw - ClockWidth(iFBig, b)) / 2, py + (ph - iFBig.iH) / 2, b, Rgb(255, 255, 255));
+    // the countdown: 3, 2, 1 (half a second each), then Go!
+    if (iRaceSteps < 25 && !iCar->iFinished)
+        {
+        const TInt k = iRaceSteps < -50 ? 0 : iRaceSteps < -25 ? 1 : iRaceSteps < 0 ? 2 : 3;
+        char nm[4] = { 'g', 'o', (char) ('0' + k), 0 };
+        const TmImage* m = iPack.Find(nm);
+        if (m) TmDraw::Blit(iBack, SCR_W, VIEW_X + (VIEW_W - m->w) / 2, 50, m);
+        else { const char* t[4] = { "3", "2", "1", "Go!" }; TextCentre(iBack, SCR_W, iFBig, VIEW_X, VIEW_X + VIEW_W, 60, t[k], Rgb(80, 160, 255)); }
+        }
+    // a checkpoint: its time, and against the ghost (blue ahead, red behind), at the top for 3 s
+    if (iSplitUntil > iRaceSteps && !iCar->iFinished)
+        {
+        FormatTime(b, iSplitTime * 20);
+        const TInt w = 150, x = VIEW_X + (VIEW_W - w) / 2;
+        Shade(iBack, SCR_W, x, 4, w, 22 + (iSplitHas ? iFText.iH + 2 : 0), 150, Rgb(0, 10, 30));
+        if (iPack.iN) Led(iBack, SCR_W, x + (w - LedWidth(b)) / 2, 6, b); else TextCentre(iBack, SCR_W, iFBig, x, x + w, 6, b, Rgb(255, 255, 255));
+        if (iSplitHas)
+            {
+            const TInt cs = (iSplitDiff < 0 ? -iSplitDiff : iSplitDiff) * 2;
+            char d[16]; d[0] = iSplitDiff <= 0 ? '-' : '+'; d[1] = 0;
+            TBuf8<12> e; e.AppendNum(cs / 100); e.Append('.'); if (cs % 100 < 10) e.Append('0'); e.AppendNum(cs % 100); e.Append(0);
+            CCat(d, (const char*) e.Ptr());
+            TextCentre(iBack, SCR_W, iFText, x, x + w, 26, d, iSplitDiff <= 0 ? Rgb(90, 160, 255) : Rgb(255, 70, 60));
+            }
+        }
+    if (iSeenFinish) DrawResult();
+    // the speed, bottom right, in the LED digits
+    if (iHudOn)
+        {
+        const TInt kmh = (iCar->iS.speed < 0 ? -iCar->iS.speed : iCar->iS.speed) * 36 / 2560;
+        TBuf8<8> d; d.AppendNum(kmh); d.Append(0);
+        Fill(iBack, SCR_W, RIGHT_X + 40, SCR_H - 26, SCR_W - RIGHT_X - 44, 22, Rgb(4, 10, 16));
+        const char* s = (const char*) d.Ptr();
+        if (iPack.iN) Led(iBack, SCR_W, SCR_W - 8 - LedWidth(s), SCR_H - 24, s);
+        else Text(iBack, SCR_W, iFBig, SCR_W - 8 - iFBig.Width(s), SCR_H - 4 - iFBig.iH, s, Rgb(255, 255, 255));
+        }
+    }
+
+// after the finish, over the view: the time in the medal's colour, the medal, against the opponent, what Enter does;
+// the hot seat's standings after the last attempt
 void CTmView::DrawResult()
     {
-    CTextCanvas& m = iResultCv;
-    const TUint16 bg = 0x1082, white = 0xFFFF, blue = 0x5D1F, red = 0xF904, grey = 0xC618;
-    const TUint16 cNadeo = 0x2FE6, cGold = 0xFEA0, cSilver = 0xCE79, cBronze = 0xCC27;
-    m.Fill(TRect(0, 0, RES_W, RES_H), bg);
-    const TInt t = iCar->iFinishSteps, ms = t * 20;
-    const TInt* md = iTrack->iMedal;
-    TBuf<48> s;
-    TUint16 col = white;
-    if (md[0] && ms <= md[0]) { s.Append(_L("Nadeo medal!")); col = cNadeo; }
-    else if (md[1] && ms <= md[1]) { s.Append(_L("gold medal!")); col = cGold; }
-    else if (md[2] && ms <= md[2]) { s.Append(_L("silver medal!")); col = cSilver; }
-    else if (md[3] && ms <= md[3]) { s.Append(_L("bronze medal")); col = cBronze; }
-    else if (md[3]) { s.Append(_L("no medal (bronze ")); AppendTime(s, md[3] / 20); s.Append(')'); }
-    m.Frame(TRect(0, 0, RES_W, RES_H), col);
-    TInt y = 4;
-    TBuf<16> tt; AppendTime(tt, t);
-    m.Clock(iFontBig, tt, (RES_W - iFontBig->TextWidthInPixels(tt)) / 2, y, col);
-    y += iFontBig->HeightInPixels() + 4;
-    if (s.Length()) { m.Text(iFontText, s, (RES_W - iFontText->TextWidthInPixels(s)) / 2, y, col); y += iFontText->HeightInPixels() + 3; }
-    s.Zero();
-    // against the ghost (as it was at the finish: a new record replaces the record's ghost; the menu's ghost choice
-    // works it out again)
-    const TInt gf = iSplitHas ? 1 : 0, diff = iSplitDiff;
-    if (gf > 0) { AppendDiff(s, diff); s.Append(_L(" against ")); GhostName(s, iGhostMode); }
-    if (iRunIsRecord) { if (s.Length()) s.Append(_L(", ")); s.Append(_L("new record!")); }
-    if (s.Length())
+    const TInt w = 260, x = VIEW_X + (VIEW_W - w) / 2, y = 8;
+    char b[48];
+    if (iStandings)
         {
-        const CFont* f = iFontText->TextWidthInPixels(s) > RES_W - 8 ? iFontSmall : iFontText;
-        m.Text(f, s, (RES_W - f->TextWidthInPixels(s)) / 2, y, gf > 0 ? (diff <= 0 ? blue : red) : white);
-        y += f->HeightInPixels() + 3;
-        }
-    s.Zero();
-    if (iPlayers > 1) s.AppendFormat(_L("press Enter: player %d"), (iPlayer + 1) % iPlayers + 1);
-    else s.Append(_L("press Enter to restart"));
-    m.Text(iFontText, s, (RES_W - iFontText->TextWidthInPixels(s)) / 2, RES_H - iFontText->HeightInPixels() - 5, grey);
-    }
-
-// 0.8: the race's panel on the right, a line at a time in the phone's fonts, a line drawn again only when it changes:
-// the time (as the game: m:ss.cc), km/h, checkpoints, the last checkpoint's difference to the ghost, the ghost, the
-// player (hot seat), the track, the depth fix, what Enter / Esc do, the players' bests
-void CTmView::HudLine(TInt aLine, const TDesC& aText, TUint16 aCol, TInt& aY, TInt& aDirty0, TInt& aDirty1)
-    {
-    const CFont* f = aLine == 0 ? iFontBig : iFontText;
-    if (aLine != 0 && f->TextWidthInPixels(aText) > HUD_W - 8) f = iFontSmall;
-    const TInt h = f->HeightInPixels() + (aLine == 0 ? 6 : 3);
-    if (!iHudValid || iHudCol[aLine] != aCol || iHudText[aLine] != aText.Left(40))
-        {
-        iHud.Fill(TRect(0, aY, HUD_W, aY + h), 0);
-        if (aText.Length())
+        // the standings: the players by their best
+        TInt order[8]; for (TInt p = 0; p < iPlayers; p++) order[p] = p;
+        for (TInt i = 0; i < iPlayers; i++) for (TInt j = i + 1; j < iPlayers; j++)
             {
-            if (aLine == 0) iHud.Clock(f, aText, 6, aY + 2, aCol);
-            else iHud.Text(f, aText, 6, aY + 1, aCol);
+            const TInt a = iPlayerBest[order[i]] ? iPlayerBest[order[i]] : 0x7fffffff, c = iPlayerBest[order[j]] ? iPlayerBest[order[j]] : 0x7fffffff;
+            if (c < a) { TInt t = order[i]; order[i] = order[j]; order[j] = t; }
             }
-        iHudText[aLine] = aText.Left(40); iHudCol[aLine] = aCol;
-        if (aY < aDirty0) aDirty0 = aY;
-        if (aY + h > aDirty1) aDirty1 = aY + h;
-        }
-    aY += h;
-    }
-
-void CTmView::DrawHud()
-    {
-    const TUint16 white = 0xFFFF, yel = 0xFFE0, green = 0x07E0, blue = 0x5D1F, red = 0xF904, pale = 0xA5DF;
-    const TInt kmh = (iCar->iS.speed < 0 ? -iCar->iS.speed : iCar->iS.speed) * 36 / 2560;
-    if (!iFontBig)
-        {
-        // no fonts: the old digits
-        const TInt bx = HUD_X + 8;
-        for (TInt y = 0; y < 96; y++) { TUint16* q = iBack + y * SCR_W + HUD_X; for (TInt x = 0; x < HUD_W; x++) q[x] = 0; }
-        DrawNumber(iBack, SCR_W, bx, 8, kmh, white);
-        TInt steps = iCar->iFinished ? iCar->iFinishSteps : iCar->iSteps;
-        DrawNumber(iBack, SCR_W, bx, 24, steps / 50, yel);
-        DrawNumber(iBack, SCR_W, bx + 40, 24, (steps % 50) * 2, yel);
-        DrawNumber(iBack, SCR_W, bx, 40, iCar->iCheckpoints, green);
-        DrawNumber(iBack, SCR_W, bx + 24, 40, iCar->iTotalCps, green);
-        DrawWords(iBack, SCR_W, bx, 72, iTrackName, white);
-        PanelRows(0, 96);
+        const TInt rh = iFText.iH + 2, h = 26 + iPlayers * rh + iFSmall.iH + 8;
+        Round(iBack, SCR_W, x, y, w, h, 6, Rgb(40, 42, 44), Rgb(24, 26, 28));
+        Round(iBack, SCR_W, x + 4, y + 3, w - 8, 17, 5, Rgb(50, 170, 50), Rgb(20, 110, 20));
+        TextCentre(iBack, SCR_W, iFText, x, x + w, y + 3 + (17 - iFText.iH) / 2, "Standings", Rgb(255, 255, 255));
+        for (TInt i = 0; i < iPlayers; i++)
+            {
+            const TInt p = order[i], ry = y + 24 + i * rh;
+            b[0] = (char) ('1' + i); b[1] = '.'; b[2] = ' '; b[3] = 0; CCat(b, iNames[p]);
+            Text(iBack, SCR_W, iFText, x + 14, ry, b, i == 0 ? Rgb(255, 220, 80) : Rgb(240, 240, 240));
+            if (iPlayerBest[p]) { FormatTime(b, iPlayerBest[p] * 20); Clock(iBack, SCR_W, iFText, x + w - 14 - ClockWidth(iFText, b), ry, b, Rgb(240, 240, 240)); }
+            }
+        TextCentre(iBack, SCR_W, iFSmall, x, x + w, y + h - iFSmall.iH - 4, iSeriesPos + 1 < iSeriesN ? "Enter: the next track" : "Enter: back to the menu", Rgb(200, 200, 200));
         return;
         }
-    // the clock and the speed straight into the frame from the glyphs (below); the other lines a line at a time in
-    // the panel's bitmap, copied over only when one changes
-    const TBool wasValid = iHudValid;
-    const TInt yTime = 4, hTime = iGlyBig.iH + 6, ySpeed = yTime + hTime, hSpeed = iGlyText.iH + 3;
-    TInt y = ySpeed + hSpeed, d0 = SCR_H, d1 = 0;
-    if (!iHudValid) { iHud.Fill(TRect(0, 0, HUD_W, SCR_H), 0); d0 = 0; d1 = SCR_H; }
-    TBuf<40> t;
-    t.Zero();
-    if (iCar->iFinished) t.Append(_L("finished!")); else t.AppendFormat(_L("checkpoint %d/%d"), iCar->iCheckpoints, iCar->iTotalCps);
-    HudLine(2, t, iCar->iFinished ? green : yel, y, d0, d1);
-    // the last checkpoint (or the finish): against the ghost (blue ahead, red behind), or its time without one
-    t.Zero(); TUint16 col = white;
-    if (iSplitUntil > iRaceSteps)
+    const TInt t = iCar->iFinishSteps, ms = t * 20;
+    const TInt* md = iTrack->iMedal;
+    TInt medal = -1;
+    for (TInt k = 3; k >= 0; k--) if (md[k] && ms <= md[k]) medal = k;
+    static const char* const KMedal[4] = { "Nadeo medal!", "Gold medal!", "Silver medal!", "Bronze medal" };
+    const TmPix mc[4] = { Rgb(90, 220, 90), Rgb(255, 214, 80), Rgb(214, 214, 214), Rgb(206, 160, 100) };
+    const TInt h = 84;
+    Round(iBack, SCR_W, x, y, w, h, 8, Rgb(40, 42, 44), Rgb(24, 26, 28));
+    RoundLine(iBack, SCR_W, x, y, w, h, 8, medal >= 0 ? mc[medal] : Rgb(110, 116, 120));
+    FormatTime(b, ms);
+    if (medal >= 0) Coin(iBack, SCR_W, x + 26, y + 22, 12, medal);
+    if (iPack.iN) Led(iBack, SCR_W, x + (w - LedWidth(b)) / 2, y + 8, b); else TextCentre(iBack, SCR_W, iFBig, x, x + w, y + 6, b, Rgb(255, 255, 255));
+    TInt ty = y + 32;
+    if (medal >= 0) { TextCentre(iBack, SCR_W, iFText, x, x + w, ty, KMedal[medal], mc[medal]); ty += iFText.iH + 1; }
+    else if (md[3]) { b[0] = 0; CCat(b, "no medal (bronze "); char tb[16]; FormatTime(tb, md[3]); CCat(b, tb); CCat(b, ")"); TextCentre(iBack, SCR_W, iFText, x, x + w, ty, b, Rgb(200, 200, 200)); ty += iFText.iH + 1; }
+    b[0] = 0;
+    if (iSplitHas)
         {
-        if (iSplitCp) t.AppendFormat(_L("cp %d: "), iSplitCp); else t.Append(_L("finish: "));
-        if (iSplitHas) { AppendDiff(t, iSplitDiff); col = iSplitDiff <= 0 ? blue : red; } else AppendTime(t, iSplitTime);
+        const TInt cs = (iSplitDiff < 0 ? -iSplitDiff : iSplitDiff) * 2;
+        b[0] = iSplitDiff <= 0 ? '-' : '+'; b[1] = 0;
+        TBuf8<12> e; e.AppendNum(cs / 100); e.Append('.'); if (cs % 100 < 10) e.Append('0'); e.AppendNum(cs % 100); e.Append(0);
+        CCat(b, (const char*) e.Ptr()); CCat(b, " against "); CCat(b, GhostName(iGhostMode));
         }
-    HudLine(3, t, col, y, d0, d1);
-    const TmGhost* g = Ghost();
-    t.Zero(); t.Append(_L("ghost: ")); GhostName(t, iGhostMode);
-    if (g && GhostFinish()) { t.Append(' '); AppendTime(t, GhostFinish()); }
-    else if (iGhostMode != EGhostOff && !g) t.Append(_L(" (none yet)"));
-    HudLine(4, t, pale, y, d0, d1);
-    t.Zero(); if (iPlayers > 1) t.AppendFormat(_L("player %d of %d"), iPlayer + 1, iPlayers);
-    HudLine(5, t, yel, y, d0, d1);
-    t.Zero(); t.Append(iTrackName); t.AppendFormat(_L(" (%d/%d)"), iTrackIndex + 1, iTrackCount);
-    HudLine(6, t, white, y, d0, d1);
-    for (TInt k = 0; k < 4; k++)
+    if (iRunIsRecord) { if (b[0]) CCat(b, ", "); CCat(b, "new record!"); }
+    if (b[0]) { const TmFont& f = iFText.Width(b) > w - 8 ? iFSmall : iFText; TextCentre(iBack, SCR_W, f, x, x + w, ty, b, iSplitHas ? (iSplitDiff <= 0 ? Rgb(90, 160, 255) : Rgb(255, 80, 70)) : Rgb(240, 240, 240)); }
+    // what Enter does
+    b[0] = 0;
+    if (iPlayers > 1)
         {
-        t.Zero();
-        if (iPlayers > 1 && k < iPlayers)
-            {
-            t.AppendFormat(_L("P%d  "), k + 1);
-            if (iPlayerBest[k]) AppendTime(t, iPlayerBest[k]); else t.Append(_L("-"));
-            }
-        HudLine(7 + k, t, k == iPlayer ? yel : white, y, d0, d1);
+        TInt np = iPlayer + 1, nr = iRound; if (np >= iPlayers) { np = 0; nr++; }
+        if (nr >= iAttempts) CCat(b, "Press Enter: the standings");
+        else { CCat(b, "Press Enter: "); CCat(b, iNames[np]); CCat(b, "'s turn"); }
         }
-    if (!wasValid) d1 = SCR_H;
-    iHudValid = ETrue;
-    if (d1 > d0) { iHud.CopyTo(iBack, SCR_W, HUD_X, 0, d0, d1); PanelRows(d0, d1); }
-    // the clock (green once finished) and the speed: redrawn when they change
-    t.Zero(); AppendTime(t, iCar->iFinished ? iCar->iFinishSteps : iCar->iSteps);
-    const TUint16 tc = iCar->iFinished ? green : white;
-    if (!wasValid || iHudCol[0] != tc || iHudText[0] != t)
-        {
-        for (TInt r = yTime; r < yTime + hTime; r++) { TUint16* q = iBack + r * SCR_W + HUD_X; for (TInt k = 0; k < HUD_W; k++) q[k] = 0; }
-        iGlyBig.Put(iBack, SCR_W, HUD_X + 6, yTime + 2, t, tc, SCR_W);
-        iHudText[0] = t; iHudCol[0] = tc; PanelRows(yTime, yTime + hTime);
-        }
-    t.Zero(); t.AppendNum(kmh); t.Append('k');
-    if (!wasValid || iHudText[1] != t)
-        {
-        for (TInt r = ySpeed; r < ySpeed + hSpeed; r++) { TUint16* q = iBack + r * SCR_W + HUD_X; for (TInt k = 0; k < HUD_W; k++) q[k] = 0; }
-        iGlyText.Put(iBack, SCR_W, HUD_X + 6, ySpeed + 1, t, white, SCR_W);
-        iHudText[1] = t; PanelRows(ySpeed, ySpeed + hSpeed);
-        }
+    else CCat(b, "Press Enter to restart");
+    TextCentre(iBack, SCR_W, iFSmall, x, x + w, y + h - iFSmall.iH - 4, b, Rgb(200, 200, 200));
     }
 
-// 0.9: the panel on / off (H, the menu): off, its side of the screen is cleared once and not drawn again
-void CTmView::SetHud(TBool aOn)
+// ---- the pause (Esc) ----
+void CTmView::PauseOpen()
     {
-    iHudOn = aOn; iHudValid = EFalse;
-    if (!aOn && iBack) for (TInt r = 0; r < SCR_H; r++) { TUint16* q = iBack + r * SCR_W + HUD_X; for (TInt k = 0; k < HUD_W; k++) q[k] = 0; }
-    PanelRows(0, SCR_H);
+    if (iPause) return;
+    iPause = ETrue; iPauseDirty = ETrue; iPauseSel = EPContinue; iKeys = 0;
+    iPauseSince.UniversalTime();
     }
 
-// ---- the menu (Esc) ----
-void CTmView::MenuOpen()
+void CTmView::PauseClose()
     {
-    if (iMenu) return;
-    iMenu = ETrue; iMenuDirty = ETrue; iMenuSel = EMContinue; iKeys = 0;
-    iMenuAt.UniversalTime();
-    }
-
-void CTmView::MenuClose()
-    {
-    if (!iMenu) return;
-    iMenu = EFalse; iKeys = 0;
-    // the race's clock (and the flythrough's) on from where it stood
+    if (!iPause) return;
+    iPause = EFalse; iKeys = 0;
     TTime now; now.UniversalTime();
-    const TTimeIntervalMicroSeconds held = now.MicroSecondsFrom(iMenuAt);
+    const TTimeIntervalMicroSeconds held = now.MicroSecondsFrom(iPauseSince);
     iDriveStart += held; iStart += held;
-    iHudValid = EFalse;
+    iSidesDirty = ETrue;
     }
 
-// aDir: 1 up, 2 down, 3 left, 4 right; aSelect: Enter / the joystick's press / Space
-void CTmView::MenuKeyL(TInt aDir, TBool aSelect)
+// aKey: EUiUp, EUiDown, EUiLeft, EUiRight, EUiOk, EUiBack
+void CTmView::PauseKeyL(TInt aKey)
     {
-    iMenuDirty = ETrue;
-    if (aDir == 1) { iMenuSel = (iMenuSel + EMItems - 1) % EMItems; return; }
-    if (aDir == 2) { iMenuSel = (iMenuSel + 1) % EMItems; return; }
-    if (!aSelect && aDir != 3 && aDir != 4) return;
-    const TInt step = aDir == 3 ? -1 : 1;
-    switch (iMenuSel)
+    iPauseDirty = ETrue;
+    if (aKey == EUiBack) { PauseClose(); return; }
+    if (aKey == EUiUp) { iPauseSel = (iPauseSel + EPItems - 1) % EPItems; return; }
+    if (aKey == EUiDown) { iPauseSel = (iPauseSel + 1) % EPItems; return; }
+    const TInt step = aKey == EUiLeft ? -1 : 1;
+    switch (iPauseSel)
         {
-        case EMContinue: if (aSelect) MenuClose(); break;
-        case EMRestart: if (aSelect) { MenuClose(); if (iDriving) DriveReset(); } break;
-        case EMGhost:
-            iGhostMode = (iGhostMode + step + EGhostModes) % EGhostModes; iSplitUntil = 0; iResultDirty = ETrue;
-            if (iSeenFinish) { iSplitHas = GhostFinish() > 0; iSplitDiff = iCar->iFinishSteps - GhostFinish(); }
-            break;
-        case EMPlayers:
-            iPlayers = (iPlayers - 1 + step + 4) % 4 + 1; iPlayer = 0;
-            for (TInt k = 0; k < 4; k++) iPlayerBest[k] = 0;
-            // the hot seat races the one before: the last run's ghost
-            if (iPlayers > 1 && iGhostMode != EGhostOff) iGhostMode = EGhostLast;
-            iResultDirty = ETrue;
-            break;
-        case EMPanel: SetHud(!iHudOn); break;
-        case EMNext: case EMPrev:
-            if (aSelect || aDir == 3 || aDir == 4)
+        case EPContinue: if (aKey == EUiOk) PauseClose(); break;
+        case EPRestart: if (aKey == EUiOk) { PauseClose(); DriveReset(); } break;
+        case EPOpponent:
+            if (aKey == EUiLeft || aKey == EUiRight || aKey == EUiOk)
                 {
-                const TInt i = iTrackIndex + (iMenuSel == EMPrev ? -1 : 1);
-                MenuClose(); UnloadTrack(); iLoaded = LoadTrack(i); if (!iLoaded) DrawNow();
+                iGhostMode = (iGhostMode + step + EGhostModes) % EGhostModes;
+                iSplitUntil = 0;
+                if (iSeenFinish) { iSplitHas = GhostFinish() > 0; iSplitDiff = iCar->iFinishSteps - GhostFinish(); }
+                iSidesDirty = ETrue;
                 }
             break;
-        case EMQuit: if (aSelect) iEikonEnv->EikAppUi()->HandleCommandL(EEikCmdExit); break;
+        case EPPanel:
+            if (aKey == EUiLeft || aKey == EUiRight || aKey == EUiOk)
+                {
+                iHudOn = !iHudOn; iSidesDirty = ETrue;
+                if (!iHudOn) { for (TInt y = 0; y < SCR_H; y++) { Fill(iBack, SCR_W, 0, y, SIDE_W, 1, 0); Fill(iBack, SCR_W, RIGHT_X, y, SCR_W - RIGHT_X, 1, 0); } iSidesBlit = ETrue; }
+                }
+            break;
+        case EPMenu: if (aKey == EUiOk) BackToMenu(); break;
         default: break;
         }
     }
 
-void CTmView::DrawMenu()
+void CTmView::DrawPause()
     {
-    CTextCanvas& m = iMenuCv;
-    if (!m.Ok() || !iFontText) return;
-    const TUint16 bg = 0x1082, sel = 0x31A6, yel = 0xFFE0, white = 0xFFFF, grey = 0xA514, pale = 0xA5DF;
-    m.Fill(TRect(0, 0, MENU_W, MENU_H), bg);
-    m.Frame(TRect(0, 0, MENU_W, MENU_H), yel);
-    const CFont* items = iFontText;
-    const TInt need = iFontText->HeightInPixels() + 8 + EMItems * (iFontText->HeightInPixels() + 3) + iFontSmall->HeightInPixels() + 12;
-    if (need > MENU_H) items = iFontSmall;
-    TInt y = 5;
-    TBuf<48> t;
-    t.Append(_L("TrackMania 9300  ")); t.Append(KVersion);
-    m.Text(iFontText, t, 10, y, yel);
-    y += iFontText->HeightInPixels() + 6;
-    const TInt h = items->HeightInPixels();
-    for (TInt i = 0; i < EMItems; i++)
+    Shade(iBack, SCR_W, VIEW_X, 0, VIEW_W, VIEW_H, 140, 0);
+    const TInt rh = iFText.iH + 7, w = 250, h = 26 + EPItems * rh + 4, x = VIEW_X + (VIEW_W - w) / 2, y = (SCR_H - h) / 2;
+    Round(iBack, SCR_W, x, y, w, h, 6, Rgb(40, 42, 44), Rgb(28, 30, 32));
+    RoundLine(iBack, SCR_W, x, y, w, h, 6, Rgb(90, 96, 100));
+    Round(iBack, SCR_W, x + 4, y + 3, w - 8, 17, 5, Rgb(50, 170, 50), Rgb(20, 110, 20));
+    TextCentre(iBack, SCR_W, iFText, x, x + w, y + 3 + (17 - iFText.iH) / 2, "Pause", Rgb(255, 255, 255));
+    for (TInt i = 0; i < EPItems; i++)
         {
-        t.Zero();
+        const TInt ry = y + 24 + i * rh;
+        const TBool on = i == iPauseSel;
+        Round(iBack, SCR_W, x + 12, ry, w - 24, rh - 2, 8, on ? Rgb(90, 96, 100) : Rgb(40, 42, 44), on ? Rgb(60, 64, 68) : Rgb(32, 34, 36));
+        char b[48]; b[0] = 0;
+        const TBool lr = i == EPOpponent || i == EPPanel;
+        if (on && lr) CCat(b, "< ");
         switch (i)
             {
-            case EMContinue: t.Append(_L("continue (Esc)")); break;
-            case EMRestart: t.Append(_L("restart (Backspace)")); break;
-            case EMGhost: t.Append(_L("ghost: ")); GhostName(t, iGhostMode); break;
-            case EMPlayers: t.AppendFormat(_L("hot seat players: %d"), iPlayers); break;
-            case EMPanel: t.Append(iHudOn ? _L("race panel: on (H)") : _L("race panel: off (H)")); break;
-            case EMNext: t.Append(_L("next track (N)")); break;
-            case EMPrev: t.Append(_L("previous track")); break;
-            case EMQuit: t.Append(_L("quit")); break;
+            case EPContinue: CCat(b, "Continue"); break;
+            case EPRestart: CCat(b, "Restart"); break;
+            case EPOpponent: CCat(b, "Opponent: "); CCat(b, GhostName(iGhostMode)); break;
+            case EPPanel: CCat(b, iHudOn ? "Race panels: on (H)" : "Race panels: off (H)"); break;
+            case EPMenu: CCat(b, "Back to the menu"); break;
             }
-        const TBool on = i == iMenuSel;
-        const TBool lr = i == EMGhost || i == EMPlayers || i == EMPanel;
-        if (on) m.Fill(TRect(4, y - 1, MENU_W - 4, y + h + 2), sel);
-        if (on && lr) { TBuf<48> u; u.Append(_L("< ")); u.Append(t.Left(44)); u.Append(_L(" >")); t = u; }
-        m.Text(items, t, on && lr ? 10 : 22, y, on ? yel : (lr ? pale : white));
-        y += h + 3;
+        if (on && lr) CCat(b, " >");
+        TextCentre(iBack, SCR_W, iFText, x + 12, x + w - 12, ry + (rh - 2 - iFText.iH) / 2, b, on ? Rgb(90, 170, 255) : Rgb(240, 240, 240));
         }
-    m.Text(iFontSmall, _L("up/down: choose  left/right: change  Enter: ok"), 10, MENU_H - iFontSmall->HeightInPixels() - 6, grey);
     }
 
-void CTmView::Blit(const TUint16* aSrc)
+// ---- the menus' side ----
+void CTmView::StartRace()
+    {
+    iPlayers = iUi->iPlayers > 1 ? iUi->iPlayers : 1;
+    for (TInt p = 0; p < 8; p++) { iNames[p][0] = 0; if (p < iPlayers) { TInt k = 0; for (; iUi->iNames[p][k] && k < 15; k++) iNames[p][k] = iUi->iNames[p][k]; iNames[p][k] = 0; } iPlayerBest[p] = 0; }
+    iAttempts = iUi->iAttempts > 0 ? iUi->iAttempts : 1;
+    iRound = 0; iPlayer = 0; iStandings = EFalse;
+    iSeriesN = iUi->iSeriesN; for (TInt k = 0; k < iSeriesN && k < 8; k++) iSeries[k] = iUi->iSeriesFiles[k];
+    iSeriesPos = 0;
+    switch (iUi->iRaceOpp)
+        {
+        case EOppNadeo: iGhostMode = EGhostNadeo; break;
+        case EOppGold: iGhostMode = EGhostGold; break;
+        case EOppSilver: iGhostMode = EGhostSilver; break;
+        case EOppBronze: iGhostMode = EGhostBronze; break;
+        case EOppRecord: iGhostMode = EGhostRecord; break;
+        case EOppLast: iGhostMode = EGhostLast; break;
+        default: iGhostMode = EGhostOff; break;
+        }
+    UnloadTrack();
+    if (!LoadTrack(iUi->iRaceFile)) { iUi->iDirty = ETrue; return; }
+    iInMenu = EFalse; iKeys = 0;
+    iSidesDirty = ETrue; iFirstBlit = ETrue;
+    }
+
+void CTmView::BackToMenu()
+    {
+    if (iRunIsRecord && iRun.iN) { iGhostRecord.Copy(iRun); SaveRecord(); iRunIsRecord = EFalse; }
+    UnloadTrack();
+    iInMenu = ETrue; iKeys = 0; iPause = EFalse;
+    iUi->iDirty = ETrue; iFirstBlit = ETrue;
+    }
+
+void CTmView::MenuKeyL(const TKeyEvent& aKey)
+    {
+    const TInt c = aKey.iCode, sc = aKey.iScanCode;
+    TInt key = -1, ch = 0;
+    if (c == EKeyUpArrow || sc == EStdKeyUpArrow || sc == EStdKeyDevice8) key = EUiUp;
+    else if (c == EKeyDownArrow || sc == EStdKeyDownArrow || sc == EStdKeyDevice9) key = EUiDown;
+    else if (c == EKeyLeftArrow || sc == EStdKeyLeftArrow || sc == EStdKeyDevice6) key = EUiLeft;
+    else if (c == EKeyRightArrow || sc == EStdKeyRightArrow || sc == EStdKeyDevice7) key = EUiRight;
+    else if (c == EKeyEnter || c == EKeyDevice3 || sc == EStdKeyDevice3) key = EUiOk;
+    else if (c == EKeyEscape) key = EUiBack;
+    else if (c == EKeyBackspace || c == EKeyDelete) key = EUiDel;
+    else if (c >= 32 && c < 127) { key = EUiChar; ch = c; }
+    if (key < 0) return;
+    const TInt a = iUi->Key(key, ch);
+    if (a == EUiQuit) iEikonEnv->EikAppUi()->HandleCommandL(EEikCmdExit);
+    else if (a == EUiRace) StartRace();
+    }
+
+void CTmView::Blit(const TUint16* aSrc, TBool aAll)
     {
     TBool direct = iFb && StartDirect();
     if (!direct) StopDirect();
     if (direct)
         {
-        // only what changes: the view in the middle and the counters' bar at the left (Maps 9300 copies the
-        // dirty rectangle the same way); the side bars stay black from the first frame
-        const TInt vx = (SCR_W - VIEW_W) / 2;
-        TRect rv(vx, 0, vx + VIEW_W, VIEW_H), rb(0, 0, BAR_W, BAR_H);
         if (iFbBpp == 12)
             {
             for (TInt y = 0; y < SCR_H; y++)
@@ -1156,18 +1269,36 @@ void CTmView::Blit(const TUint16* aSrc)
             iDsa->ScreenDevice()->Update();
             return;
             }
-        for (TInt y = 0; y < VIEW_H; y++)
-            fm_memcpy(iFb + y * iFbStride + vx * 2, aSrc + y * SCR_W + vx, VIEW_W * 2);
+        if (aAll || iFirstBlit)
+            {
+            for (TInt y = 0; y < SCR_H; y++) fm_memcpy(iFb + y * iFbStride, aSrc + y * SCR_W, SCR_W * 2);
+            iFirstBlit = EFalse; iSidesBlit = EFalse;
+            iDsa->ScreenDevice()->Update();
+            return;
+            }
+        // only what changes: the view; the sides when drawn again, else the speed's corner; the counters
+        for (TInt y = 0; y < VIEW_H; y++) fm_memcpy(iFb + y * iFbStride + VIEW_X * 2, aSrc + y * SCR_W + VIEW_X, VIEW_W * 2);
+        TRegionFix<4> upd; upd.AddRect(TRect(VIEW_X, 0, VIEW_X + VIEW_W, VIEW_H));
+        if (iSidesBlit)
+            {
+            for (TInt y = 0; y < SCR_H; y++)
+                {
+                fm_memcpy(iFb + y * iFbStride, aSrc + y * SCR_W, SIDE_W * 2);
+                fm_memcpy(iFb + y * iFbStride + RIGHT_X * 2, aSrc + y * SCR_W + RIGHT_X, (SCR_W - RIGHT_X) * 2);
+                }
+            upd.AddRect(TRect(0, 0, SIDE_W, SCR_H)); upd.AddRect(TRect(RIGHT_X, 0, SCR_W, SCR_H));
+            iSidesBlit = EFalse;
+            }
+        else if (iHudOn)
+            {
+            for (TInt y = SCR_H - 26; y < SCR_H; y++) fm_memcpy(iFb + y * iFbStride + RIGHT_X * 2, aSrc + y * SCR_W + RIGHT_X, (SCR_W - RIGHT_X) * 2);
+            upd.AddRect(TRect(RIGHT_X, SCR_H - 26, SCR_W, SCR_H));
+            }
         if (iShowInfo || iBench >= 0)
+            {
             for (TInt y = 0; y < BAR_H; y++) fm_memcpy(iFb + y * iFbStride, aSrc + y * SCR_W, BAR_W * 2);
-        const TInt rx = (SCR_W + VIEW_W) / 2;
-        // 0.9: the panel's rows that changed only
-        const TInt pr0 = iPanelR0 < 0 ? 0 : iPanelR0, pr1 = iPanelR1 > SCR_H ? SCR_H : iPanelR1;
-        for (TInt y = pr0; y < pr1; y++) fm_memcpy(iFb + y * iFbStride + rx * 2, aSrc + y * SCR_W + rx, HUD_W * 2);
-        if (iFirstBlit) { for (TInt y = 0; y < SCR_H; y++) fm_memcpy(iFb + y * iFbStride, aSrc + y * SCR_W, SCR_W * 2); iFirstBlit = EFalse; }
-        TRegionFix<3> upd; upd.AddRect(rv); upd.AddRect(rb);
-        if (pr1 > pr0) upd.AddRect(TRect(rx, pr0, rx + HUD_W, pr1));
-        iPanelR0 = SCR_H; iPanelR1 = 0;
+            upd.AddRect(TRect(0, 0, BAR_W, BAR_H));
+            }
         iDsa->ScreenDevice()->Update(upd);
         return;
         }
@@ -1197,7 +1328,6 @@ void CTmView::Draw(const TRect& /*aRect*/) const
         gc.UseFont(font);
         gc.SetPenColor(KRgbWhite);
         gc.DrawText(iStatus, TPoint(20, 60));
-        gc.DrawText(_L("Copy a .tmb to C:\\system\\apps\\tm9300\\ and restart"), TPoint(20, 90));
         gc.DiscardFont();
         return;
         }
@@ -1219,6 +1349,7 @@ TKeyResponse CTmView::OfferKeyEventL(const TKeyEvent& aKeyEvent, TEventCode aTyp
         case 'A': bit = KEY_LEFT; break;
         case 'D': bit = KEY_RIGHT; break;
         }
+    if (iInMenu || iPause) bit = 0;
     if (aType == EEventKeyDown) iKeys |= bit;
     else if (aType == EEventKeyUp) iKeys &= ~bit;
     else if (aType == EEventKey)
@@ -1226,46 +1357,44 @@ TKeyResponse CTmView::OfferKeyEventL(const TKeyEvent& aKeyEvent, TEventCode aTyp
         TInt c = aKeyEvent.iCode;
         const TInt sc = aKeyEvent.iScanCode;
         if (!iLoaded) { if (c == EKeyEscape) iEikonEnv->EikAppUi()->HandleCommandL(EEikCmdExit); return EKeyWasConsumed; }
+        if (iInMenu) { MenuKeyL(aKeyEvent); return EKeyWasConsumed; }
         const TBool joyPress = (c == EKeyDevice3 || sc == EStdKeyDevice3);
-        // 0.8: Esc opens the menu (and closes it); in the menu the arrows / joystick choose, Enter / its press select
-        if (iMenu)
+        if (iPause)
             {
-            if (c == EKeyEscape) { MenuClose(); return EKeyWasConsumed; }
-            TInt dir = 0;
-            if (c == EKeyUpArrow || sc == EStdKeyUpArrow || sc == EStdKeyDevice8) dir = 1;
-            else if (c == EKeyDownArrow || sc == EStdKeyDownArrow || sc == EStdKeyDevice9) dir = 2;
-            else if (c == EKeyLeftArrow || sc == EStdKeyLeftArrow || sc == EStdKeyDevice6) dir = 3;
-            else if (c == EKeyRightArrow || sc == EStdKeyRightArrow || sc == EStdKeyDevice7) dir = 4;
-            const TBool select = c == EKeyEnter || joyPress || c == ' ';
-            if (dir || select) MenuKeyL(dir, select);
-            else if (c == 'h' || c == 'H') { SetHud(!iHudOn); iMenuDirty = ETrue; }
+            TInt key = -1;
+            if (c == EKeyEscape) key = EUiBack;
+            else if (c == EKeyUpArrow || sc == EStdKeyUpArrow || sc == EStdKeyDevice8) key = EUiUp;
+            else if (c == EKeyDownArrow || sc == EStdKeyDownArrow || sc == EStdKeyDevice9) key = EUiDown;
+            else if (c == EKeyLeftArrow || sc == EStdKeyLeftArrow || sc == EStdKeyDevice6) key = EUiLeft;
+            else if (c == EKeyRightArrow || sc == EStdKeyRightArrow || sc == EStdKeyDevice7) key = EUiRight;
+            else if (c == EKeyEnter || joyPress || c == ' ') key = EUiOk;
+            else if (c == 'h' || c == 'H') { iPauseSel = EPPanel; key = EUiOk; }
+            if (key >= 0) PauseKeyL(key);
             return EKeyWasConsumed;
             }
-        if (c == EKeyEscape) { MenuOpen(); return EKeyWasConsumed; }
+        if (c == EKeyEscape) { if (iDriving && iBench < 0) PauseOpen(); else BackToMenu(); return EKeyWasConsumed; }
         if (iDriving)
             {
-            // the joystick's press does nothing while driving (0.8: it respawned by accident when steering)
+            // the joystick's press does nothing while driving; Enter: back to the last checkpoint taken (the start
+            // when none), the clock running; after the finish the next run; Backspace: the start
             if (joyPress) return EKeyWasConsumed;
-            // Enter: back to the last checkpoint taken (the start when none), the clock running; after the finish
-            // the next run (the hot seat's next player); Backspace: the start
-            if (c == EKeyEnter) { if (iCar->iFinished) NextRun(); else { iCar->Respawn(); iCam->Reset(iCar->iS); } return EKeyWasConsumed; }
-            if (c == EKeyBackspace) { DriveReset(); return EKeyWasConsumed; }
+            if (c == EKeyEnter) { if (iCar->iFinished) NextRun(); else if (iRaceSteps >= 0) { iCar->Respawn(); iCam->Reset(iCar->iS); } return EKeyWasConsumed; }
+            if (c == EKeyBackspace) { if (!iStandings) DriveReset(); return EKeyWasConsumed; }
             }
-        if (c == 'n' || c == 'N') { TInt i = iTrackIndex + 1; UnloadTrack(); iLoaded = LoadTrack(i); if (!iLoaded) DrawNow(); return EKeyWasConsumed; }
-        if ((c == 'v' || c == 'V') && iGround) { iDriving = !iDriving; if (iDriving) DriveReset(); else { iStart.UniversalTime(); iPauseAt = -1; } }
-        else if (c == ' ')
+        if (c == 'h' || c == 'H') { iPauseSel = EPPanel; iPause = ETrue; PauseKeyL(EUiOk); iPause = EFalse; }
+        else if ((c == 'v' || c == 'V') && iGround) { iDriving = !iDriving; if (iDriving) DriveReset(); else { iStart.UniversalTime(); iPauseAt = -1; } }
+        else if (c == ' ' && !iDriving)
             {
             if (iPauseAt >= 0) { TTime now; now.UniversalTime(); iStart = now - TTimeIntervalMicroSeconds(iPauseAt * 1000); iPauseAt = -1; }
             else { TTime now; now.UniversalTime(); iPauseAt = (TInt)(now.MicroSecondsFrom(iStart).Int64().Low() / 1000); }
             }
-        else if (c == 'f' || c == 'F') iShowInfo = !iShowInfo;
+        else if (c == 'f' || c == 'F') { iShowInfo = !iShowInfo; iSidesDirty = ETrue; }
         else if (c == 'm' || c == 'M') iView->iMeshMode = !iView->iMeshMode;
-        else if (c == 'h' || c == 'H') SetHud(!iHudOn);       // 0.9: the race panel on / off (the depth test is always on)
         else if (c == '+' || c == '=') { iFarM += 30; if (iFarM > 480) iFarM = 480; iView->iFarCut = iFarM * 16; }
         else if (c == '-') { iFarM -= 30; if (iFarM < 60) iFarM = 60; iView->iFarCut = iFarM * 16; }
         else if (c == 'r' || c == 'R') { if (iDriving) DriveReset(); else { iStart.UniversalTime(); iPauseAt = -1; iYawOff = 0; iPitchOff = 0; } }
         else if (c == 'b' || c == 'B') { if (iBench < 0) { iDriving = EFalse; BenchStart(); } }
-        else if (c >= '1' && c <= '9') iSpeed = (c - '0') * 25;
+        else if (c >= '1' && c <= '9' && !iDriving) iSpeed = (c - '0') * 25;
         else if (c == '0') { iYawOff = 0; iPitchOff = 0; }
         }
     return EKeyWasConsumed;

@@ -4,3 +4,5 @@ phone/bin/
 phone/emu/out/
 *.tgz
 *.tmb
+*.tmt
+*.ui

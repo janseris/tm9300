@@ -1,6 +1,7 @@
-; TrackMania 9300 - the tracks (one of each campaign series of Rally and Snow); installed on their own
+; TrackMania 9300 - the tracks (one of each campaign series of Rally and Snow), their pictures and the menus' pictures
+; (cut from the game's own files on the PC: never in git); installed on their own
 &EN
-#{"TM9300 tracks"},(0x0E3D9311),0,8,0
+#{"TM9300 tracks"},(0x0E3D9311),0,11,0
 (0x101F8ED2), 0, 0, 0, {"Series80ProductID"}
 "../data/rallyA1.tmb"-"!:\system\apps\tm9300\rallyA1.tmb"
 "../data/rallyB1.tmb"-"!:\system\apps\tm9300\rallyB1.tmb"
@@ -12,3 +13,14 @@
 "../data/snowC2.tmb"-"!:\system\apps\tm9300\snowC2.tmb"
 "../data/snowD3.tmb"-"!:\system\apps\tm9300\snowD3.tmb"
 "../data/snowE.tmb"-"!:\system\apps\tm9300\snowE.tmb"
+"../data/rallyA1.tmt"-"!:\system\apps\tm9300\rallyA1.tmt"
+"../data/rallyB1.tmt"-"!:\system\apps\tm9300\rallyB1.tmt"
+"../data/rallyC1.tmt"-"!:\system\apps\tm9300\rallyC1.tmt"
+"../data/rallyD2.tmt"-"!:\system\apps\tm9300\rallyD2.tmt"
+"../data/rallyE.tmt"-"!:\system\apps\tm9300\rallyE.tmt"
+"../data/snowA1.tmt"-"!:\system\apps\tm9300\snowA1.tmt"
+"../data/snowB1.tmt"-"!:\system\apps\tm9300\snowB1.tmt"
+"../data/snowC2.tmt"-"!:\system\apps\tm9300\snowC2.tmt"
+"../data/snowD3.tmt"-"!:\system\apps\tm9300\snowD3.tmt"
+"../data/snowE.tmt"-"!:\system\apps\tm9300\snowE.tmt"
+"../data/tm9300.ui"-"!:\system\apps\tm9300\tm9300.ui"

@@ -5,7 +5,7 @@ set -e
 HERE=$(cd "$(dirname "$0")" && pwd)
 export EPOC=${EPOC:-$HOME/sym/s80_20/epoc32} TOOLS=${TOOLS:-$HOME/sym/gcc539/bin}
 export OPT="-O2 -mno-short-load-bytes"
-SRCS="src/tm9300_app.cpp src/tmcore.cpp src/tmphys.cpp src/r3d.cpp src/r3dgeo.c src/r3dspan.c src/fastmem.c src/fastmem_ref.c"
+SRCS="src/tm9300_app.cpp src/tmui.cpp src/tmcore.cpp src/tmphys.cpp src/r3d.cpp src/r3dgeo.c src/r3dspan.c src/fastmem.c src/fastmem_ref.c"
 LIBS="euser.lib esock.lib insock.lib apparc.lib cone.lib eikcore.lib ckncore.lib fbscli.lib ws32.lib efsrv.lib hal.lib bitgdi.lib gdi.lib bafl.lib"
 cd "$HERE"
 PETRAN_EXTRA="-heap 0x10000 0x800000" bash tools/symbuild.sh tm9300 0x0E3D9310 "$HERE/build" "$SRCS" "$HERE/inc" "$LIBS" group/tm9300.rss

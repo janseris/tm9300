@@ -301,6 +301,26 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
 - No "Esc: menu" line (the panel did not fit 200 pixels).
 - The camera 7.8 m back and 5 m up (0.8: 6.5 m and 5.2 m, too close).
 
+## 0.11: the game's menus (9 Nov 2026)
+- The app opens on the game's start-up (its loading picture, the orange "Press any key" bar) and its menus:
+  Welcome (Play Solo, Party Mode, Quit; Play Online, Editors and Profile greyed as the phone has none), Play
+  Solo: United, Races, the five colours (White A .. Black E) with the tracks as the game's grid (pictures, a
+  padlock for what is not installed, the medal won), then "Choose an opponent" (the Nadeo, gold, silver and
+  bronze medals with their times, your record, none). Party Mode: Hot Seat (the attempts, up to eight named
+  players), then a series.
+- The pictures are the game's own: the icons (Icons128x128), the medals (MedalsBig), the race timer's LED digits
+  and plate, 3-2-1-Go, the United logo (`tools/pc/uipack.py` cuts them from GameData into `tm9300.ui`), and the
+  globe and the loading picture from the user's screenshots. They go to the phone only, never to git.
+- Each track's picture is drawn on the PC by our own renderer from high over the replay's line (`host/tmthumb`,
+  `<track>.tmt`, with the medal times).
+- The menus are plain C++ (`tmui.cpp`): the same code draws them on the PC (`host/tmuiprev`) and on the phone;
+  the ARM emulator's pixels equal the PC's.
+- The race as the game's: a 3-2-1-Go countdown with the clock running up from -0:01.50, the LED timer on its blue
+  plate under the view, the opponent's medal and time and the player(s) on the left, the track and "Nadeo" top
+  right, the speed in LED digits bottom right, a checkpoint's time with the gap to the opponent at the top, and
+  the result (the time in the medal's colour, the medal, the gap) with "Press Enter to restart". Esc pauses
+  (continue, restart, opponent, the race panels, back to the menu).
+
 ## Next
 
 1. **Speed on Snow**: SnowA1 draws ~2,000 triangles a frame (3.8 M instructions: ~18 fps on the phone), the
