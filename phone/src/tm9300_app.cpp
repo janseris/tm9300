@@ -37,7 +37,7 @@ const TInt KBenchPort = 8000;
 enum { BENCH_VARIANTS = 5, BENCH_LOG = 6144 };
 enum { BAR_W = 64, BAR_H = 152 };           // the counters, top left (F)
 enum { SIDE_W = VIEW_X, RIGHT_X = VIEW_X + VIEW_W };
-static const char* const KVersionC = "0.12";
+static const char* const KVersionC = "0.13";
 enum { KMaxFiles = 64 };
 
 // the benchmark's log to the PC (the local server's /results, into its uploads folder), after Hrimfell's
@@ -489,7 +489,7 @@ void CTmView::BenchStart()
     iLog.Zero();
     TInt f = 0, t = 0; HAL::Get(HALData::EMemoryRAMFree, f); HAL::Get(HALData::EMemoryRAM, t);
     TBuf8<64> name8; name8.Copy(iStatus);
-    iLog.AppendFormat(_L8("tm9300 bench v0.12: %S, %d meshes %d instances %d triangles, display %d bpp direct %d, RAM free %d KB of %d KB\r\n"),
+    iLog.AppendFormat(_L8("tm9300 bench v0.13: %S, %d meshes %d instances %d triangles, display %d bpp direct %d, RAM free %d KB of %d KB\r\n"),
         &name8, iTrack->iNMesh, iTrack->iNInst, iTrack->iTris, iFbBpp, iFb ? 1 : 0, f / 1024, t / 1024);
     iLog.Append(_L8("variant: frames, fps, draw ms (avg), copy ms (avg), slowest frame ms, polys drawn, submitted, instances visible (avg), direct; fps by second\r\n"));
     iShowInfo = EFalse;
@@ -668,8 +668,8 @@ void CTmView::DriveReset()
     iCam->Reset(iCar->iS);
     iDriveStart.UniversalTime();
     iDriveSteps = 0;
-    // the countdown first (0.12: 3 s as the game's: 3, 2, 1 a second each, the clock running up from -0:03.00), then the race
-    iRaceSteps = -150; iSeenCps = 0; iSplitUntil = 0; iSplitHas = EFalse;
+    // the countdown first (0.13: as the game shows it: the clock from -0:02.60, "2" to -1 s, "1" to the start), then the race
+    iRaceSteps = -130; iSeenCps = 0; iSplitUntil = 0; iSplitHas = EFalse;
     iRun.Begin();
     iView->iGhostOn = 0;
     iSidesDirty = ETrue;
@@ -1017,10 +1017,10 @@ void CTmView::DrawOverlay()
     else FormatTime(b, (iCar->iFinished ? iCar->iFinishSteps : iCar->iSteps) * 20);
     if (iPack.iN) Led(iBack, SCR_W, px + (pw - LedWidth(b)) / 2, py + (ph - 18) / 2 + 1, b);
     else Clock(iBack, SCR_W, iFBig, px + (pw - ClockWidth(iFBig, b)) / 2, py + (ph - iFBig.iH) / 2, b, Rgb(255, 255, 255));
-    // the countdown: 3, 2, 1 (a second each), then Go! for half a second
+    // the countdown: 2 (from the clock's start at -2.60), 1 (the last second), then Go! for half a second
     if (iRaceSteps < 25 && !iCar->iFinished)
         {
-        const TInt k = iRaceSteps < -100 ? 0 : iRaceSteps < -50 ? 1 : iRaceSteps < 0 ? 2 : 3;
+        const TInt k = iRaceSteps < -50 ? 1 : iRaceSteps < 0 ? 2 : 3;
         char nm[4] = { 'g', 'o', (char) ('0' + k), 0 };
         const TmImage* m = iPack.Find(nm);
         if (m) TmDraw::Blit(iBack, SCR_W, VIEW_X + (VIEW_W - m->w) / 2, 50, m);
