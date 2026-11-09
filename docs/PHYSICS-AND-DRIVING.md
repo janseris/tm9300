@@ -223,6 +223,48 @@ frame, the replays) and checked in the ARM emulator (physics and frames identica
 20 finish under the auto-driver (0.5: 15), every Rally A/B track among them. The failures are mostly Snow C/D
 (wall rides and loops the physics does not model) and long E tracks.
 
+## 0.8: ghosts, medals, the menu, a higher camera, walls on everything (9 Nov 2026)
+
+### The camera
+6.5 m back along the trail and 5.2 m up (was 8 m, 3 m), looking at a point 7 m past the car, so the car sits in
+the lower third and the road ahead shows over it (Nadeo's own cameras, `Vehicles/ControlCamera/*.CtrlCamTmRace`:
+"Close" 3 m up / 6 m back / 75°, "Behind" 5.9 m / 7.5 m / 75°, "Behind 2" 5.5 m / 9 m / 70°). Under a roof,
+a bridge or a track overhead it stays 1.5 m under the first surface over the trail (at least 1.2 m up).
+
+### Ghosts (`TmGhost`, tmphys)
+- A run is the car's place every 5 steps (100 ms, 16 bytes a point, 10 minutes at most), the step it took each
+  checkpoint and the finish. Recorded while driving; played back by the race's step (interpolated).
+- The author's ghost is the track's replay (its checkpoints found by running the path every 20 ms through the
+  checkpoint boxes with the car's own grouping). Gold, silver and bronze are the same run on a slower clock:
+  it crosses the line at the medal's time. The medal times come from each track file's header (chunk
+  0x03043002 / 0x24003002) into a `MEDL` trailer at the end of the .tmb.
+- The record (best finished run) is saved per track to `C:\Data\TM9300\<track>.ghost` ("TMG1"); "last run" is
+  the previous finished run: in the hot seat that is the previous player.
+- Drawn in the car's colours halved towards pale blue, in its place among the instances by distance, not
+  within 3 m of the car. Cost on the ARM emulator: +0.06 M instructions a frame far off, +0.25 M close (2-8 %).
+
+### What the replays really say (a correction)
+The replay files run on past the finish: their length (22.0 s on Rally A1) is not the author's time (18.95 s).
+Against the real times the auto-driver is ~19 % slower on Rally A1/B1 (22.5 vs 18.95, 20.4 vs 17.1) — it
+keeps ~105 km/h through corners the author takes at ~175 — and about even on Snow A1 (17.5 vs 18.0). So the
+author ghost will pull away on Rally; the Rally car's cornering grip is the next thing to look at.
+
+### Collision
+Every steep face of a piece that has any collision in the game is now a wall (was: only where Nadeo's
+collision had a wall within 0.6 m facing the same way, which the simplified shapes of fences, posts, houses
+and rocks often missed). The car checks walls 0.25 m and 0.6 m over its wheels, so kerbs and painted edges
+still let it over. Regression unchanged (20/42 finish, the same times); up to 14 % more triangle tests.
+
+### The app
+- Esc opens a menu (continue, restart, ghost: off / Nadeo / gold / silver / bronze / record / last run,
+  hot seat players 1-4, depth fix, next / previous track, quit); the race stands still while it is open.
+- The joystick's press no longer respawns (Enter does).
+- After the finish the clock stops, the keys do nothing (the car brakes to a stop), and a box shows the time
+  in the medal's colour, the medal, the difference to the ghost and "press Enter to restart" (in the hot seat:
+  the next player). The panel on the right is in the phone's own fonts: the time as the game shows it
+  (m:ss.cc), km/h, checkpoints, each checkpoint's difference to the ghost (blue ahead, red behind) for 3 s,
+  the ghost, the player, the track, "depth fix on/off (toggle: Z)", and the players' bests.
+
 ## Next
 
 1. **Speed on Snow**: SnowA1 draws ~2,000 triangles a frame (3.8 M instructions: ~18 fps on the phone), the

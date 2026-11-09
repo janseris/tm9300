@@ -11,6 +11,10 @@ TmTrack::~TmTrack() { delete[] iMesh; delete[] iInst; delete[] iColl; delete[] i
 
 bool TmTrack::Load(const unsigned char* aData, int aSize)
     {
+    // 0.8: the medal times in the last 20 bytes ("MEDL" + 4 * i32), when the packer put them there
+    iMedal[0] = iMedal[1] = iMedal[2] = iMedal[3] = 0;
+    if (aSize >= 84 && aData[aSize - 20] == 'M' && aData[aSize - 19] == 'E' && aData[aSize - 18] == 'D' && aData[aSize - 17] == 'L')
+        for (int k = 0; k < 4; k++) { int v = RdI32(aData + aSize - 16 + k * 4); iMedal[k] = v > 0 && v < 3600000 ? v : 0; }
     const unsigned char* p = aData;
     const unsigned char* end = aData + aSize;
     if (aSize < 40 || p[0] != 'T' || p[1] != 'M' || p[2] != 'B' || p[3] < '3' || p[3] > '6') return false;
@@ -110,8 +114,8 @@ const unsigned int* TmTrack::PvsCell(int aCamX, int aCamZ) const
     return (const unsigned int*) (iPvs + (cz * iPvsW + cx) * iPvsWords * 4);
     }
 
-TmView::TmView() : iCarSlopeF(0), iCarSlopeR(0), iIdMode(0), iUsePvs(1), iFarCut(0), iFlipWinding(0), iMeshMode(1), iSkipEnd(0), iR(0), iW(0), iH(0), iMaxPolys(0), iOrder(0), iKey(0), iFar(0), iVtx(0), iXyz(0), iUv0(0), iFlipIdx(0), iIdCol(0), iVtxCap(0), iUvCap(0) {}
-TmView::~TmView() { delete iR; delete[] iOrder; delete[] iKey; delete[] iFar; delete[] iVtx; delete[] iXyz; delete[] iUv0; delete[] iFlipIdx; delete[] iIdCol; }
+TmView::TmView() : iCarSlopeF(0), iCarSlopeR(0), iGhostOn(0), iGhostX(0), iGhostY(0), iGhostZ(0), iGhostYaw(0), iGhostSlopeF(0), iGhostSlopeR(0), iIdMode(0), iUsePvs(1), iFarCut(0), iFlipWinding(0), iMeshMode(1), iSkipEnd(0), iR(0), iGhostXyz(0), iGhostCol(0), iGhostN(0), iW(0), iH(0), iMaxPolys(0), iOrder(0), iKey(0), iFar(0), iVtx(0), iXyz(0), iUv0(0), iFlipIdx(0), iIdCol(0), iVtxCap(0), iUvCap(0) {}
+TmView::~TmView() { delete iR; delete[] iOrder; delete[] iKey; delete[] iFar; delete[] iVtx; delete[] iXyz; delete[] iUv0; delete[] iFlipIdx; delete[] iIdCol; delete[] iGhostXyz; delete[] iGhostCol; }
 
 bool TmView::Init(int aW, int aH, int aMaxPolys)
     {
@@ -211,6 +215,22 @@ static int Dist2(const TmInst& t, int cx, int cz)
     }
 
 // the scratch for a mesh of aNv corners and aNf faces (grown, never shrunk)
+// a car mesh at (aX, aY, aZ) (1/16 m: its contact point) turned aYaw, tilted by the slopes (* 4096)
+void TmView::DrawCar(const TmMesh& aM, short* aXyz, const R3Pix* aCol, int aX, int aY, int aZ, int aYaw, int aSlopeF, int aSlopeR)
+    {
+    R3D& r = *iR;
+    // the car's model points along +z; its yaw as the camera's (0 = +z, clockwise)
+    const int s = R3D::Sin(aYaw), co = R3D::Cos(aYaw);
+    const short* v = aM.v; short* o = aXyz;
+    // tilted with the ground first (a shear: fine for the slopes a car stays on), then turned
+    for (int k = 0; k < aM.nv; k++, v += 3, o += 3)
+        {
+        int x = v[0], z = v[2], y = v[1] + ((x * aSlopeR + z * aSlopeF) >> 12);
+        o[0] = (short) ((x * co + z * s) >> 14); o[1] = (short) y; o[2] = (short) ((z * co - x * s) >> 14);
+        }
+    if (r.MeshBegin(aXyz, aM.nv, 1, aX, aY + 1, aZ)) r.MeshTris(aM.idx, iUv0, aCol, aM.nf, 0, 0, 0, 0);
+    }
+
 void TmView::Reserve(int aNv, int aNf)
     {
     if (aNv > iVtxCap)
@@ -281,27 +301,42 @@ void TmView::Frame(R3Pix* aFrame, int aStride, const TmTrack& aT, int aCamX, int
             iKey[j] = k; iOrder[j] = o;
             }
     // the car first: nearest, and the only thing turned per frame (its corners into iXyz)
-    if (aDrawCar && !iIdMode && aT.iCar >= 0 && aT.iCar < aT.iNMesh)
+    const bool car = aDrawCar && !iIdMode && aT.iCar >= 0 && aT.iCar < aT.iNMesh;
+    if (car)
         {
         const TmMesh& m = aT.iMesh[aT.iCar];
         Reserve(m.nv, m.nf);
-        if (iXyz && iUv0)
+        if (iXyz && iUv0) DrawCar(m, iXyz, (const R3Pix*) m.col, aCarX, aCarY, aCarZ, aCarYaw, iCarSlopeF, iCarSlopeR);
+        }
+    // 0.8: the ghost: its distance as the instances' key; drawn before the first instance further away
+    int ghostKey = -1;
+    if (car && iGhostOn)
+        {
+        const int gdx = (iGhostX - aCarX) >> 4, gdz = (iGhostZ - aCarZ) >> 4, gdy = (iGhostY - aCarY) >> 4;
+        const int cdx = (iGhostX - aCamX) >> 4, cdz = (iGhostZ - aCamZ) >> 4;
+        const int gfwd = cdx * fs + cdz * fc;                  // m * 1024 along the view
+        if ((gdx * gdx + gdz * gdz > 9 || gdy * gdy > 9) && gfwd > -3 * 1024 && cdx * cdx + cdz * cdz <= far2)
             {
-            // the car's model points along +z; its yaw as the camera's (0 = +z, clockwise)
-            int s = R3D::Sin(aCarYaw), co = R3D::Cos(aCarYaw);
-            const short* v = m.v; short* o = iXyz;
-            // tilted with the ground first (a shear: fine for the slopes a car stays on), then turned
-            const int sf = iCarSlopeF, sr = iCarSlopeR;
-            for (int k = 0; k < m.nv; k++, v += 3, o += 3)
+            const TmMesh& m = aT.iMesh[aT.iCar];
+            if (iGhostN < m.nv || iGhostN < m.nf)
                 {
-                int x = v[0], z = v[2], y = v[1] + ((x * sr + z * sf) >> 12);
-                o[0] = (short) ((x * co + z * s) >> 14); o[1] = (short) y; o[2] = (short) ((z * co - x * s) >> 14);
+                delete[] iGhostXyz; delete[] iGhostCol; iGhostN = m.nv > m.nf ? m.nv : m.nf;
+                iGhostXyz = new short[iGhostN * 3]; iGhostCol = new unsigned short[iGhostN];
+                if (!iGhostXyz || !iGhostCol) { delete[] iGhostXyz; delete[] iGhostCol; iGhostXyz = 0; iGhostCol = 0; iGhostN = 0; }
+                // the car's colours halfway to a pale blue
+                else for (int k = 0; k < m.nf; k++) iGhostCol[k] = (unsigned short) (((((const unsigned short*) m.col)[k] >> 1) & 0x7BEF) + ((0xA5DF >> 1) & 0x7BEF));
                 }
-            if (r.MeshBegin(iXyz, m.nv, 1, aCarX, aCarY + 1, aCarZ)) r.MeshTris(m.idx, iUv0, (const R3Pix*) m.col, m.nf, 0, 0, 0, 0);
+            if (iGhostXyz) ghostKey = cdx * cdx + cdz * cdz;
             }
         }
-    for (int oi = 0; oi < n; oi++)
+    for (int oi = 0; oi <= n; oi++)
         {
+        if (ghostKey >= 0 && (oi == n || iKey[oi] >= ghostKey))
+            {
+            DrawCar(aT.iMesh[aT.iCar], iGhostXyz, (const R3Pix*) iGhostCol, iGhostX, iGhostY + 3, iGhostZ, iGhostYaw, iGhostSlopeF, iGhostSlopeR);
+            ghostKey = -1;
+            }
+        if (oi == n) break;
         const TmInst& t = aT.iInst[iOrder[oi]];
         if (r.Full()) { iStats.full = 1; break; }
         if (!r.BoxVisible(t.bb[0], t.bb[1], t.bb[2], t.bb[3], t.bb[4], t.bb[5])) continue;

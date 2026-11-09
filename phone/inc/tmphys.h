@@ -106,6 +106,8 @@ public:
     void Update(const TmGround& aG, const TmCarState& aS, int& aX, int& aY, int& aZ, int& aYaw, int& aPitch);
     // the camera as the last Update left it (a frame with no step)
     void Current(int& aX, int& aY, int& aZ, int& aYaw, int& aPitch) const { aX = iX >> 4; aY = iY >> 4; aZ = iZ >> 4; aYaw = iViewYaw; aPitch = iViewPitch; }
+    // 0.8: the placing (1/256 m): back along the trail, up over it, the look's point over the car and ahead of it
+    int iBack, iUp, iLookUp, iLookAhead;
 private:
     void Push(int aX, int aY, int aZ);
     void Target(const TmCarState& aS, int& aX, int& aY, int& aZ) const;
@@ -116,6 +118,35 @@ private:
     enum { KTrail = 64 };       // the car's trail: a point every 0.4 m (25 m)
     int iTx[KTrail], iTy[KTrail], iTz[KTrail];
     int iTn, iTh;               // points held, the newest's index
+    };
+
+// 0.8: a ghost: a run as the car's place every 5 steps (100 ms), the steps it took each checkpoint and the finish.
+// Made from a driven run (Record each step) or from the track's replay (FromPath); played back by the race's step.
+struct TmGhostPt { int x, y, z; short yaw; signed char sf, sr; };     // 1/16 m, 0..4095, the tilt (* 4096 >> 5)
+class TmGhost
+    {
+public:
+    enum { KMaxPts = 6000, KMaxCps = 32 };          // 10 minutes
+    TmGhost();
+    ~TmGhost();
+    void Clear();                                   // empty (no run)
+    bool Begin();                                   // a new run to record (false: no memory)
+    void Record(const TmCar& aCar);                 // after each Step: a point every 5 steps, the checkpoints, the finish
+    bool FromPath(const TmTrack& aT, const TmGround& aG, const TmCar& aCarForCps);    // the replay (its checkpoints found on the way)
+    bool Copy(const TmGhost& aFrom);
+    // the place at a step of the race (false: no points); past the end the last point
+    bool At(int aStep, int& aX, int& aY, int& aZ, int& aYaw, int& aSlopeF, int& aSlopeR) const;
+    int Finish() const { return iFinish; }          // steps (0: not finished)
+    int CpSteps(int aK) const { return aK >= 0 && aK < iNCp ? iCp[aK] : 0; }    // the step it took its aK-th checkpoint (0: none)
+    // the file form (a flat buffer): Size bytes; Load false when it is not one
+    int Size() const;
+    void Write(unsigned char* aBuf) const;
+    bool Load(const unsigned char* aBuf, int aLen);
+    int iN;
+private:
+    TmGhostPt* iPt;
+    int iFinish, iNCp, iCp[KMaxCps];
+    int iSteps, iLastCps;
     };
 
 #endif

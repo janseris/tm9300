@@ -20,12 +20,16 @@ extern "C" int emu_load(const unsigned char* aData, int aSize, int aW, int aH)
 extern "C" int emu_setup(int aMaxPolys, int aFarCutM, int aFocal) { gV->iR->SetMax(aMaxPolys); gV->iFarCut = aFarCutM * 16; gFocal = aFocal; return 0; }
 extern "C" int emu_znear(int aMetres) { gV->iR->iZNear = (aMetres % 1000) * 16; return gV->iR->iZNear; }
 // draws the frame at path sample aSample into aFrame; aStats gets 8 ints (TmFrameStats)
+static int gGhost = 0;   // 0.8: a ghost aGhost path samples ahead of the car (0: none)
+extern "C" int emu_ghost(int aAhead) { gGhost = aAhead; return 0; }
 extern "C" int emu_frame(R3Pix* aFrame, int aSample, int* aStats)
     {
     int cx, cy, cz, yaw, pitch;
     gV->ChaseCamera(*gT, aSample, 0, cx, cy, cz, yaw, pitch);
     int carx, cary, carz, caryaw;
     gV->CarAt(*gT, aSample, 0, carx, cary, carz, caryaw);
+    gV->iGhostOn = 0;
+    if (gGhost) { int gs = aSample + gGhost; if (gs >= gT->iNPath) gs = gT->iNPath - 1; gV->CarAt(*gT, gs, 0, gV->iGhostX, gV->iGhostY, gV->iGhostZ, gV->iGhostYaw); gV->iGhostSlopeF = gV->iGhostSlopeR = 0; gV->iGhostOn = 1; }
     gV->Frame(aFrame, gW, *gT, cx, cy, cz, yaw, pitch, gFocal, carx, cary, carz, caryaw, 1);
     const int* s = (const int*) &gV->iStats; for (int i = 0; i < 8; i++) aStats[i] = s[i];
     return gV->iStats.drawn;

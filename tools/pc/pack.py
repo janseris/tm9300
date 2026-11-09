@@ -32,6 +32,7 @@ The collision meshes are Nadeo's own collision solids (CPlugSurface), pre-turned
 # off: the renderer's depth test (tm9300 0.5, R3D 1.60) draws layered surfaces right; --depthfix turns them on
 DEPTHFIX = False
 CAR_TRIS = int(__import__('os').environ.get('CAR_TRIS', '600'))   # the car's triangles (vertex clustering below ~500 ruins its shape)
+ALLWALLS = __import__('os').environ.get('ALLWALLS', '1') != '0'     # 0.8: every steep face of a collidable piece is a wall
 WALL_NY = 0.45         # faces steeper than ~63 degrees are walls (the car hits them), not ground: a big stone's side, a bank
 WALLSTAT = [0, 0]      # steep faces kept as walls / dropped (per solid when PACKSTATS is set)
 import sys, json, struct, math, os, collections
@@ -275,6 +276,27 @@ def canopies(sprites, col):
         b = len(verts); verts += m.verts; faces += [(a + b, bb + b, c + b, cc) for a, bb, c, cc in m.faces]
     return Mesh(verts, faces)
 
+def medal_times(path):
+    """0.8: the track's medal times (ms) from its file's header (chunk 0x03043002, or 0x24003002 in the older
+    class numbering): author ("Nadeo"), gold, silver, bronze; zeros when not found"""
+    try:
+        d = open(path, 'rb').read()
+        if d[:3] != b'GBX': return (0, 0, 0, 0)
+        ver = struct.unpack_from('<H', d, 3)[0]
+        if ver < 6: return (0, 0, 0, 0)
+        p = 13
+        _, n = struct.unpack_from('<II', d, p); p += 8
+        chunks = []
+        for i in range(n):
+            cid, sz = struct.unpack_from('<II', d, p); p += 8; chunks.append((cid, sz & 0x7fffffff))
+        for cid, sz in chunks:
+            if cid in (0x03043002, 0x24003002) and d[p] >= 3:
+                br, si, go, au = struct.unpack_from('<IIII', d, p + 5)
+                return (au, go, si, br)
+            p += sz
+    except (struct.error, IndexError, OSError): pass
+    return (0, 0, 0, 0)
+
 def coll_from(mesh):
     """the collision of a drawn mesh: its faces the car can stand on (|ny| >= WALL_NY, turned up) with a surface,
     as (a, b, c, (nx, ny, nz) * 8192, surface); what is drawn is what is driven on, seams and all"""
@@ -298,6 +320,8 @@ def mark_walls(mesh, s):
     within 0.6 m of their middle facing the same way, else 5 (nothing): what the game lets the car through, we do"""
     c = s.get('coll')
     walls = []
+    # the piece has collision in the game at all (any face not NotCollidable)
+    collidable = bool(c and c['tris'] and any(c['surfs'][c['tris'][i + 3]] != 'NotCollidable' for i in range(0, len(c['tris']), 4)))
     if c and c['tris']:
         v = c['verts']
         for i in range(0, len(c['tris']), 4):
@@ -326,11 +350,16 @@ def mark_walls(mesh, s):
                     if abs(wn[0] * (m[0] - A[0]) + wn[1] * (m[1] - A[1]) + wn[2] * (m[2] - A[2])) < 0.5:
                         fc = (a, b, cc, (col, 9)); WALLSTAT[0] += 1; break
             out.append(fc); continue
-        solid = False
-        for A, wn, bb in walls:
-            if not (bb[0] <= m[0] <= bb[1] and bb[2] <= m[1] <= bb[3] and bb[4] <= m[2] <= bb[5]): continue
-            if abs(wn[0] * n[0] + wn[1] * n[1] + wn[2] * n[2]) < 0.7: continue
-            if abs(wn[0] * (m[0] - A[0]) + wn[1] * (m[1] - A[1]) + wn[2] * (m[2] - A[2])) < 0.6: solid = True; break
+        # 0.8: in the game a piece with any collision is solid by its shape: every steep face of it is a wall (the
+        # car checks walls 0.25 m and 0.6 m over its wheels, so a kerb or a painted edge still lets it over). Was:
+        # only where Nadeo's collision had a wall within 0.6 m facing the same way, which the simplified shape of
+        # a fence, a post, a house or a rock often missed (the car drove through them)
+        solid = collidable if ALLWALLS else False
+        if not ALLWALLS:
+            for A, wn, bb in walls:
+                if not (bb[0] <= m[0] <= bb[1] and bb[2] <= m[1] <= bb[3] and bb[4] <= m[2] <= bb[5]): continue
+                if abs(wn[0] * n[0] + wn[1] * n[1] + wn[2] * n[2]) < 0.7: continue
+                if abs(wn[0] * (m[0] - A[0]) + wn[1] * (m[1] - A[1]) + wn[2] * (m[2] - A[2])) < 0.6: solid = True; break
         out.append((a, b, cc, (col, 9 if solid else 5)))
         WALLSTAT[0 if solid else 1] += 1
     return Mesh(mesh.verts, out)
@@ -572,6 +601,10 @@ def main():
     out += struct.pack('<i', FAR_DIST * 16)
     for inst in insts: out += struct.pack('<H', inst[6] if inst[6] >= 0 else 0xffff)
     while len(out) & 3: out += b'\0'
+    # 0.8: a trailer the loader finds at the very end: "MEDL" and the medal times (ms): author, gold, silver, bronze
+    medals = medal_times(trackf)
+    out += struct.pack('<4s4i', b'MEDL', *medals)
+    print(f"  medals (ms): author {medals[0]} gold {medals[1]} silver {medals[2]} bronze {medals[3]}")
     open(outf, 'wb').write(out)
     tot = sum(len(meshes[i[0]][1]) for i in insts)
     print(f"wrote {outf}: {len(out)} bytes, {len(meshes)} meshes, {len(insts)} instances, {tot} placed triangles, {len(path)} path samples")

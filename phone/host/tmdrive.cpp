@@ -52,10 +52,31 @@ int main(int argc, char** argv)
         t.iNMesh, t.iNInst, t.iNColl, t.iNCInst, t.iStartX / 16, t.iStartY / 16, t.iStartZ / 16, t.iStartYaw, t.iNPath, t.iNPath / 10.0);
     TmGround g; if (!g.Init(t)) { fprintf(stderr, "no ground\n"); return 1; }
     TmCar car; car.Reset(t);
-    TmFollowCam cam; cam.Reset(car.iS);
+    TmFollowCam cam;
+    if (getenv("CAM")) { int b, u, l, a; if (sscanf(getenv("CAM"), "%d,%d,%d,%d", &b, &u, &l, &a) == 4) { cam.iBack = b * 256 / 10; cam.iUp = u * 256 / 10; cam.iLookUp = l * 256 / 10; cam.iLookAhead = a * 256 / 10; } }
+    cam.Reset(car.iS);
     TmView v; v.Init(320, 200, 2500); v.iFarCut = 180 * 16;
     R3Pix* frame = new R3Pix[320 * 200];
     int prog = 0;                               // the path sample reached
+    // 0.8: GHOST=1: the replay as a ghost (its checkpoints and finish printed; drawn in the frames); GHOST=2 also
+    // records this run and checks it back (At at every 5th step = the car's place, the file form round trip)
+    TmGhost ghost, run;
+    if (getenv("GHOST"))
+        {
+        ghost.FromPath(t, g, car);
+        printf("ghost from the replay: %d points, finish %d steps (%.2f s), checkpoints:", ghost.iN, ghost.Finish(), ghost.Finish() / 50.0);
+        for (int k = 0; k < car.iTotalCps; k++) printf(" %.2f", ghost.CpSteps(k) / 50.0);
+        printf("\n");
+        // the replay's height against the ground under it
+        double sum = 0; int cnt = 0;
+        for (int i = 0; i < t.iNPath; i += 10) { TmGroundHit h; if (g.Probe(t.iPath[i].x * 16, t.iPath[i].z * 16, t.iPath[i].y * 16 + 512, h)) { sum += (t.iPath[i].y * 16 - h.y) / 256.0; cnt++; } }
+        printf("medals: author %d gold %d silver %d bronze %d ms\n", t.iMedal[0], t.iMedal[1], t.iMedal[2], t.iMedal[3]);
+        printf("replay km/h by second:");
+        for (int i = 0; i + 10 < t.iNPath; i += 10) { double dx = t.iPath[i + 10].x - t.iPath[i].x, dz = t.iPath[i + 10].z - t.iPath[i].z, dy = t.iPath[i + 10].y - t.iPath[i].y; printf(" %.0f", sqrt(dx * dx + dy * dy + dz * dz) / 16 * 3.6); }
+        printf("\n");
+        printf("replay over the ground: %.2f m on average (%d samples)\n", cnt ? sum / cnt : 0.0, cnt);
+        run.Begin();
+        }
     int frames = 0;
     const int lookTarget = getenv("LOOK") ? atoi(getenv("LOOK")) : 8;
     for (int step = 0; step < maxsec * 50 && !car.iFinished; step++)
@@ -101,6 +122,7 @@ int main(int argc, char** argv)
         if (getenv("STEERBIAS")) { in.steer += atoi(getenv("STEERBIAS")); if (in.steer > 256) in.steer = 256; if (in.steer < -256) in.steer = -256; }
         const int px0 = car.iS.x, py0 = car.iS.y, pz0 = car.iS.z;
         car.Step(g, in);
+        if (getenv("GHOST")) run.Record(car);
         if (getenv("WALLCHECK"))
             {
             // the move against every wall face (surface 9) of the track, at 0.5 and 1 m up
@@ -209,6 +231,7 @@ int main(int argc, char** argv)
         if (every && step % every == 0)
             {
             s.Slopes(v.iCarSlopeF, v.iCarSlopeR);
+            if (getenv("GHOST")) { v.iGhostOn = ghost.At(step + 1, v.iGhostX, v.iGhostY, v.iGhostZ, v.iGhostYaw, v.iGhostSlopeF, v.iGhostSlopeR) ? 1 : 0; }
             v.Frame(frame, 320, t, cx, cy, cz, yaw, pitch, 200, s.x >> 4, (s.y >> 4) + 3, s.z >> 4, s.yaw, 1);
             char name[256]; sprintf(name, "%s_%04d.ppm", argv[2], step);
             Save(name, frame, 320, 200); frames++;
@@ -227,6 +250,20 @@ int main(int argc, char** argv)
                 }
 #endif
             }
+        }
+    if (getenv("GHOST"))
+        {
+        // the recorded run: its points where the car was (checked by replaying the same drive is not possible here: the
+        // first point and the finish), the file form back and forth
+        printf("run recorded: %d points, finish %d steps, checkpoints:", run.iN, run.Finish());
+        for (int k = 0; k < car.iCheckpoints; k++) printf(" %.2f", run.CpSteps(k) / 50.0);
+        int x, y, z, yaw, sf, sr; run.At(run.Finish(), x, y, z, yaw, sf, sr);
+        printf("\nat the finish step the ghost is %.2f m from the car's finish place\n", sqrt((double) (x * 16 - car.iS.x) * (x * 16 - car.iS.x) + (double) (z * 16 - car.iS.z) * (z * 16 - car.iS.z)) / 256);
+        unsigned char* buf = new unsigned char[run.Size()]; run.Write(buf);
+        TmGhost back; bool ok = back.Load(buf, run.Size());
+        int x2, y2, z2, yaw2, sf2, sr2; back.At(777, x, y, z, yaw, sf, sr); run.At(777, x2, y2, z2, yaw2, sf2, sr2);
+        printf("file round trip: %s, %d bytes, same at step 777: %s\n", ok ? "ok" : "FAILED", run.Size(), (x == x2 && y == y2 && z == z2 && yaw == yaw2 && sf == sf2 && back.Finish() == run.Finish()) ? "yes" : "NO");
+        delete[] buf;
         }
     printf("%s in %.2f s (the replay: %.1f s); %d checkpoints of %d; %d walls hit; %d probes, %d triangle tests (%.0f a probe); %d frames\n",
         car.iFinished ? "FINISHED" : "not finished", car.iFinishSteps / 50.0, t.iNPath / 10.0, car.iCheckpoints, car.iTotalCps, car.iWallHits, g.iProbes, g.iTests, g.iProbes ? (double) g.iTests / g.iProbes : 0.0, frames);

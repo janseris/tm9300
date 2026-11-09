@@ -67,6 +67,7 @@ public:
     int iPvsX0, iPvsZ0, iPvsW, iPvsH, iPvsWords;    // cells (1/16 m >> 9), words per cell
     const unsigned char* iPvs;
     const unsigned int* PvsCell(int aCamX, int aCamZ) const;   // the camera's cell's bits (0: none)
+    int iMedal[4];              // 0.8: ms: author ("Nadeo"), gold, silver, bronze (0: not known; the file's "MEDL" trailer)
     };
 
 struct TmFrameStats { int insts, visible, polys, drawn, culled, hidden, pixels, full; };
@@ -82,6 +83,9 @@ public:
         int aCarX = 0, int aCarY = 0, int aCarZ = 0, int aCarYaw = 0, int aDrawCar = 0);
     // the car's tilt for the next Frame: the ground's slope along its heading and to its right (* 4096; 0 level)
     int iCarSlopeF, iCarSlopeR;
+    // 0.8: a ghost car for the next Frame (iGhostOn): its place (1/16 m), heading and tilt; drawn in its colours
+    // paled, in its place among the instances by distance, not when within 3 m of the car
+    int iGhostOn, iGhostX, iGhostY, iGhostZ, iGhostYaw, iGhostSlopeF, iGhostSlopeR;
     int iIdMode;                // 1: every face in the colour (instance index + 1), no fog, no car (the PVS tool)
     int iUsePvs;                // 1: instances the track's PVS rules out from the camera's cell are skipped
     // the car's place and heading at a path sample (interpolated)
@@ -96,6 +100,10 @@ public:
     R3D* iR;
 private:
     void Reserve(int aNv, int aNf);
+    void DrawCar(const TmMesh& aM, short* aXyz, const R3Pix* aCol, int aX, int aY, int aZ, int aYaw, int aSlopeF, int aSlopeR);
+    short* iGhostXyz;           // the ghost's corners turned
+    unsigned short* iGhostCol;  // its colours
+    int iGhostN;                // corners / faces those hold
     int iW, iH, iMaxPolys;
     int* iOrder;                // instance indices sorted by distance (scratch)
     int* iKey;

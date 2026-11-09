@@ -649,10 +649,11 @@ void TmCar::Race(const TmGround& aG)
 
 // ---- the camera --------------------------------------------------------------------------------------------
 
-TmFollowCam::TmFollowCam() : iX(0), iY(0), iZ(0), iYaw16(0), iViewYaw(0), iViewPitch(0), iTn(0), iTh(0) { iLast.cinst = -1; iLast.face = -1; iLast.y = 0; }
+TmFollowCam::TmFollowCam() : iBack(6 * 256 + 128), iUp(5 * 256 + 51), iLookUp(256), iLookAhead(7 * 256), iX(0), iY(0), iZ(0), iYaw16(0), iViewYaw(0), iViewPitch(0), iTn(0), iTh(0) { iLast.cinst = -1; iLast.face = -1; iLast.y = 0; }
 
 // 0.6: the camera rides on the car's own trail: a point every 0.4 m of the car's way (KTrail of them: 25 m), the camera
-// 8 m back along it and 3 m over where the car was, looking at a point 1 m over the car. It goes where the car went
+// 8 m back along it and 3 m over where the car was, looking at a point 1 m over the car. 0.8: 6.5 m back and 5.2 m up
+// (Nadeo's cameras: 3-5.9 m up, 6-9 m back), looking 7 m past the car, and kept under a ceiling. It goes where the car went
 // (under a bridge or a track overhead, through a gate or a building, along a jump) and never searches for ground; a
 // slide shows as a slide. Smoothed a little each step (not each frame: the same at any frame rate)
 void TmFollowCam::Reset(const TmCarState& aS)
@@ -678,7 +679,7 @@ void TmFollowCam::Push(int aX, int aY, int aZ)
 // point along the way it went
 void TmFollowCam::Target(const TmCarState& aS, int& aX, int& aY, int& aZ) const
     {
-    const int back = 8 * 256;
+    const int back = iBack;
     int px = aS.x, py = aS.y, pz = aS.z, left = back;
     int i = iTh;
     for (int n = 0; n < iTn; n++)
@@ -702,12 +703,11 @@ void TmFollowCam::Target(const TmCarState& aS, int& aX, int& aY, int& aZ) const
         const int d = ILen(dx, dz);
         if (d > 0) { px += (int) (((long long) dx * left) / d); pz += (int) (((long long) dz * left) / d); }
         }
-    aX = px; aY = py + 3 * 256; aZ = pz;
+    aX = px; aY = py + iUp; aZ = pz;
     }
 
 void TmFollowCam::Update(const TmGround& aG, const TmCarState& aS, int& aX, int& aY, int& aZ, int& aYaw, int& aPitch)
     {
-    (void) aG;
     // the trail: a point when the car is 0.4 m from the last (backing up adds none: the camera then stays behind)
     if (aS.speed >= 0 && ILen(aS.x - iTx[iTh], aS.z - iTz[iTh]) >= 102) Push(aS.x, aS.y, aS.z);
     int tx, ty, tz;
@@ -715,9 +715,20 @@ void TmFollowCam::Update(const TmGround& aG, const TmCarState& aS, int& aX, int&
         {
         // reversing: behind the heading
         const int sn = R3D::Sin(aS.yaw), co = R3D::Cos(aS.yaw);
-        tx = aS.x - ((sn * 8 * 256) >> 14); tz = aS.z - ((co * 8 * 256) >> 14); ty = aS.y + 3 * 256;
+        tx = aS.x - ((sn * iBack) >> 14); tz = aS.z - ((co * iBack) >> 14); ty = aS.y + iUp;
         }
     else Target(aS, tx, ty, tz);
+    // 0.8: under a roof, a bridge or a track overhead the camera stays 1.5 m under it (and at least 1.2 m over the
+    // trail): the first surface over the trail point, up to the camera's height + 0.5 m
+    {
+    TmGroundHit h;
+    const int base = ty - iUp;
+    if (aG.Probe(tx, tz, ty + 128, h) && h.y > base + 256)
+        {
+        int cap = h.y - 384; if (cap < base + 307) cap = base + 307;
+        if (ty > cap) ty = cap;
+        }
+    }
     // a little smoothing a step (the trail is smooth already; the height softens the bumps)
     iX += (tx - iX) / 2; iZ += (tz - iZ) / 2; iY += (ty - iY) / 4;
     aX = iX >> 4; aY = iY >> 4; aZ = iZ >> 4;
@@ -725,10 +736,157 @@ void TmFollowCam::Update(const TmGround& aG, const TmCarState& aS, int& aX, int&
     const int wantYaw = TmYawTo(aS.x - iX, aS.z - iZ);
     const int dyaw = ((wantYaw - iViewYaw + 2048) & 4095) - 2048;
     iViewYaw = (iViewYaw + (dyaw + (dyaw > 0 ? 1 : -1)) / 2) & 4095;
-    int dist = ILen(aS.x - iX, aS.z - iZ); if (dist < 256) dist = 256;
-    int dy = (aS.y + 256) - iY;
+    // 0.8: the pitch to a point iLookAhead beyond the car (on the camera-to-car line) and iLookUp over it: the car
+    // sits lower in the view and the road ahead shows
+    int dist = ILen(aS.x - iX, aS.z - iZ) + iLookAhead; if (dist < 256) dist = 256;
+    int dy = (aS.y + iLookUp) - iY;
     while (dist > 0x7fff) { dist >>= 2; dy >>= 2; }
     const int wantPitch = Clamp((dy * 652) / dist - 30, -600, 600);
     iViewPitch += (wantPitch - iViewPitch) / 2;
     aYaw = iViewYaw; aPitch = iViewPitch;
+    }
+
+// ---- the ghost (0.8) ---------------------------------------------------------------------------------------
+
+TmGhost::TmGhost() : iN(0), iPt(0), iFinish(0), iNCp(0), iSteps(0), iLastCps(0) {}
+TmGhost::~TmGhost() { delete[] iPt; }
+
+void TmGhost::Clear() { iN = 0; iFinish = 0; iNCp = 0; iSteps = 0; iLastCps = 0; }
+
+static void GhostPoint(TmGhostPt& aP, const TmCarState& aS)
+    {
+    int f, r; aS.Slopes(f, r);
+    f >>= 5; r >>= 5;
+    aP.x = aS.x >> 4; aP.y = aS.y >> 4; aP.z = aS.z >> 4; aP.yaw = (short) (aS.yaw & 4095);
+    aP.sf = (signed char) Clamp(f, -127, 127); aP.sr = (signed char) Clamp(r, -127, 127);
+    }
+
+bool TmGhost::Begin()
+    {
+    Clear();
+    if (!iPt) iPt = new TmGhostPt[KMaxPts];
+    return iPt != 0;
+    }
+
+void TmGhost::Record(const TmCar& aCar)
+    {
+    if (!iPt) return;
+    // the start's point (step 0) with the first record: the car stands still the first step
+    if (iN == 0 && iSteps == 0) { GhostPoint(iPt[0], aCar.iS); iN = 1; }
+    iSteps++;
+    if (aCar.iCheckpoints > iLastCps) { while (iLastCps < aCar.iCheckpoints && iNCp < KMaxCps) { iCp[iNCp++] = iSteps; iLastCps++; } iLastCps = aCar.iCheckpoints; }
+    if (aCar.iFinished && !iFinish) iFinish = aCar.iFinishSteps > 0 ? aCar.iFinishSteps : iSteps;
+    // points on to 3 s past the finish (the ghost drives through the line)
+    if (iFinish && iSteps > iFinish + 150) return;
+    if (iSteps % 5 == 0 && iN < KMaxPts) GhostPoint(iPt[iN++], aCar.iS);
+    }
+
+bool TmGhost::FromPath(const TmTrack& aT, const TmGround& aG, const TmCar& aCarForCps)
+    {
+    Clear();
+    if (aT.iNPath < 2) return false;
+    if (!iPt) iPt = new TmGhostPt[KMaxPts];
+    if (!iPt) return false;
+    const int n = aT.iNPath < KMaxPts ? aT.iNPath : KMaxPts;
+    for (int i = 0; i < n; i++)
+        {
+        const TmPath& p = aT.iPath[i];
+        TmGhostPt& g = iPt[i];
+        g.x = p.x; g.y = p.y; g.z = p.z; g.yaw = (short) (p.yaw & 4095);
+        // the tilt along the way: the climb between the neighbours over their distance (the path has no pitch)
+        const TmPath& a = aT.iPath[i > 0 ? i - 1 : i];
+        const TmPath& b = aT.iPath[i + 1 < n ? i + 1 : i];
+        int dx = b.x - a.x, dz = b.z - a.z, d = ILen(dx, dz);
+        int f = d > 8 ? ((b.y - a.y) * 4096) / d : 0;
+        g.sf = (signed char) Clamp(f >> 5, -127, 127); g.sr = 0;
+        }
+    iN = n;
+    // the checkpoints on the way: the path every 20 ms (5 points between samples) against the checkpoints' boxes,
+    // counted as the car counts them (a checkpoint's boxes are one), the finish once all are taken
+    unsigned int mask = 0; int cps = 0;
+    for (int i = 0; i + 1 < n && !iFinish; i++)
+        {
+        const TmPath& a = aT.iPath[i]; const TmPath& b = aT.iPath[i + 1];
+        for (int k = 1; k <= 5 && !iFinish; k++)
+            {
+            const int x = (a.x + ((b.x - a.x) * k) / 5) * 16, y = (a.y + ((b.y - a.y) * k) / 5) * 16, z = (a.z + ((b.z - a.z) * k) / 5) * 16;
+            const int step = i * 5 + k;
+            int cp = aG.KindAt(2, x, y, z);
+            if (cp >= 0)
+                {
+                int ord = 32;
+                for (int q = 0; q < aCarForCps.iNCp; q++) if (aCarForCps.iCpInst[q] == cp) { ord = aCarForCps.iCpGroup[q]; break; }
+                if (ord < 32 && !(mask & (1u << ord))) { mask |= 1u << ord; cps++; if (iNCp < KMaxCps) iCp[iNCp++] = step; }
+                }
+            if (step > 50 && cps >= aCarForCps.iTotalCps && aG.KindAt(3, x, y, z) >= 0) iFinish = step;
+            }
+        }
+    iLastCps = cps;
+    return true;
+    }
+
+bool TmGhost::Copy(const TmGhost& aFrom)
+    {
+    if (!iPt) iPt = new TmGhostPt[KMaxPts];
+    if (!iPt) return false;
+    iN = aFrom.iN; iFinish = aFrom.iFinish; iNCp = aFrom.iNCp; iSteps = aFrom.iSteps; iLastCps = aFrom.iLastCps;
+    for (int i = 0; i < iNCp; i++) iCp[i] = aFrom.iCp[i];
+    for (int i = 0; i < iN; i++) iPt[i] = aFrom.iPt[i];
+    return true;
+    }
+
+bool TmGhost::At(int aStep, int& aX, int& aY, int& aZ, int& aYaw, int& aSlopeF, int& aSlopeR) const
+    {
+    if (!iPt || iN == 0) return false;
+    if (aStep < 0) aStep = 0;
+    int i = aStep / 5, f = aStep % 5;
+    if (i >= iN - 1) { i = iN - 1; f = 0; }
+    const TmGhostPt& a = iPt[i];
+    const TmGhostPt& b = iPt[f ? i + 1 : i];
+    aX = a.x + ((b.x - a.x) * f) / 5; aY = a.y + ((b.y - a.y) * f) / 5; aZ = a.z + ((b.z - a.z) * f) / 5;
+    int dy = (int) b.yaw - (int) a.yaw; if (dy > 2048) dy -= 4096; else if (dy < -2048) dy += 4096;
+    aYaw = (a.yaw + (dy * f) / 5) & 4095;
+    aSlopeF = (a.sf + ((b.sf - a.sf) * f) / 5) << 5; aSlopeR = (a.sr + ((b.sr - a.sr) * f) / 5) << 5;
+    return true;
+    }
+
+// the file: "TMG1", points, finish, checkpoints, the checkpoints' steps, the points (little endian, as the phone)
+static void PutI(unsigned char*& aP, int aV) { aP[0] = (unsigned char) aV; aP[1] = (unsigned char) (aV >> 8); aP[2] = (unsigned char) (aV >> 16); aP[3] = (unsigned char) (aV >> 24); aP += 4; }
+static int GetI(const unsigned char*& aP) { int v = aP[0] | (aP[1] << 8) | (aP[2] << 16) | (aP[3] << 24); aP += 4; return v; }
+
+int TmGhost::Size() const { return 16 + KMaxCps * 4 + iN * 16; }
+
+void TmGhost::Write(unsigned char* aBuf) const
+    {
+    unsigned char* p = aBuf;
+    p[0] = 'T'; p[1] = 'M'; p[2] = 'G'; p[3] = '1'; p += 4;
+    PutI(p, iN); PutI(p, iFinish); PutI(p, iNCp);
+    for (int i = 0; i < KMaxCps; i++) PutI(p, i < iNCp ? iCp[i] : 0);
+    for (int i = 0; i < iN; i++)
+        {
+        const TmGhostPt& g = iPt[i];
+        PutI(p, g.x); PutI(p, g.y); PutI(p, g.z);
+        p[0] = (unsigned char) g.yaw; p[1] = (unsigned char) (g.yaw >> 8); p[2] = (unsigned char) g.sf; p[3] = (unsigned char) g.sr; p += 4;
+        }
+    }
+
+bool TmGhost::Load(const unsigned char* aBuf, int aLen)
+    {
+    Clear();
+    if (aLen < 16 + KMaxCps * 4 || aBuf[0] != 'T' || aBuf[1] != 'M' || aBuf[2] != 'G' || aBuf[3] != '1') return false;
+    const unsigned char* p = aBuf + 4;
+    int n = GetI(p), fin = GetI(p), ncp = GetI(p);
+    if (n < 1 || n > KMaxPts || ncp < 0 || ncp > KMaxCps || aLen < 16 + KMaxCps * 4 + n * 16) return false;
+    if (!iPt) iPt = new TmGhostPt[KMaxPts];
+    if (!iPt) return false;
+    iFinish = fin; iNCp = ncp;
+    for (int i = 0; i < KMaxCps; i++) { int v = GetI(p); if (i < ncp) iCp[i] = v; }
+    for (int i = 0; i < n; i++)
+        {
+        TmGhostPt& g = iPt[i];
+        g.x = GetI(p); g.y = GetI(p); g.z = GetI(p);
+        g.yaw = (short) ((p[0] | (p[1] << 8)) & 4095); g.sf = (signed char) p[2]; g.sr = (signed char) p[3]; p += 4;
+        }
+    iN = n; iLastCps = ncp;
+    return true;
     }
