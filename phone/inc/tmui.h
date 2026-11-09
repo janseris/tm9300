@@ -86,6 +86,10 @@ public:
     bool iProfilesChanged;
     int iSeriesFiles[8], iSeriesN;   // the hot seat: the series' tracks in order
     int Medals() const;         // medals won over all tracks (a medal counts with those under it)
+    // 0.14: the campaign as the game's: a track opens once the one before it (in its environment, White 1 .. Black)
+    // has a medal; the first of each environment is open
+    bool FileUnlocked(int aFile) const;
+    int NextFile(int aFile) const;           // the installed track after it (-1: none)
 private:
     void DrawBackground();
     void DrawLeft(TmPix* aF, int aS, const char* aTitle, const char* aSub, int aIcon);
@@ -102,6 +106,9 @@ private:
     void DrawSeries(TmPix* aF, int aS);
     void DrawTitle(TmPix* aF, int aS);
     int TrackAt(int aSeries, int aEnv, int aNum) const;
+    int PrevTrack(int aTi) const;            // the track before it in its environment (-1: the first)
+    bool Unlocked(int aTi) const;
+    bool iLockMsg;              // Solo: the conditions of a locked track shown
     int SeriesCount(int aEnv, int aSeries) const;
     void OppRows(int* aRows, int& aN) const;
     const TmUiPack* iPack;

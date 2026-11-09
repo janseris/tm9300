@@ -352,6 +352,10 @@ private:
     TInt iPlayerBest[8];
     TInt iSeries[8], iSeriesN, iSeriesPos;
     TBool iStandings;
+    // 0.14: the campaign: a medal opens the next track, and Enter goes on to it (-1: none; iUnlockedNow: just opened)
+    TInt iNextFile;
+    TBool iUnlockedNow;
+    void GoNextTrack();
     void NextRun();
     TBool TurnOver() const;
     void EndTurn();
@@ -715,7 +719,7 @@ void CTmView::DriveReset()
     // the run before: the last ghost when it finished, the record again with its points past the line
     if (iSeenFinish && iRun.iN && (iPlayers == 1 || !iGhostLast.Finish() || iCar->iFinishSteps < iGhostLast.Finish())) iGhostLast.Copy(iRun);
     if (iRunIsRecord && iRun.iN) { iGhostRecord.Copy(iRun); SaveRecord(); }
-    iSeenFinish = EFalse; iRunIsRecord = EFalse;
+    iSeenFinish = EFalse; iRunIsRecord = EFalse; iNextFile = -1; iUnlockedNow = EFalse;
     iCar->Reset(*iTrack);
     iCam->Reset(iCar->iS);
     iDriveStart.UniversalTime();
@@ -746,7 +750,20 @@ void CTmView::NextRun()
             }
         if (TurnOver()) { EndTurn(); return; }
         }
+    else if (iSeenFinish && iNextFile >= 0) { GoNextTrack(); return; }
     DriveReset();
+    }
+
+// solo, after a medal: the campaign's next track, against the same ghosts
+void CTmView::GoNextTrack()
+    {
+    const TInt f = iNextFile;
+    if (iRunIsRecord && iRun.iN) { iGhostRecord.Copy(iRun); SaveRecord(); iRunIsRecord = EFalse; }
+    UnloadTrack();
+    if (!LoadTrack(f)) { BackToMenu(); return; }
+    iInMenu = EFalse; iKeys = 0;
+    iSidesDirty = ETrue; iFirstBlit = ETrue;
+    GhostRef();
     }
 
 // the player's turn over: all his attempts used, or his time
@@ -945,7 +962,13 @@ void CTmView::DriveFrame(TInt& aCx, TInt& aCy, TInt& aCz, TInt& aYaw, TInt& aPit
         iSplitUntil = 0;
         // a new record: kept and saved (again with its last points at the next start); the menu's medals
         if (!iGhostRecord.Finish() || t < iGhostRecord.Finish()) { iGhostRecord.Copy(iRun); SaveRecord(); iRunIsRecord = ETrue; }
+        // the campaign: with a medal the next track is open (it may just have been opened) and Enter goes there
+        iNextFile = -1; iUnlockedNow = EFalse;
+        const TInt nf = iPlayers == 1 && iUi ? iUi->NextFile(iTrackIndex) : -1;
+        const TBool wasOpen = nf >= 0 && iUi->FileUnlocked(nf);
         if (iUi) iUi->SetBest(iTrackIndex, t);
+        const TInt bronze = iTrack->iMedal[3];
+        if (nf >= 0 && (bronze <= 0 || t * 20 <= bronze) && iUi->FileUnlocked(nf)) { iNextFile = nf; iUnlockedNow = !wasOpen; }
         if (!iPlayerBest[iPlayer] || t < iPlayerBest[iPlayer]) iPlayerBest[iPlayer] = t;
         if (iPlayers > 1 && !iHsMode) iRound++;
         iSidesDirty = ETrue;
@@ -1250,8 +1273,9 @@ void CTmView::DrawResult()
         else if (iPlayer + 1 >= iPlayers) CCat(b, "Press Enter: the standings");
         else { CCat(b, "Press Enter: "); CCat(b, iNames[iPlayer + 1]); CCat(b, "'s turn"); }
         }
+    else if (iNextFile >= 0) CCat(b, iUnlockedNow ? "Next track open! Enter: go on, Backspace: retry" : "Enter: the next track, Backspace: retry");
     else CCat(b, "Press Enter to restart");
-    TextCentre(iBack, SCR_W, iFSmall, x, x + w, y + h - iFSmall.iH - 4, b, Rgb(200, 200, 200));
+    TextCentre(iBack, SCR_W, iFSmall, x, x + w, y + h - iFSmall.iH - 4, b, iUnlockedNow ? Rgb(255, 210, 80) : Rgb(200, 200, 200));
     }
 
 // ---- the pause (Esc): the game's race menus ----

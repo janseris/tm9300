@@ -66,7 +66,7 @@ int main(int argc, char** argv)
     static TmPix frame[640 * 200];
     struct { const char* name; const char* keys; } shots[] = {
         { "title", "" }, { "main", "o" }, { "campaign", "oo" }, { "mode", "ooo" }, { "difficulty", "oooo" }, { "grid", "ooooo" },
-        { "grid2", "ooooodr" }, { "opponent", "oooooo" }, { "party", "odo" }, { "hotseat", "odoo" }, { "series", "odooo" } };
+        { "grid2", "ooooodr" }, { "lockmsg", "ooooorro" }, { "opponent", "oooooo" }, { "party", "odo" }, { "hotseat", "odoo" }, { "series", "odooo" } };
     for (unsigned s = 0; s < sizeof(shots) / sizeof(shots[0]); s++)
         {
         TmMenu mm; mm.iVersion = "0.11"; mm.Init(&big, &text, &small, tr, nt, &pack);

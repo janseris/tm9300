@@ -390,7 +390,7 @@ static const char* const KEnvName[2] = { "Rally", "Snow" };
 enum { LEFT_W = 196, RIGHT_X = 204 };
 
 TmMenu::TmMenu() : iDirty(true), iScreen(ETitle), iVersion(""), iRaceFile(-1), iRaceOpp(EOppGold), iPlayers(1), iAttempts(3), iHsMode(0), iTimeLimit(300), iNProfiles(0), iProfilesChanged(false), iSeriesN(0),
-    iPack(0), iBig(0), iText(0), iSmall(0), iNTracks(0), iBg(0), iInGrid(false), iGridCol(0), iGridRow(0), iOppSel(0), iHsRow(2), iChooser(false), iChooserSel(0), iRowH(24), iPlateH(29), iEditing(-1), iSeriesSel(0), iTitleTick(0)
+    iPack(0), iBig(0), iText(0), iSmall(0), iNTracks(0), iBg(0), iInGrid(false), iGridCol(0), iGridRow(0), iOppSel(0), iHsRow(2), iChooser(false), iChooserSel(0), iLockMsg(false), iRowH(24), iPlateH(29), iEditing(-1), iSeriesSel(0), iTitleTick(0)
     {
     for (int i = 0; i < 10; i++) iSel[i] = 0;
     for (int p = 0; p < KMaxPlayers; p++) iNames[p][0] = 0;
@@ -566,6 +566,53 @@ void TmMenu::DrawMedalsPanel(TmPix* f, int s)
     Text(f, s, *iText, x + 44, y + (41 - y - iText->iH) / 2, b, Rgb(255, 255, 255));
     }
 
+// the game's campaign: each series' first track is open; the next one opens with a medal on the one before it in
+// the same series: bronze on White and Green, silver on Blue, gold on Red and Black (a track before it that is not
+// installed does not hold it shut)
+static const int KNeedMedal[5] = { 3, 3, 2, 1, 1 };
+static const char* const KNeedMsg[4] = { "To unlock this track you need the Nadeo medal on the previous track",
+    "To unlock this track you need a gold medal on the previous track", "To unlock this track you need a silver medal on the previous track",
+    "To unlock this track you need a bronze medal on the previous track" };
+
+int TmMenu::PrevTrack(int ti) const
+    {
+    int best = -1;
+    for (int i = 0; i < iNTracks; i++)
+        if (iTracks[i].iEnv == iTracks[ti].iEnv && iTracks[i].iSeries == iTracks[ti].iSeries && iTracks[i].iNum < iTracks[ti].iNum && (best < 0 || iTracks[i].iNum > iTracks[best].iNum)) best = i;
+    return best;
+    }
+
+bool TmMenu::Unlocked(int ti) const
+    {
+    const int p = PrevTrack(ti);
+    if (p < 0) return true;
+    const TmUiTrack& t = iTracks[p];
+    const int m = t.iMedal[KNeedMedal[t.iSeries]];
+    return t.iBest > 0 && (m <= 0 || t.iBest * 20 <= m);
+    }
+
+bool TmMenu::FileUnlocked(int aFile) const
+    {
+    for (int i = 0; i < iNTracks; i++) if (iTracks[i].iFile == aFile) return Unlocked(i);
+    return false;
+    }
+
+int TmMenu::NextFile(int aFile) const
+    {
+    int ti = -1;
+    for (int i = 0; i < iNTracks; i++) if (iTracks[i].iFile == aFile) ti = i;
+    if (ti < 0) return -1;
+    const int key = iTracks[ti].iSeries * 10 + iTracks[ti].iNum;
+    int best = -1, bestKey = 1 << 30;
+    for (int i = 0; i < iNTracks; i++)
+        {
+        if (iTracks[i].iEnv != iTracks[ti].iEnv) continue;
+        const int k = iTracks[i].iSeries * 10 + iTracks[i].iNum;
+        if (k > key && k < bestKey) { bestKey = k; best = i; }
+        }
+    return best >= 0 ? iTracks[best].iFile : -1;
+    }
+
 int TmMenu::TrackAt(int aSeries, int aEnv, int aNum) const
     {
     for (int i = 0; i < iNTracks; i++) if (iTracks[i].iSeries == aSeries && iTracks[i].iEnv == aEnv && iTracks[i].iNum == aNum) return i;
@@ -597,6 +644,14 @@ void TmMenu::DrawGrid(TmPix* f, int s)
                 }
             const TmUiTrack& t = iTracks[ti];
             const int tw = cw - 10, th = ch - 6 - iSmall->iH - 1;
+            if (!Unlocked(ti))
+                {
+                // not open yet, as the game's: a padlock and "(the conditions)" (Enter shows them), no picture, no name
+                Round(f, s, x + 3, y + 3, tw, th, 3, Rgb(70, 72, 96), Rgb(40, 42, 60));
+                Icon(f, s, x + (cw - 4) / 2 - 15, y + 2, EIcoLock);
+                TextCentre(f, s, *iSmall, x + 3, x + 3 + tw, y + th + 2 - iSmall->iH, "(conditions)", Rgb(200, 204, 220));
+                continue;
+                }
             if (t.iThumb)
                 for (int j = 0; j < th; j++)
                     {
@@ -825,6 +880,11 @@ void TmMenu::Draw(TmPix* f, int s)
             DrawMedalsPanel(f, s);
             if (iSel[ESolo] < 5) DrawGrid(f, s);
             if (iScreen == EOpponent) DrawOpponent(f, s);
+            if (iLockMsg)
+                {
+                Shade(f, s, 0, 0, 640, 200, 110, 0);
+                TmDlg::Message(f, s, *iText, 150, 560, KNeedMsg[KNeedMedal[iSel[ESolo] < 5 ? iSel[ESolo] : 0]]);
+                }
             break;
         case EParty: DrawLeft(f, s, "Party Mode", "Choose a mode", EIcoParty); DrawList(f, s, EParty, true); break;
         case EHotSeat:
@@ -885,6 +945,7 @@ int TmMenu::Key(int aKey, int aChar)
                     }
                 return EUiNone;
                 }
+            if (iLockMsg) { if (aKey == EUiOk || aKey == EUiBack) iLockMsg = false; return EUiNone; }
             if (aKey == EUiBack) { iInGrid = false; return EUiNone; }
             if (aKey == EUiLeft) { if (iGridCol == 0) iInGrid = false; else iGridCol--; }
             else if (aKey == EUiRight) { if (iGridCol < 4) iGridCol++; }
@@ -892,7 +953,8 @@ int TmMenu::Key(int aKey, int aChar)
             else if (aKey == EUiOk)
                 {
                 const int ti = TrackAt(iSel[ESolo], iGridRow, iGridCol + 1);
-                if (ti >= 0) { iRaceFile = iTracks[ti].iFile; iScreen = EOpponent; iOppSel = 1; }
+                if (ti >= 0 && !Unlocked(ti)) iLockMsg = true;
+                else if (ti >= 0) { iRaceFile = iTracks[ti].iFile; iScreen = EOpponent; iOppSel = 1; }
                 }
             return EUiNone;
         case EOpponent:
@@ -1094,12 +1156,12 @@ void Ghosts(TmPix* f, int s, const TmFont& tx, const TmFont& sm, int x0, int x1,
 void Message(TmPix* f, int s, const TmFont& tx, int x0, int x1, const char* msg)
     {
     // one line, or two split at the space nearest the middle if it is wider than the box
-    char a[64], b[64]; SCpy(a, msg, 63); b[0] = 0;
+    char a[128], b[128]; SCpy(a, msg, 127); b[0] = 0;
     if (tx.Width(a) > x1 - x0 - 20)
         {
         const int l = SLen(a); int best = -1;
         for (int i = 0; i < l; i++) if (a[i] == ' ' && (best < 0 || (i - l / 2) * (i - l / 2) < (best - l / 2) * (best - l / 2))) best = i;
-        if (best > 0) { SCpy(b, a + best + 1, 63); a[best] = 0; }
+        if (best > 0) { SCpy(b, a + best + 1, 127); a[best] = 0; }
         }
     const int lines = b[0] ? 2 : 1, okH = tx.iH + 6;
     const int need = 8 + lines * (tx.iH + 2) + 8 + okH + 6, y = (200 - need) / 2;
