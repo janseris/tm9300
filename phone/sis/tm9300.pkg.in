@@ -1,6 +1,6 @@
 ; TrackMania 9300 - track viewer (phase 3: the flythrough)
 &EN
-#{"TM9300"},(0x0E3D9310),0,9,0
+#{"TM9300"},(0x0E3D9310),0,10,0
 (0x101F8ED2), 0, 0, 0, {"Series80ProductID"}
 "tm9300.app"-"!:\system\apps\tm9300\tm9300.app"
 "tm9300.rsc"-"!:\system\apps\tm9300\tm9300.rsc"

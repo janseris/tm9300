@@ -293,6 +293,14 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   and loops the model does not have.
 - The physics costs ~74k instructions a step on Rally A1 (was ~37k: the walls on everything): ~5 % of the CPU.
 
+## 0.10 (9 Nov 2026)
+- The depth fix is always on (no Z key, no menu item): without it the near polygons clip through the car.
+- The race panel costs nothing a frame unless something on it changes: the clock and the speed are copied from
+  glyphs drawn once per font (no font calls a frame), the other lines are drawn only when they change, and only
+  the panel's changed rows go to the screen. H (or the menu's "race panel") turns it off.
+- No "Esc: menu" line (the panel did not fit 200 pixels).
+- The camera 7.8 m back and 5 m up (0.8: 6.5 m and 5.2 m, too close).
+
 ## Next
 
 1. **Speed on Snow**: SnowA1 draws ~2,000 triangles a frame (3.8 M instructions: ~18 fps on the phone), the

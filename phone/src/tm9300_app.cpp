@@ -35,7 +35,7 @@ enum { BAR_W = 64, BAR_H = 152 };           // the counters, top left
 enum { HUD_X = (SCR_W + VIEW_W) / 2, HUD_W = SCR_W - HUD_X };     // 0.8: the race's panel on the right, in the phone's fonts
 enum { RES_W = 260, RES_H = 100, RES_X = (SCR_W - RES_W) / 2, RES_Y = 24 };
 enum { MENU_W = 280, MENU_H = 184, MENU_X = (SCR_W - MENU_W) / 2, MENU_Y = (SCR_H - MENU_H) / 2 };
-_LIT(KVersion, "0.9");
+_LIT(KVersion, "0.10");
 
 // the benchmark's log to the PC (the local server's /results, into its uploads folder), after Hrimfell's
 class CBenchSender : public CActive
@@ -209,6 +209,63 @@ public:
     TInt iW, iH;
     };
 
+// 0.9: glyphs pre-drawn once per font ("0123456789:.+-" and " km/h"): the clock and the speed are copied from these
+// into the frame every frame with no font calls (drawn with the fonts each frame the panel cost a few fps)
+class TGlyphs
+    {
+public:
+    TGlyphs() : iMask(0), iW(0), iH(0), iCell(0) {}
+    ~TGlyphs() { delete[] iMask; }
+    TBool Build(const CFont* aFont)
+        {
+        _LIT(KChars, "0123456789:.+-");
+        _LIT(KKmh, " km/h");
+        TInt x = 0;
+        for (TInt i = 0; i < 15; i++)
+            {
+            iWd[i] = i < 14 ? aFont->TextWidthInPixels(KChars().Mid(i, 1)) : aFont->TextWidthInPixels(KKmh);
+            if (i < 10 && iWd[i] > iCell) iCell = iWd[i];
+            iX[i] = x; x += iWd[i] + 2;
+            }
+        iW = x; iH = aFont->HeightInPixels();
+        CTextCanvas c;
+        if (!c.Create(iW, iH)) return EFalse;
+        for (TInt i = 0; i < 15; i++) c.Text(aFont, i < 14 ? KChars().Mid(i, 1) : TPtrC(KKmh), iX[i], 0, 0xFFFF);
+        iMask = new TUint8[iW * iH];
+        if (!iMask) return EFalse;
+        c.iBmp->LockHeap();
+        const TUint16* p = (const TUint16*) c.iBmp->DataAddress();
+        const TInt st = CFbsBitmap::ScanLineLength(iW, EColor64K) / 2;
+        for (TInt y = 0; y < iH; y++) for (TInt k = 0; k < iW; k++) iMask[y * iW + k] = p[y * st + k] ? 1 : 0;
+        c.iBmp->UnlockHeap();
+        return ETrue;
+        }
+    // the text (digits, ':', '.', '+', '-', 'k' for " km/h") at (aX, aY) in aCol; digits in equal cells
+    void Put(TUint16* aFrame, TInt aStride, TInt aX, TInt aY, const TDesC& aText, TUint16 aCol, TInt aMaxX) const
+        {
+        for (TInt i = 0; i < aText.Length(); i++)
+            {
+            const TInt c = aText[i];
+            TInt g = -1;
+            if (c >= '0' && c <= '9') g = c - '0';
+            else if (c == ':') g = 10; else if (c == '.') g = 11; else if (c == '+') g = 12; else if (c == '-') g = 13; else if (c == 'k') g = 14;
+            if (g < 0) { aX += iCell / 2; continue; }
+            const TInt w = iWd[g], dx = g < 10 ? (iCell - w) / 2 : 0;
+            if (aX + dx + w > aMaxX) return;
+            for (TInt y = 0; y < iH; y++)
+                {
+                const TUint8* m = iMask + y * iW + iX[g];
+                TUint16* q = aFrame + (aY + y) * aStride + aX + dx;
+                for (TInt k = 0; k < w; k++) if (m[k]) q[k] = aCol;
+                }
+            aX += g < 10 ? iCell : w;
+            }
+        }
+    TUint8* iMask;
+    TInt iW, iH, iCell;
+    TInt iX[15], iWd[15];
+    };
+
 // times as the game shows them: m:ss.cc (a step is 20 ms); a difference with its sign (+ slower, - faster)
 static void AppendTime(TDes& aOut, TInt aSteps)
     {
@@ -284,7 +341,7 @@ private:
     CBenchSender* iSender;
     TInt iSendShown;
     // 0.8: the race's panel and the menu, in the phone's fonts
-    enum { KHudLines = 13 };
+    enum { KHudLines = 11 };
     CTextCanvas iHud, iMenuCv;
     const CFont* iFontBig;
     const CFont* iFontText;
@@ -292,10 +349,15 @@ private:
     TBuf<40> iHudText[KHudLines];
     TUint16 iHudCol[KHudLines];
     TBool iHudValid;
+    TGlyphs iGlyBig, iGlyText;  // 0.9: the clock's and the speed's glyphs
+    TBool iHudOn;               // 0.9: the panel shown (H, the menu); off it costs nothing
+    TInt iPanelR0, iPanelR1;    // the panel's rows changed since the last copy to the screen
+    void PanelRows(TInt aR0, TInt aR1) { if (aR0 < iPanelR0) iPanelR0 = aR0; if (aR1 > iPanelR1) iPanelR1 = aR1; }
+    void SetHud(TBool aOn);
     void DrawHud();
     void HudLine(TInt aLine, const TDesC& aText, TUint16 aCol, TInt& aY, TInt& aDirty0, TInt& aDirty1);
     // the menu (Esc): the race stands still while it is open
-    enum { EMContinue, EMRestart, EMGhost, EMPlayers, EMDepth, EMNext, EMPrev, EMQuit, EMItems };
+    enum { EMContinue, EMRestart, EMGhost, EMPlayers, EMPanel, EMNext, EMPrev, EMQuit, EMItems };
     TBool iMenu, iMenuDirty;
     TInt iMenuSel;
     TTime iMenuAt;
@@ -359,6 +421,8 @@ void CTmView::ConstructL(const TRect& aRect)
     iFontBig = iEikonEnv->TitleFont(); iFontText = iEikonEnv->NormalFont(); iFontSmall = iEikonEnv->DenseFont();
     if (!iFontBig || !iFontText || !iFontSmall || !iHud.Create(HUD_W, SCR_H) || !iMenuCv.Create(MENU_W, MENU_H)) iFontBig = 0;
     if (iFontBig && !iResultCv.Create(RES_W, RES_H)) iFontBig = 0;
+    if (iFontBig && (!iGlyBig.Build(iFontBig) || !iGlyText.Build(iFontText))) iFontBig = 0;
+    iHudOn = ETrue; iPanelR0 = 0; iPanelR1 = SCR_H;
     iPlayers = 1; iGhostMode = EGhostNadeo;
     iLoaded = LoadTrack(0);
     ActivateL();
@@ -384,7 +448,7 @@ void CTmView::BenchStart()
     iLog.Zero();
     TInt f = 0, t = 0; HAL::Get(HALData::EMemoryRAMFree, f); HAL::Get(HALData::EMemoryRAM, t);
     TBuf8<64> name8; name8.Copy(iStatus);
-    iLog.AppendFormat(_L8("tm9300 bench v0.9: %S, %d meshes %d instances %d triangles, display %d bpp direct %d, RAM free %d KB of %d KB\r\n"),
+    iLog.AppendFormat(_L8("tm9300 bench v0.10: %S, %d meshes %d instances %d triangles, display %d bpp direct %d, RAM free %d KB of %d KB\r\n"),
         &name8, iTrack->iNMesh, iTrack->iNInst, iTrack->iTris, iFbBpp, iFb ? 1 : 0, f / 1024, t / 1024);
     iLog.Append(_L8("variant: frames, fps, draw ms (avg), copy ms (avg), slowest frame ms, polys drawn, submitted, instances visible (avg), direct; fps by second\r\n"));
     iShowInfo = EFalse;
@@ -515,7 +579,7 @@ TBool CTmView::LoadTrack(TInt aIndex)
     iGhostAuthor.Clear(); iGhostRecord.Clear(); iGhostLast.Clear();
     if (iDriving) { iGhostAuthor.FromPath(*iTrack, *iGround, *iCar); LoadRecord(); }
     iPlayer = 0; for (TInt k = 0; k < 4; k++) iPlayerBest[k] = 0;
-    iHudValid = EFalse;
+    iHudValid = EFalse; PanelRows(0, SCR_H);
     if (!iDriving) BenchStart();    // a viewer-only track: the benchmark runs by itself (B runs it again)
     return ETrue;
     }
@@ -800,7 +864,7 @@ void CTmView::Frame()
         TInt w = pathMs > 0 ? (pos * 56) / pathMs : 0;
         for (TInt y = 20; y < 23; y++) { TUint16* q = iBack + y * SCR_W + 4; for (TInt x = 0; x < w; x++) q[x] = 0xF800; }
         }
-    if (iDriving && iBench < 0) DrawHud();
+    if (iDriving && iBench < 0 && iHudOn) DrawHud();
     if (iDriving && iBench < 0 && iSeenFinish && iResultCv.Ok())
         {
         if (iResultDirty) { DrawResult(); iResultDirty = EFalse; }
@@ -893,7 +957,7 @@ void CTmView::HudLine(TInt aLine, const TDesC& aText, TUint16 aCol, TInt& aY, TI
 
 void CTmView::DrawHud()
     {
-    const TUint16 white = 0xFFFF, yel = 0xFFE0, green = 0x07E0, blue = 0x5D1F, red = 0xF904, grey = 0xA514, pale = 0xA5DF, orange = 0xFC00;
+    const TUint16 white = 0xFFFF, yel = 0xFFE0, green = 0x07E0, blue = 0x5D1F, red = 0xF904, pale = 0xA5DF;
     const TInt kmh = (iCar->iS.speed < 0 ? -iCar->iS.speed : iCar->iS.speed) * 36 / 2560;
     if (!iFontBig)
         {
@@ -907,17 +971,16 @@ void CTmView::DrawHud()
         DrawNumber(iBack, SCR_W, bx, 40, iCar->iCheckpoints, green);
         DrawNumber(iBack, SCR_W, bx + 24, 40, iCar->iTotalCps, green);
         DrawWords(iBack, SCR_W, bx, 72, iTrackName, white);
-        DrawWords(iBack, SCR_W, bx, 82, iView->iR->iZNear ? _L("depth fix on (Z)") : _L("depth fix off (Z)"), iView->iR->iZNear ? green : orange);
+        PanelRows(0, 96);
         return;
         }
-    TInt y = 4, d0 = SCR_H, d1 = 0;
+    // the clock and the speed straight into the frame from the glyphs (below); the other lines a line at a time in
+    // the panel's bitmap, copied over only when one changes
+    const TBool wasValid = iHudValid;
+    const TInt yTime = 4, hTime = iGlyBig.iH + 6, ySpeed = yTime + hTime, hSpeed = iGlyText.iH + 3;
+    TInt y = ySpeed + hSpeed, d0 = SCR_H, d1 = 0;
     if (!iHudValid) { iHud.Fill(TRect(0, 0, HUD_W, SCR_H), 0); d0 = 0; d1 = SCR_H; }
     TBuf<40> t;
-    // the time: the race's clock, green once finished
-    AppendTime(t, iCar->iFinished ? iCar->iFinishSteps : iCar->iSteps);
-    HudLine(0, t, iCar->iFinished ? green : white, y, d0, d1);
-    t.Zero(); t.AppendFormat(_L("%d km/h"), kmh);
-    HudLine(1, t, white, y, d0, d1);
     t.Zero();
     if (iCar->iFinished) t.Append(_L("finished!")); else t.AppendFormat(_L("checkpoint %d/%d"), iCar->iCheckpoints, iCar->iTotalCps);
     HudLine(2, t, iCar->iFinished ? green : yel, y, d0, d1);
@@ -938,12 +1001,6 @@ void CTmView::DrawHud()
     HudLine(5, t, yel, y, d0, d1);
     t.Zero(); t.Append(iTrackName); t.AppendFormat(_L(" (%d/%d)"), iTrackIndex + 1, iTrackCount);
     HudLine(6, t, white, y, d0, d1);
-    t.Zero(); t.Append(iView->iR->iZNear ? _L("depth fix on (toggle: Z)") : _L("depth fix off (toggle: Z)"));
-    HudLine(7, t, iView->iR->iZNear ? green : orange, y, d0, d1);
-    t.Zero();
-    if (iCar->iFinished) t.Append(iPlayers > 1 ? _L("Enter: next player") : _L("Enter: race again"));
-    else t.Append(_L("Esc: menu"));
-    HudLine(8, t, grey, y, d0, d1);
     for (TInt k = 0; k < 4; k++)
         {
         t.Zero();
@@ -952,11 +1009,35 @@ void CTmView::DrawHud()
             t.AppendFormat(_L("P%d  "), k + 1);
             if (iPlayerBest[k]) AppendTime(t, iPlayerBest[k]); else t.Append(_L("-"));
             }
-        HudLine(9 + k, t, k == iPlayer ? yel : white, y, d0, d1);
+        HudLine(7 + k, t, k == iPlayer ? yel : white, y, d0, d1);
         }
-    if (!iHudValid && y < SCR_H) { d1 = SCR_H; }
+    if (!wasValid) d1 = SCR_H;
     iHudValid = ETrue;
-    if (d1 > d0) iHud.CopyTo(iBack, SCR_W, HUD_X, 0, d0, d1);
+    if (d1 > d0) { iHud.CopyTo(iBack, SCR_W, HUD_X, 0, d0, d1); PanelRows(d0, d1); }
+    // the clock (green once finished) and the speed: redrawn when they change
+    t.Zero(); AppendTime(t, iCar->iFinished ? iCar->iFinishSteps : iCar->iSteps);
+    const TUint16 tc = iCar->iFinished ? green : white;
+    if (!wasValid || iHudCol[0] != tc || iHudText[0] != t)
+        {
+        for (TInt r = yTime; r < yTime + hTime; r++) { TUint16* q = iBack + r * SCR_W + HUD_X; for (TInt k = 0; k < HUD_W; k++) q[k] = 0; }
+        iGlyBig.Put(iBack, SCR_W, HUD_X + 6, yTime + 2, t, tc, SCR_W);
+        iHudText[0] = t; iHudCol[0] = tc; PanelRows(yTime, yTime + hTime);
+        }
+    t.Zero(); t.AppendNum(kmh); t.Append('k');
+    if (!wasValid || iHudText[1] != t)
+        {
+        for (TInt r = ySpeed; r < ySpeed + hSpeed; r++) { TUint16* q = iBack + r * SCR_W + HUD_X; for (TInt k = 0; k < HUD_W; k++) q[k] = 0; }
+        iGlyText.Put(iBack, SCR_W, HUD_X + 6, ySpeed + 1, t, white, SCR_W);
+        iHudText[1] = t; PanelRows(ySpeed, ySpeed + hSpeed);
+        }
+    }
+
+// 0.9: the panel on / off (H, the menu): off, its side of the screen is cleared once and not drawn again
+void CTmView::SetHud(TBool aOn)
+    {
+    iHudOn = aOn; iHudValid = EFalse;
+    if (!aOn && iBack) for (TInt r = 0; r < SCR_H; r++) { TUint16* q = iBack + r * SCR_W + HUD_X; for (TInt k = 0; k < HUD_W; k++) q[k] = 0; }
+    PanelRows(0, SCR_H);
     }
 
 // ---- the menu (Esc) ----
@@ -1001,7 +1082,7 @@ void CTmView::MenuKeyL(TInt aDir, TBool aSelect)
             if (iPlayers > 1 && iGhostMode != EGhostOff) iGhostMode = EGhostLast;
             iResultDirty = ETrue;
             break;
-        case EMDepth: iView->iR->iZNear = iView->iR->iZNear ? 0 : 40 * 16; break;
+        case EMPanel: SetHud(!iHudOn); break;
         case EMNext: case EMPrev:
             if (aSelect || aDir == 3 || aDir == 4)
                 {
@@ -1039,13 +1120,13 @@ void CTmView::DrawMenu()
             case EMRestart: t.Append(_L("restart (Backspace)")); break;
             case EMGhost: t.Append(_L("ghost: ")); GhostName(t, iGhostMode); break;
             case EMPlayers: t.AppendFormat(_L("hot seat players: %d"), iPlayers); break;
-            case EMDepth: t.Append(iView->iR->iZNear ? _L("depth fix: on (Z)") : _L("depth fix: off (Z)")); break;
+            case EMPanel: t.Append(iHudOn ? _L("race panel: on (H)") : _L("race panel: off (H)")); break;
             case EMNext: t.Append(_L("next track (N)")); break;
             case EMPrev: t.Append(_L("previous track")); break;
             case EMQuit: t.Append(_L("quit")); break;
             }
         const TBool on = i == iMenuSel;
-        const TBool lr = i == EMGhost || i == EMPlayers || i == EMDepth;
+        const TBool lr = i == EMGhost || i == EMPlayers || i == EMPanel;
         if (on) m.Fill(TRect(4, y - 1, MENU_W - 4, y + h + 2), sel);
         if (on && lr) { TBuf<48> u; u.Append(_L("< ")); u.Append(t.Left(44)); u.Append(_L(" >")); t = u; }
         m.Text(items, t, on && lr ? 10 : 22, y, on ? yel : (lr ? pale : white));
@@ -1080,10 +1161,13 @@ void CTmView::Blit(const TUint16* aSrc)
         if (iShowInfo || iBench >= 0)
             for (TInt y = 0; y < BAR_H; y++) fm_memcpy(iFb + y * iFbStride, aSrc + y * SCR_W, BAR_W * 2);
         const TInt rx = (SCR_W + VIEW_W) / 2;
-        if (iDriving && iBench < 0)
-            for (TInt y = 0; y < SCR_H; y++) fm_memcpy(iFb + y * iFbStride + rx * 2, aSrc + y * SCR_W + rx, HUD_W * 2);
+        // 0.9: the panel's rows that changed only
+        const TInt pr0 = iPanelR0 < 0 ? 0 : iPanelR0, pr1 = iPanelR1 > SCR_H ? SCR_H : iPanelR1;
+        for (TInt y = pr0; y < pr1; y++) fm_memcpy(iFb + y * iFbStride + rx * 2, aSrc + y * SCR_W + rx, HUD_W * 2);
         if (iFirstBlit) { for (TInt y = 0; y < SCR_H; y++) fm_memcpy(iFb + y * iFbStride, aSrc + y * SCR_W, SCR_W * 2); iFirstBlit = EFalse; }
-        TRegionFix<3> upd; upd.AddRect(rv); upd.AddRect(rb); upd.AddRect(TRect(rx, 0, rx + HUD_W, SCR_H));
+        TRegionFix<3> upd; upd.AddRect(rv); upd.AddRect(rb);
+        if (pr1 > pr0) upd.AddRect(TRect(rx, pr0, rx + HUD_W, pr1));
+        iPanelR0 = SCR_H; iPanelR1 = 0;
         iDsa->ScreenDevice()->Update(upd);
         return;
         }
@@ -1154,7 +1238,7 @@ TKeyResponse CTmView::OfferKeyEventL(const TKeyEvent& aKeyEvent, TEventCode aTyp
             else if (c == EKeyRightArrow || sc == EStdKeyRightArrow || sc == EStdKeyDevice7) dir = 4;
             const TBool select = c == EKeyEnter || joyPress || c == ' ';
             if (dir || select) MenuKeyL(dir, select);
-            else if (c == 'z' || c == 'Z') { iView->iR->iZNear = iView->iR->iZNear ? 0 : 40 * 16; iMenuDirty = ETrue; }
+            else if (c == 'h' || c == 'H') { SetHud(!iHudOn); iMenuDirty = ETrue; }
             return EKeyWasConsumed;
             }
         if (c == EKeyEscape) { MenuOpen(); return EKeyWasConsumed; }
@@ -1176,7 +1260,7 @@ TKeyResponse CTmView::OfferKeyEventL(const TKeyEvent& aKeyEvent, TEventCode aTyp
             }
         else if (c == 'f' || c == 'F') iShowInfo = !iShowInfo;
         else if (c == 'm' || c == 'M') iView->iMeshMode = !iView->iMeshMode;
-        else if (c == 'z' || c == 'Z') iView->iR->iZNear = iView->iR->iZNear ? 0 : 40 * 16;     // 0.5: the depth test on/off (A/B)
+        else if (c == 'h' || c == 'H') SetHud(!iHudOn);       // 0.9: the race panel on / off (the depth test is always on)
         else if (c == '+' || c == '=') { iFarM += 30; if (iFarM > 480) iFarM = 480; iView->iFarCut = iFarM * 16; }
         else if (c == '-') { iFarM -= 30; if (iFarM < 60) iFarM = 60; iView->iFarCut = iFarM * 16; }
         else if (c == 'r' || c == 'R') { if (iDriving) DriveReset(); else { iStart.UniversalTime(); iPauseAt = -1; iYawOff = 0; iPitchOff = 0; } }

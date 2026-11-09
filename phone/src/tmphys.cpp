@@ -665,11 +665,11 @@ void TmCar::Race(const TmGround& aG)
 
 // ---- the camera --------------------------------------------------------------------------------------------
 
-TmFollowCam::TmFollowCam() : iBack(6 * 256 + 128), iUp(5 * 256 + 51), iLookUp(256), iLookAhead(7 * 256), iX(0), iY(0), iZ(0), iYaw16(0), iViewYaw(0), iViewPitch(0), iTn(0), iTh(0) { iLast.cinst = -1; iLast.face = -1; iLast.y = 0; }
+TmFollowCam::TmFollowCam() : iBack(7 * 256 + 205), iUp(5 * 256), iLookUp(256), iLookAhead(7 * 256), iX(0), iY(0), iZ(0), iYaw16(0), iViewYaw(0), iViewPitch(0), iTn(0), iTh(0) { iLast.cinst = -1; iLast.face = -1; iLast.y = 0; }
 
 // 0.6: the camera rides on the car's own trail: a point every 0.4 m of the car's way (KTrail of them: 25 m), the camera
 // 8 m back along it and 3 m over where the car was, looking at a point 1 m over the car. 0.8: 6.5 m back and 5.2 m up
-// (Nadeo's cameras: 3-5.9 m up, 6-9 m back), looking 7 m past the car, and kept under a ceiling. It goes where the car went
+// (Nadeo's cameras: 3-5.9 m up, 6-9 m back), looking 7 m past the car, and kept under a ceiling. 0.10: 7.8 m back, 5 m up. It goes where the car went
 // (under a bridge or a track overhead, through a gate or a building, along a jump) and never searches for ground; a
 // slide shows as a slide. Smoothed a little each step (not each frame: the same at any frame rate)
 void TmFollowCam::Reset(const TmCarState& aS)
