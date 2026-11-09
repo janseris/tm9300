@@ -38,7 +38,7 @@ const TInt KBenchPort = 8000;
 enum { BENCH_VARIANTS = 5, BENCH_LOG = 6144 };
 enum { BAR_W = 64, BAR_H = 152 };           // the counters, top left (F)
 enum { SIDE_W = VIEW_X, RIGHT_X = VIEW_X + VIEW_W };
-static const char* const KVersionC = "0.15";
+static const char* const KVersionC = "0.16";
 enum { KMaxFiles = 64 };
 
 // the benchmark's log to the PC (the local server's /results, into its uploads folder), after Hrimfell's
@@ -293,6 +293,10 @@ private:
     TTime iDriveStart;
     TInt iDriveSteps;
     void DriveReset();
+    // 0.15: the body on its springs (drawn only): its height over the wheels and its speed (1/256 m, m/s); the
+    // Desert car's soft and bouncy, the Rally and Snow cars' stiff
+    TInt iSusB, iSusV;
+    void Suspension(TInt aVy0, TInt aOnGround0);
     void DriveFrame(TInt& aCx, TInt& aCy, TInt& aCz, TInt& aYaw, TInt& aPitch, TInt& aCarX, TInt& aCarY, TInt& aCarZ, TInt& aCarYaw);
     void BenchStart();
     void BenchVariant(TInt aV);
@@ -454,7 +458,7 @@ void CTmView::ScanTracks()
             // rallyA1 / snowE: the environment, the series' letter (A White .. E Black), the number
             TBuf<20> lo(n); lo.LowerCase();
             TInt k = 0;
-            if (lo.Find(_L("rally")) == 0) { t.iEnv = 0; k = 5; } else if (lo.Find(_L("snow")) == 0) { t.iEnv = 1; k = 4; } else continue;
+            if (lo.Find(_L("rally")) == 0) { t.iEnv = 0; k = 5; } else if (lo.Find(_L("snow")) == 0) { t.iEnv = 1; k = 4; } else if (lo.Find(_L("desert")) == 0) { t.iEnv = 2; k = 6; } else continue;
             if (k >= n.Length()) continue;
             TInt letter = n[k]; if (letter >= 'a') letter -= 32;
             if (letter < 'A' || letter > 'E') continue;
@@ -550,7 +554,7 @@ void CTmView::BenchStart()
     iLog.Zero();
     TInt f = 0, t = 0; HAL::Get(HALData::EMemoryRAMFree, f); HAL::Get(HALData::EMemoryRAM, t);
     TBuf8<64> name8; name8.Copy(iStatus);
-    iLog.AppendFormat(_L8("tm9300 bench v0.15: %S, %d meshes %d instances %d triangles, display %d bpp direct %d, RAM free %d KB of %d KB\r\n"),
+    iLog.AppendFormat(_L8("tm9300 bench v0.16: %S, %d meshes %d instances %d triangles, display %d bpp direct %d, RAM free %d KB of %d KB\r\n"),
         &name8, iTrack->iNMesh, iTrack->iNInst, iTrack->iTris, iFbBpp, iFb ? 1 : 0, f / 1024, t / 1024);
     iLog.Append(_L8("variant: frames, fps, draw ms (avg), copy ms (avg), slowest frame ms, polys drawn, submitted, instances visible (avg), direct; fps by second\r\n"));
     iShowInfo = EFalse;
@@ -754,9 +758,30 @@ void CTmView::DriveReset()
     // the countdown first (0.13: as the game shows it: the clock from -0:02.60, "2" to -1 s, "1" to the start), then the race
     iRaceSteps = -130; iSeenCps = 0; iSplitUntil = 0; iSplitHas = EFalse;
     iRun.Begin();
+    iSusB = iSusV = 0;
     iView->iNGhosts = 0;
     iSidesDirty = ETrue; iPauseDirty = ETrue;
     GhostRef();
+    }
+
+// the body follows the wheels' vertical movement through a spring: a bump or a landing (the change of the wheels'
+// vertical speed) throws it, the spring brings it back, ringing a while on the Desert car (1.4 Hz, damping 0.12),
+// hardly on the others (3 Hz, 0.6). Integrated each 20 ms step; drawn as the car's height and pitch
+void CTmView::Suspension(TInt aVy0, TInt aOnGround0)
+    {
+    const TBool soft = iCar->iClass == 2;
+    const TInt k = soft ? 77 : 355, c = soft ? 2 : 23;          // omega^2 (1/s^2), 2 zeta omega (1/s)
+    // the wheels' vertical acceleration this step (1/256 m/s^2), only on the ground and at a landing
+    TInt aw = 0;
+    if (iCar->iS.onGround) aw = (iCar->iS.vy - aVy0) * (soft ? 25 : 12);      // (a landing: the fall stopped); the tyres take some
+    (void) aOnGround0;
+    if (aw > 300 * 256) aw = 300 * 256; if (aw < -300 * 256) aw = -300 * 256;
+    // b'' = -k b - c b' - aw (the body lags the wheels)
+    iSusV += (-k * iSusB - c * iSusV - aw) / 50;
+    iSusB += iSusV / 50;
+    const TInt lim = soft ? 110 : 40;                           // 0.43 m / 0.16 m of travel
+    if (iSusB > lim) { iSusB = lim; if (iSusV > 0) iSusV = 0; }
+    if (iSusB < -lim) { iSusB = -lim; if (iSusV < 0) iSusV = -(iSusV >> 2); }
     }
 
 // Enter after the finish: the next run; in the hot seat the player's next attempt, or the next player's turn, after
@@ -977,7 +1002,9 @@ void CTmView::DriveFrame(TInt& aCx, TInt& aCy, TInt& aCz, TInt& aYaw, TInt& aPit
         iDriveSteps++;
         // the countdown: the car waits on the line
         if (iRaceSteps < 0) { iRaceSteps++; iCam->Update(*iGround, iCar->iS, aCx, aCy, aCz, aYaw, aPitch); continue; }
+        const TInt vy0 = iCar->iS.vy, onGround0 = iCar->iS.onGround;
         iCar->Step(*iGround, in); iRaceSteps++;
+        Suspension(vy0, onGround0);
         if (iPlayers > 1 && iHsMode && !iCar->iFinished)
             {
             // the time mode: the turn's clock (the run on when it runs out may still finish)
@@ -1033,8 +1060,10 @@ void CTmView::DriveFrame(TInt& aCx, TInt& aCy, TInt& aCz, TInt& aYaw, TInt& aPit
         TmView::TGhostCar& c = iView->iGhosts[iView->iNGhosts];
         if (q && q->At((TInt) (((TInt64) gs * gn) / gd).Low(), c.x, c.y, c.z, c.yaw, c.slopeF, c.slopeR)) iView->iNGhosts++;
         }
-    aCarX = iCar->iS.x >> 4; aCarY = (iCar->iS.y >> 4) + 3; aCarZ = iCar->iS.z >> 4; aCarYaw = iCar->iS.yaw;
+    aCarX = iCar->iS.x >> 4; aCarY = (iCar->iS.y >> 4) + 3 + (iSusB >> 4); aCarZ = iCar->iS.z >> 4; aCarYaw = iCar->iS.yaw;
     iCar->iS.Slopes(iView->iCarSlopeF, iView->iCarSlopeR);
+    // the body's pitch with its bounce (the nose dips as it sinks)
+    iView->iCarSlopeF += iSusV * 2;
     }
 
 void CTmView::Frame()

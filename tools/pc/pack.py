@@ -42,7 +42,8 @@ def rgb565(r, g, b): return ((int(r) >> 3) << 11) | ((int(g) >> 2) << 5) | (int(
 LIGHT = (0.45, 0.8, 0.4); _l = math.sqrt(sum(c * c for c in LIGHT)); LIGHT = tuple(c / _l for c in LIGHT)
 TILE = 32.0     # m: the split size for wide meshes
 FAR_DIST = 100  # m: beyond it an instance draws its far form (the fog starts there)
-R_GRID = 1.2    # m: the coarsest clustering of what is not driven on (walls, roofs)
+R_GRID = float(__import__('os').environ.get('R_GRID', '1.2'))    # m: the coarsest clustering of what is not driven on (walls, roofs)
+D_GRID = float(__import__('os').environ.get('D_GRID', '1.4'))    # m: the coarsest of what is driven on (0.15: Desert's sand tiles need 3)
 EDGE_STEP = 2.0 # m: the grid the pieces' edge corners snap to along the edge (the seams)
 WIND = 'reverse'
 
@@ -227,7 +228,7 @@ def decimate_keep(mesh, budget, keep_edges=None, r_grid=None):
     bd = max(40, int(budget * 0.6)) if len(R) > budget * 0.4 else budget - len(R)
     g = 0.25; md = Mesh(mesh.verts, D); md.rep = list(range(len(mesh.verts)))
     # never coarser than ~1.3 m for what is driven on: a road through an arch kept its shape, the arch pays
-    while len(md.faces) > bd and g < 1.4: md = cluster(Mesh(mesh.verts, D), g, keep_edges); g *= 1.5
+    while len(md.faces) > bd and g < D_GRID: md = cluster(Mesh(mesh.verts, D), g, keep_edges); g *= 1.5
     # the drivable corners pinned: original index -> (its merged corner's id, position)
     used_d = {k for fc in D for k in fc[:3]}
     fixed = {i: (md.rep[i], md.verts[md.rep[i]]) for i in used_d}
@@ -586,7 +587,7 @@ def main():
             print(f"  base plate {pname}: {len(L['faces']) // 4} -> {n0} triangles in {sum(1 for i in insts if i[1] == 1)} tiles")
     # 4. the car
     car = -1
-    for cname in ('RallyCar', 'SnowCar', 'SpeedCar', 'BayCar', 'IslandCar', 'CoastCar'):
+    for cname in ('RallyCar', 'SnowCar', 'American', 'SpeedCar', 'BayCar', 'IslandCar', 'CoastCar'):
         if cname in t.solids:
             m = compact(decimate(from_lod(t.solids[cname]['lods'][0], matcol), CAR_TRIS))
             car = add_mesh(m); print(f"  car {cname}: {t.solids[cname]['tris'][0]} -> {len(m.faces)} triangles"); break
@@ -599,7 +600,8 @@ def main():
         yaw = int(round(math.degrees(math.atan2(dx, dz)) * 4096 / 360)) % 4096 if abs(dx) + abs(dz) >= 0.05 else prev
         prev = yaw
         path.append((int(round(p[0] * 16)), int(round(p[1] * 16)), int(round(p[2] * 16)), yaw, 0))
-    sky = rgb565(130, 170, 220); ground = rgb565(70, 90, 30) if t.env == 'Rally' else rgb565(225, 228, 235)
+    sky = rgb565(130, 170, 220); ground = rgb565(70, 90, 30) if t.env == 'Rally' else rgb565(205, 145, 90) if t.env == 'Speed' else rgb565(225, 228, 235)
+    if t.env == 'Speed': sky = rgb565(150, 180, 215)        # 0.15: Desert: sand under a paler sky
     fog = sky
     out = bytearray()
     start = path[0] if path else (0, 0, 0, 0, 0)

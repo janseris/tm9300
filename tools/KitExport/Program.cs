@@ -154,8 +154,12 @@ foreach (var f in Directory.EnumerateFiles(root, "*.TMED*.Gbx", SearchOption.All
     Console.Error.Write($"\r{blocks.Count} blocks, {solids.Count} solids   ");
 }
 // the car, and the base plates (the terrain under and around the map, one per map size: Media/Solid/Base/30x30 ...)
-foreach (var f in Directory.EnumerateFiles(root, "*Car.Solid.Gbx", SearchOption.AllDirectories))
-{ var g = Gbx.Parse(f); if (g.Node is CPlugSolid cs) { var ex = ExportSolid(cs); if (ex is not null) solids[Path.GetFileName(f).Replace(".Solid.Gbx", "")] = ex; } }
+// (0.15: every solid of Vehicles/Media/Solid: Desert's car is American.Solid.Gbx)
+foreach (var f in Directory.EnumerateFiles(root, "*.Solid.Gbx", SearchOption.AllDirectories))
+{
+    if (!f.Replace('\\', '/').Contains("/Vehicles/Media/Solid/")) continue;
+    var g = Gbx.Parse(f); if (g.Node is CPlugSolid cs) { var ex = ExportSolid(cs); if (ex is not null) solids[Path.GetFileName(f).Replace(".Solid.Gbx", "")] = ex; }
+}
 foreach (var f in Directory.EnumerateFiles(root, "*.Solid.Gbx", SearchOption.AllDirectories))
 {
     if (!f.Replace('\\', '/').Contains("/Solid/Base/")) continue;

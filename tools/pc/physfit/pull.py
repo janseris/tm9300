@@ -2,7 +2,7 @@ import json, glob, math, sys, os
 sys.path.insert(0, __import__('os').path.dirname(__file__))
 from replaygrip import rot
 G = 29.4
-for env in ['Rally', 'Snow']:
+for env in (sys.argv[1:] or ['Rally', 'Snow']):
     B = {}
     for f in sorted(glob.glob('/root/ref/replays/%s*.json' % env)):
         n = os.path.basename(f)[:-5]; n = n[0].lower() + n[1:]

@@ -30,5 +30,7 @@ def run(pattern, G):
         if len(r) < 20: continue
         fl = [x for x in r if x[4] > 0.97]
         print('  %3d-%3d %5d   %5.1f %5.1f    %5.1f %5.1f      %5.2f %5.2f        %5.1f %5.1f (%d)' % (b * 36, b * 36 + 36, len(r), pct([x[1] for x in r], .9), pct([x[1] for x in r], .98), pct([x[2] for x in r], .5), pct([x[2] for x in r], .9), pct([x[3] for x in r], .9), pct([x[3] for x in r], .98), pct([x[1] for x in fl], .9), pct([x[1] for x in fl], .98), len(fl)))
-run('/root/ref/replays/Rally*.json', float(sys.argv[1]) if len(sys.argv) > 1 else 27.0)
-run('/root/ref/replays/Snow*.json', float(sys.argv[2]) if len(sys.argv) > 2 else 27.0)
+if __name__ == '__main__':
+    # replaygrip.py [env] [G]: the env's replays (all three when none)
+    envs = [sys.argv[1]] if len(sys.argv) > 1 else ['Rally', 'Snow', 'Desert']
+    for e in envs: print(e); run('/root/ref/replays/%s*.json' % e, float(sys.argv[2]) if len(sys.argv) > 2 else 27.0)

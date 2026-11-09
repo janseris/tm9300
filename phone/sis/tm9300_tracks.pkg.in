@@ -1,7 +1,7 @@
-; TrackMania 9300 - the tracks (one of each campaign series of Rally and Snow), their pictures and the menus' pictures
+; TrackMania 9300 - the tracks (one of each campaign series of Rally and Snow; Desert A1, B3, C1), their pictures and the menus' pictures
 ; (cut from the game's own files on the PC: never in git); installed on their own
 &EN
-#{"TM9300 tracks"},(0x0E3D9311),0,15,0
+#{"TM9300 tracks"},(0x0E3D9311),0,16,0
 (0x101F8ED2), 0, 0, 0, {"Series80ProductID"}
 "../data/rallyA1.tmb"-"!:\system\apps\tm9300\rallyA1.tmb"
 "../data/rallyB1.tmb"-"!:\system\apps\tm9300\rallyB1.tmb"
@@ -23,4 +23,10 @@
 "../data/snowC2.tmt"-"!:\system\apps\tm9300\snowC2.tmt"
 "../data/snowD3.tmt"-"!:\system\apps\tm9300\snowD3.tmt"
 "../data/snowE.tmt"-"!:\system\apps\tm9300\snowE.tmt"
+"../data/desertA1.tmb"-"!:\system\apps\tm9300\desertA1.tmb"
+"../data/desertB3.tmb"-"!:\system\apps\tm9300\desertB3.tmb"
+"../data/desertC1.tmb"-"!:\system\apps\tm9300\desertC1.tmb"
+"../data/desertA1.tmt"-"!:\system\apps\tm9300\desertA1.tmt"
+"../data/desertB3.tmt"-"!:\system\apps\tm9300\desertB3.tmt"
+"../data/desertC1.tmt"-"!:\system\apps\tm9300\desertC1.tmt"
 "../data/tm9300.ui"-"!:\system\apps\tm9300\tm9300.ui"

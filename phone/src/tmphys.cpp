@@ -354,7 +354,7 @@ static const int KPull[5][10] =
     {
     { 230, 135, 89, 30, 30, 24, 20, 20, 20, 18 },       // 0.8: Rally: the replays' median tyre force along the car on straights (slope out)
     { 153, 127, 46, 25, 12, 12, 12, 8, 8, 8 },          // 0.8: Snow, the same way
-    { 150, 150, 150, 50, 50, 46, 46, 46, 30, 0 },
+    { 150, 150, 132, 50, 50, 45, 45, 45, 46, 36 },      // 0.15: Desert, the replays' medians on the road (sand: a fifth)
     { 200, 253, 223, 61, 61, 60, 45, 45, 45, 0 },
     { 96, 92, 87, 190, 195, 248, 222, 230, 229, 171 },
     };
@@ -363,7 +363,7 @@ static const int KTurn[5][10] =
     {
     { 396, 396, 396, 344, 313, 292, 280, 280, 280, 280 },   // 0.8: on at high speed (Nadeo: radius 5 m + 0.7 s * speed)
     { 261, 392, 434, 455, 467, 477, 484, 488, 492, 494 },   // 0.8: Snow, Nadeo's Steer02 radius 2 m + 0.4 s * speed
-    { 229, 440, 517, 406, 369, 321, 325, 321, 354, 296 },
+    { 300, 330, 370, 412, 381, 362, 339, 336, 364, 331 },   // 0.15: Desert, the replays' 98th percentile
     { 288, 359, 263, 204, 192, 236, 298, 323, 363, 302 },
     { 81, 229, 315, 503, 421, 330, 321, 194, 186, 165 },
     };
@@ -374,7 +374,7 @@ static const int KSurfKeep[9] = { 218, 228, 240, 218, 243, 256, 218, 248, 232 };
 // 0.6: the sideways grip by class, 1/256 m/s a step (m/s^2 * 5.12), fitted to the replays' slip angles; by surface
 // (/256: road, dirt, grass, rock, water, none, turbo, ice, snow); the widest slide (tan * 256); the speed a slide
 // costs (/4096 of the sideways speed a step)
-static const int KGrip[5] = { 297, 740, 260, 300, 300 };
+static const int KGrip[5] = { 297, 740, 340, 300, 300 };      // 0.15: Desert 66 m/s^2 (the replays' 90th percentile, flat)
 static const int KSurfGrip[9] = { 256, 238, 170, 240, 120, 256, 256, 8, 50 };
 static const int KSlipMax[5] = { 160, 80, 128, 128, 110 };
 static const int KScrub[5] = { 40, 64, 48, 48, 48 };
@@ -531,22 +531,30 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
         s.speed = (s.vx * R3D::Sin(s.yaw) + s.vz * R3D::Cos(s.yaw)) >> 14;
         iWallHits++;
         }
-    // 0.15: the car's front corners too (its rear ones in reverse), 0.85 m to each side and 1.9 m out, at 0.35 m and
-    // 1 m up: a post, a pole or a log the middle's line misses still stops the car where its body meets it (the
-    // checkpoints' and the start's poles, the logs were driven through)
+    // 0.15: the car's body for the walls: its front corners (0.85 m to each side, 1.9 m out) at 0.35 m and 1 m up (the
+    // rear ones in reverse), and in a slide (sideways faster than 2 m/s) the leading side's middle at 0.5 m (its rear corner
+    // too snagged the castle roads in a drift): a post, a pole or a log the middle's line misses still stops the car where its body meets it (the
+    // checkpoints' and the start's poles, the logs were driven through). A whole box at all times snagged the narrow
+    // wooden roads' rails (the walls are the drawn shapes' steep faces, rougher than the game's collision)
     // (not on a bank or a wall ride: there the road itself rises past the corners)
     if (s.ny >= 7000)
     {
-    const int fwd = s.speed >= 0 ? 486 : -486;
-    for (int pass = 0; pass < 4; pass++)
+    const int lat = (s.vx * co - s.vz * sn) >> 14;
+    const int lside = lat > 512 ? 218 : lat < -512 ? -218 : 0;
+    for (int pass = 0; pass < 5; pass++)
         {
-        const int side = (pass & 1) ? 218 : -218;
+        int fwd = s.speed >= 0 ? 486 : -486, side = (pass & 1) ? 218 : -218, up = pass < 2 ? 90 : 256;
+        if (pass >= 4)
+            {
+            if (!lside || s.ny < 7700) break;
+            side = lside; up = 128; fwd = pass == 4 ? 0 : -fwd;
+            }
         const int ox = (fwd * sn + side * co) >> 14, oz = (fwd * co - side * sn) >> 14;
         TmGroundHit w;
         const int px = s.x + ox, pz = s.z + oz;
         // the corner's height over the ground's plane under the car (a gentle slope rises under a corner too)
         const int py = s.y - (s.nx * ox + s.nz * oz) / s.ny;
-        if (!aG.WallHit(px, pz, px + nx - s.x, pz + nz - s.z, py + (pass < 2 ? 90 : 256), w, ny - s.y)) continue;
+        if (!aG.WallHit(px, pz, px + nx - s.x, pz + nz - s.z, py + up, w, ny - s.y)) continue;
         int t = w.y > 128 ? w.y - 128 : 0;
         int mx = nx - s.x, mz = nz - s.z;
         int hx = s.x + (int) (((long long) mx * t) >> 12), hz = s.z + (int) (((long long) mz * t) >> 12);

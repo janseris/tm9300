@@ -856,13 +856,15 @@ void TmMenu::DrawSeries(TmPix* f, int s)
     Round(f, s, x, 2, w, 196, 6, Rgb(50, 70, 82), Rgb(34, 50, 60));
     Round(f, s, x + 4, 4, w - 8, iText->iH + 4, 5, Rgb(240, 150, 30), Rgb(200, 110, 10));
     Text(f, s, *iText, x + 12, 6, "Available campaigns", Rgb(255, 255, 255));
-    int count = 0; for (int e = 0; e < 2; e++) for (int k = 0; k < 5; k++) if (SeriesCount(e, k)) count++;
+    int count = 0; for (int e = 0; e < iNEnvs; e++) for (int k = 0; k < 5; k++) if (SeriesCount(iEnvs[e], k)) count++;
     char b[24]; b[0] = 0; SNum(b, count);
     Text(f, s, *iText, x + w - 12 - iText->Width(b), 6, b, Rgb(255, 255, 255));
-    const int rh = (196 - iText->iH - 12) / 10;
-    for (int row = 0; row < 10; row++)
+    // 0.15: five series an environment installed (three: fifteen rows, the small font's height each)
+    const int nrows = iNEnvs * 5;
+    const int rh = nrows ? (196 - iText->iH - 12) / nrows : 16;
+    for (int row = 0; row < nrows; row++)
         {
-        const int e = row / 5, k = row % 5, n = SeriesCount(e, k);
+        const int e = iEnvs[row / 5], k = row % 5, n = SeriesCount(e, k);
         const int y = 10 + iText->iH + row * rh;
         const bool sel = row == iSeriesSel;
         Round(f, s, x + 8, y, w - 16, rh - 1, 2, sel ? Rgb(255, 250, 215) : Rgb(236, 236, 236), sel ? Rgb(230, 222, 170) : Rgb(212, 212, 212));
@@ -927,7 +929,7 @@ void TmMenu::Draw(TmPix* f, int s)
             break;
         case ESeries:
             DrawLeft(f, s, "Hot Seat", "Choose a series", EIcoParty);
-            DrawItem(f, s, RowY(-1), EIcoBack, "Back", iSeriesSel == 10);
+            DrawItem(f, s, RowY(-1), EIcoBack, "Back", iSeriesSel == iNEnvs * 5);
             DrawSeries(f, s);
             break;
         default: break;
@@ -1074,12 +1076,14 @@ int TmMenu::Key(int aKey, int aChar)
             return EUiNone;
             }
         case ESeries:
-            if (aKey == EUiBack || (aKey == EUiOk && iSeriesSel == 10)) { iScreen = EHotSeat; return EUiNone; }
-            if (aKey == EUiUp) iSeriesSel = (iSeriesSel + 10) % 11;
-            else if (aKey == EUiDown) iSeriesSel = (iSeriesSel + 1) % 11;
+            {
+            const int nr = iNEnvs * 5 + 1;
+            if (aKey == EUiBack || (aKey == EUiOk && iSeriesSel == nr - 1)) { iScreen = EHotSeat; return EUiNone; }
+            if (aKey == EUiUp) iSeriesSel = (iSeriesSel + nr - 1) % nr;
+            else if (aKey == EUiDown) iSeriesSel = (iSeriesSel + 1) % nr;
             else if (aKey == EUiOk)
                 {
-                const int env = iSeriesSel / 5, ser = iSeriesSel % 5;
+                const int env = iEnvs[iSeriesSel / 5], ser = iSeriesSel % 5;
                 iSeriesN = 0;
                 for (int n = 1; n <= 5 && iSeriesN < 8; n++) { int ti = TrackAt(ser, env, n); if (ti >= 0) iSeriesFiles[iSeriesN++] = iTracks[ti].iFile; }
                 if (!iSeriesN) return EUiNone;
@@ -1090,6 +1094,7 @@ int TmMenu::Key(int aKey, int aChar)
                 return EUiRace;
                 }
             return EUiNone;
+            }
         default: return EUiNone;
         }
     }

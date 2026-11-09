@@ -2,7 +2,7 @@ import json, glob, math, sys, os
 sys.path.insert(0, __import__('os').path.dirname(__file__))
 from replaygrip import rot
 pct = lambda a, p: sorted(a)[min(len(a) - 1, int(len(a) * p))] if a else float('nan')
-for env in ['Rally', 'Snow']:
+for env in (sys.argv[1:] or ['Rally', 'Snow']):
     yr = {}
     for f in sorted(glob.glob('/root/ref/replays/%s*.json' % env)):
         d = json.load(open(f)); s = d['samples']; T = d['time']

@@ -355,8 +355,11 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   (it got stuck before), RallyE takes 19 checkpoints of 22 instead of 7, SnowA1 and B1 are 0.24 s slower (the falls
   take their time).
 - Walls are checked at the car's front corners too (0.85 m to each side, 1.9 m out, at 0.35 m and 1 m over the
-  ground's plane; the rear ones in reverse), not only on its middle's line: a checkpoint's or the start's pole, a
-  log the middle passes by stops the car. Not on banks and wall rides (the road rises past the corners there).
+  ground's plane; the rear ones in reverse), and in a slide (sideways over 2 m/s) at the leading side's middle,
+  not only on its middle's line: a checkpoint's or the start's pole, a log the middle passes by stops the car.
+  Not on banks and wall rides (the road rises past the corners there). A whole box at all times (the rear corners
+  and both sides too) snagged the narrow wooden roads' rails and the castle roads in a drift: the walls are the
+  drawn shapes' steep faces, rougher than the game's collision.
 - The Alpine hills' forest cards (crossed quads 17 x 28 m, the trees in the texture's alpha) were drawn as whole
   dark rectangles: each is now two fir shapes (`tree_cards` in `pack.py`), and the tree textures' colour is the
   average of their opaque pixels; the ice's colour (its texture is a reflection table) is a light blue.
@@ -367,6 +370,22 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
 - The track pictures are the game's own (the thumbnail in the Challenge.Gbx header, `tools/pc/tmthumbgbx.py`).
 - The game's loading screens (Snow, Rally; Desert's for later) while a track loads, then "Press any key".
 - Esc on the start-up screen leaves the game.
+
+## 0.16: Desert (9 Nov 2026)
+- Speed.pak (Desert) dumped with GBX.NET's PakToFolder, exported by `KitExport` (now every solid of
+  `Vehicles/Media/Solid`: Desert's car is `American.Solid.Gbx`, 12,210 triangles, 437 on the phone), its textures'
+  colours averaged on the PC (`avgcolors.json`). Desert's cells are 16 m high, as Alpine's (`assemble.py`; at 8 m
+  the replays drove 32 m over the road).
+- Its sand tiles (`RiverBeach/*`, 350-900 triangles each) are simplified coarser than the other environments' ground
+  (`D_GRID=3 R_GRID=2 pack.py --budget 150`): ~1,000-1,300 triangles drawn a frame, between Rally and Snow.
+- The car's tables from the 21 Desert replays (`physfit/pull.py Desert`, `yaw.py Desert`, `replaygrip.py Desert`):
+  the pull 29 m/s^2 to 30 m/s, then 9-10 to 110 m/s (its top speed is ~130 m/s: 470 km/h), the turning 1.6-2.0 rad/s,
+  the sideways grip 66 m/s^2.
+- The body on springs (drawn only): a bump or a landing throws it, the spring brings it back; the Desert car's
+  soft (1.4 Hz, damping 0.12: it rings, as the game's bouncy American car), Rally's and Snow's stiff (3 Hz, 0.6).
+- Installed: DesertA1, B3, C1 (the auto-driver finishes them; the others need work: the garage starts' long slopes
+  have a sand tile left over them, A2/A3's jumps, the D and E tracks). The menu's grid and the hot seat's series
+  list every installed environment (the grid three a page in the game's order).
 
 ## Next
 
