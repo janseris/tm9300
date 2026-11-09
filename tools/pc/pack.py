@@ -77,6 +77,33 @@ def tex_surface(tex):
         if key in n: return surf
     return 0
 
+def tree_cards(L, mats, key='hilltree'):
+    """0.15: the forest cards on the Alpine hills (crossed quads 17 x 28 m, a row of fir trees in the texture's alpha,
+    which the phone cannot draw): each quad becomes two fir shapes, triangles from its foot to its top edge, both
+    sides (they were drawn as whole dark rectangles)"""
+    v = L['verts']; f = L['faces']; nv = L['norms']
+    tree = [i for i in range(0, len(f), 4) if f[i + 3] >= 0 and key in mats[f[i + 3]]['texture'].lower()]
+    if not tree: return L
+    P = lambda k: (round(v[k * 3], 2), round(v[k * 3 + 1], 2), round(v[k * 3 + 2], 2))
+    quads = {}
+    for i in tree:
+        for j in tree:
+            if j <= i: continue
+            a = {P(f[i]), P(f[i + 1]), P(f[i + 2])}; b = {P(f[j]), P(f[j + 1]), P(f[j + 2])}
+            if len(a & b) == 2 and len(a | b) == 4: quads[tuple(sorted(a | b))] = f[i + 3]
+    verts = list(v); norms = list(nv); faces = [f[i + k] for i in range(0, len(f), 4) if i not in set(tree) for k in range(4)]
+    def add(p):
+        verts.extend(p); norms.extend((0.0, 1.0, 0.0)); return len(verts) // 3 - 1
+    for q, m in quads.items():
+        q = sorted(q, key=lambda p: p[1]); b0, b1 = q[0], q[1]; t0, t1 = (q[2], q[3]) if math.dist(q[2], b0) < math.dist(q[3], b0) else (q[3], q[2])
+        for k, hgt in ((0, 1.0), (1, 0.85)):
+            lerp = lambda A, B, u: tuple(A[c] + (B[c] - A[c]) * u for c in range(3))
+            f0, f1 = lerp(b0, b1, k / 2), lerp(b0, b1, (k + 1) / 2)
+            top = lerp(t0, t1, (k + 0.5) / 2); foot = lerp(b0, b1, (k + 0.5) / 2); top = lerp(foot, top, hgt)
+            i0, i1, i2 = add(f0), add(f1), add(top)
+            faces += [i0, i1, i2, m, i0, i2, i1, m]
+    return dict(L, verts=verts, norms=norms, faces=faces)
+
 def from_lod(L, matcol, matsurf=lambda i: 0):
     v = L['verts']; n = L['norms']; f = L['faces']
     verts = [(v[i], v[i + 1], v[i + 2]) for i in range(0, len(v), 3)]
@@ -431,7 +458,7 @@ def main():
         if sname in base_meshes: return base_meshes[sname]
         s = t.solids[sname]
         L = s['lods'][lod if 0 <= lod < len(s['lods']) else len(s['lods']) - 1]
-        m = from_lod(L, matcol, matsurf)
+        m = from_lod(tree_cards(L, mats), matcol, matsurf)
         if s['sprites'] and 'tree' in sname.lower():
             c = canopies(s['sprites'], leaf)
             b = len(m.verts); m = Mesh(m.verts + c.verts, m.faces + [(x + b, y + b, z + b, col) for x, y, z, col in c.faces])

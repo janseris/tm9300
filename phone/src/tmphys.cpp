@@ -531,6 +531,35 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
         s.speed = (s.vx * R3D::Sin(s.yaw) + s.vz * R3D::Cos(s.yaw)) >> 14;
         iWallHits++;
         }
+    // 0.15: the car's front corners too (its rear ones in reverse), 0.85 m to each side and 1.9 m out, at 0.35 m and
+    // 1 m up: a post, a pole or a log the middle's line misses still stops the car where its body meets it (the
+    // checkpoints' and the start's poles, the logs were driven through)
+    // (not on a bank or a wall ride: there the road itself rises past the corners)
+    if (s.ny >= 7000)
+    {
+    const int fwd = s.speed >= 0 ? 486 : -486;
+    for (int pass = 0; pass < 4; pass++)
+        {
+        const int side = (pass & 1) ? 218 : -218;
+        const int ox = (fwd * sn + side * co) >> 14, oz = (fwd * co - side * sn) >> 14;
+        TmGroundHit w;
+        const int px = s.x + ox, pz = s.z + oz;
+        // the corner's height over the ground's plane under the car (a gentle slope rises under a corner too)
+        const int py = s.y - (s.nx * ox + s.nz * oz) / s.ny;
+        if (!aG.WallHit(px, pz, px + nx - s.x, pz + nz - s.z, py + (pass < 2 ? 90 : 256), w, ny - s.y)) continue;
+        int t = w.y > 128 ? w.y - 128 : 0;
+        int mx = nx - s.x, mz = nz - s.z;
+        int hx = s.x + (int) (((long long) mx * t) >> 12), hz = s.z + (int) (((long long) mz * t) >> 12);
+        int rx = mx - (int) (((long long) mx * t) >> 12), rz = mz - (int) (((long long) mz * t) >> 12);
+        int rn = (rx * w.nx + rz * w.nz) >> 13;
+        if (rn < 0) { rx -= (rn * w.nx) >> 13; rz -= (rn * w.nz) >> 13; }
+        nx = hx + rx; nz = hz + rz;
+        int vn = (s.vx * w.nx + s.vz * w.nz) >> 13;
+        if (vn < 0) { s.vx -= (vn * w.nx * 6 / 5) >> 13; s.vz -= (vn * w.nz * 6 / 5) >> 13; }
+        s.speed = (s.vx * R3D::Sin(s.yaw) + s.vz * R3D::Cos(s.yaw)) >> 14;
+        iWallHits++;
+        }
+    }
     // 0.6: and the move as it now is crosses no wall (a slide along one face can run into the next at a corner):
     // else the car stays where it is this step (its speed into the walls was taken out above)
     {
@@ -599,8 +628,10 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
             // the ground is left only when it falls away faster than a throw would, by more than 0.25 m and for two
             // steps running: the car's y a step on, by its upward speed and gravity, against the ground there (glued
             // over crests and seams otherwise, as TrackMania's cars)
+            // 0.15: the one step's grace is for a seam (0.5 m at most): a platform further below is fallen to, by the
+            // air's gravity, no longer put under the car at once
             int throwY = s.y + s.vy / 50 - ((iGravity * 256 / 50) >> 8) / 50;
-            if (hit.y >= throwY - 24 || iAirSteps < 1)
+            if (hit.y >= throwY - 24 || (iAirSteps < 1 && hit.y >= throwY - 128))
                 {
                 if (hit.y < throwY - 24) iAirSteps++; else iAirSteps = 0;
                 // on it: the climb rate from the ground itself (a ramp's end throws the car at that rate)
@@ -665,7 +696,8 @@ void TmCar::Race(const TmGround& aG)
 
 // ---- the camera --------------------------------------------------------------------------------------------
 
-TmFollowCam::TmFollowCam() : iBack(9 * 256 + 128), iUp(5 * 256 + 154), iLookUp(256), iLookAhead(7 * 256), iX(0), iY(0), iZ(0), iYaw16(0), iViewYaw(0), iViewPitch(0), iTn(0), iTh(0) { iLast.cinst = -1; iLast.face = -1; iLast.y = 0; }
+// 0.15: 11 m back, 4 m up, looking at a point 30 m on and 1.5 m up: lower, the road ahead in view, as the game's
+TmFollowCam::TmFollowCam() : iBack(11 * 256), iUp(4 * 256), iLookUp(384), iLookAhead(30 * 256), iX(0), iY(0), iZ(0), iYaw16(0), iViewYaw(0), iViewPitch(0), iTn(0), iTh(0) { iLast.cinst = -1; iLast.face = -1; iLast.y = 0; }
 
 // 0.6: the camera rides on the car's own trail: a point every 0.4 m of the car's way (KTrail of them: 25 m), the camera
 // 8 m back along it and 3 m over where the car was, looking at a point 1 m over the car. 0.8: 6.5 m back and 5.2 m up

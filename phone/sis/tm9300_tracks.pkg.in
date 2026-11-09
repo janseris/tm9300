@@ -1,7 +1,7 @@
 ; TrackMania 9300 - the tracks (one of each campaign series of Rally and Snow), their pictures and the menus' pictures
 ; (cut from the game's own files on the PC: never in git); installed on their own
 &EN
-#{"TM9300 tracks"},(0x0E3D9311),0,11,0
+#{"TM9300 tracks"},(0x0E3D9311),0,15,0
 (0x101F8ED2), 0, 0, 0, {"Series80ProductID"}
 "../data/rallyA1.tmb"-"!:\system\apps\tm9300\rallyA1.tmb"
 "../data/rallyB1.tmb"-"!:\system\apps\tm9300\rallyB1.tmb"

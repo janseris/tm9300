@@ -349,6 +349,25 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
 - The menus' picture pack is no longer a writable static (the phone's programs may not have one: petran had
   refused it), it sits in the thread's slot.
 
+## 0.15: falls, the car's body against posts, the Snow forests, the hot seat's order, the game's pictures (9 Nov 2026)
+- Off a ledge the car falls (the air's 27 m/s^2) to the platform below: the one step's grace that kept it glued over
+  seams now covers 0.5 m at most (it put the car on a platform any distance below at once). SnowD3 now finishes
+  (it got stuck before), RallyE takes 19 checkpoints of 22 instead of 7, SnowA1 and B1 are 0.24 s slower (the falls
+  take their time).
+- Walls are checked at the car's front corners too (0.85 m to each side, 1.9 m out, at 0.35 m and 1 m over the
+  ground's plane; the rear ones in reverse), not only on its middle's line: a checkpoint's or the start's pole, a
+  log the middle passes by stops the car. Not on banks and wall rides (the road rises past the corners there).
+- The Alpine hills' forest cards (crossed quads 17 x 28 m, the trees in the texture's alpha) were drawn as whole
+  dark rectangles: each is now two fir shapes (`tree_cards` in `pack.py`), and the tree textures' colour is the
+  average of their opaque pixels; the ice's colour (its texture is a reflection table) is a light blue.
+- The camera 11 m back, 4 m up, looking at a point 30 m on and 1.5 m up: lower and further, the road ahead in view.
+- The hot seat as the game's: after every attempt the player without a time, else the one with the slowest best,
+  drives next (a player stays on while he is the slowest); "Now it's player X's turn!" when it changes; the
+  standings when nobody has attempts (time) left. The ghost is the best run of the track so far.
+- The track pictures are the game's own (the thumbnail in the Challenge.Gbx header, `tools/pc/tmthumbgbx.py`).
+- The game's loading screens (Snow, Rally; Desert's for later) while a track loads, then "Press any key".
+- Esc on the start-up screen leaves the game.
+
 ## Next
 
 1. **Speed on Snow**: SnowA1 draws ~2,000 triangles a frame (3.8 M instructions: ~18 fps on the phone), the

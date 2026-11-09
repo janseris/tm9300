@@ -939,7 +939,11 @@ int TmMenu::Key(int aKey, int aChar)
     iDirty = true;
     switch (iScreen)
         {
-        case ETitle: if (iNTracks) iScreen = EMain; return EUiNone;
+        case ETitle:
+            // Esc on the start-up screen leaves the game; any other key goes on to the menus
+            if (aKey == EUiBack) return EUiQuit;
+            if (iNTracks) iScreen = EMain;
+            return EUiNone;
         case EMain:
             {
             const int k = ListKey(EMain, aKey);

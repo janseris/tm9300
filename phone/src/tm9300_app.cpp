@@ -38,7 +38,7 @@ const TInt KBenchPort = 8000;
 enum { BENCH_VARIANTS = 5, BENCH_LOG = 6144 };
 enum { BAR_W = 64, BAR_H = 152 };           // the counters, top left (F)
 enum { SIDE_W = VIEW_X, RIGHT_X = VIEW_X + VIEW_W };
-static const char* const KVersionC = "0.14";
+static const char* const KVersionC = "0.15";
 enum { KMaxFiles = 64 };
 
 // the benchmark's log to the PC (the local server's /results, into its uploads folder), after Hrimfell's
@@ -258,6 +258,8 @@ private:
     TBool iInMenu;
     // the race
     TBool LoadTrack(TInt aIndex);
+    void DrawLoading(TBool aReady);
+    TBool iLoadWait;                // 0.15: the loading screen up, waiting for a key
     void UnloadTrack();
     TInt iTrackIndex, iTrackCount;
     TBuf<16> iTrackName;            // the file's name without .tmb
@@ -346,8 +348,9 @@ private:
     TBool iRunIsRecord;
     // the hot seat as the game's: a player's turn is all his attempts (or his time), "Now it's player X's turn!"
     // before it; after the last player the standings, then the series' next track
-    TInt iPlayers, iPlayer, iAttempts, iRound;     // iRound: the attempts the player has used
-    TInt iHsMode, iTimeLimit, iTurnSteps;          // the time mode: seconds a turn, the steps driven in it
+    TInt iPlayers, iPlayer, iAttempts;
+    TInt iUsed[8];                                 // 0.15: the attempts each player has used
+    TInt iHsMode, iTimeLimit, iTimeUsed[8];        // the time mode: seconds a player, the steps each has driven
     char iNames[8][16];
     TInt iPlayerBest[8];
     TInt iSeries[8], iSeriesN, iSeriesPos;
@@ -357,8 +360,10 @@ private:
     TBool iUnlockedNow;
     void GoNextTrack();
     void NextRun();
-    TBool TurnOver() const;
-    void EndTurn();
+    TBool HasLeft(TInt aP) const;
+    TInt NextPlayer() const;
+    void AfterAttempt();
+    void GiveUp();
     void HsRestart();
     void TurnStart();
     // the players' profiles (the hot seat's names), kept in C:\Data\TM9300\profiles.txt
@@ -545,7 +550,7 @@ void CTmView::BenchStart()
     iLog.Zero();
     TInt f = 0, t = 0; HAL::Get(HALData::EMemoryRAMFree, f); HAL::Get(HALData::EMemoryRAM, t);
     TBuf8<64> name8; name8.Copy(iStatus);
-    iLog.AppendFormat(_L8("tm9300 bench v0.14: %S, %d meshes %d instances %d triangles, display %d bpp direct %d, RAM free %d KB of %d KB\r\n"),
+    iLog.AppendFormat(_L8("tm9300 bench v0.15: %S, %d meshes %d instances %d triangles, display %d bpp direct %d, RAM free %d KB of %d KB\r\n"),
         &name8, iTrack->iNMesh, iTrack->iNInst, iTrack->iTris, iFbBpp, iFb ? 1 : 0, f / 1024, t / 1024);
     iLog.Append(_L8("variant: frames, fps, draw ms (avg), copy ms (avg), slowest frame ms, polys drawn, submitted, instances visible (avg), direct; fps by second\r\n"));
     iShowInfo = EFalse;
@@ -627,6 +632,7 @@ TBool CTmView::LoadTrack(TInt aIndex)
     iTrackIndex = aIndex;
     iTrackName = iFiles[aIndex].Left(16);
     ToC(iTrackC, iTrackName, 16);
+    DrawLoading(EFalse);
     TFileName name(iDir); name.Append(iFiles[aIndex]); name.Append(_L(".tmb"));
     iStatus = iFiles[aIndex];
     RFile f;
@@ -659,7 +665,28 @@ TBool CTmView::LoadTrack(TInt aIndex)
     if (iDriving) { iGhostAuthor.FromPath(*iTrack, *iGround, *iCar); LoadRecord(); }
     iSidesDirty = ETrue;
     if (!iDriving) BenchStart();
+    else { DrawLoading(ETrue); iLoadWait = ETrue; }
     return ETrue;
+    }
+
+// 0.15: the game's loading screen: the environment's picture, the orange bar ("Loading", then "Press any key": the
+// race waits on it, as the game's)
+void CTmView::DrawLoading(TBool aReady)
+    {
+    TInt env = 0;
+    for (TInt k = 0; k < iNFiles; k++) if (iUiTracks[k].iFile == iTrackIndex) env = iUiTracks[k].iEnv;
+    static const char* const KLoad[3] = { "loadrally", "loadsnow", "loaddesert" };
+    const TmImage* pic = env < 3 ? iPack.Find(KLoad[env]) : 0;
+    if (pic && pic->w == SCR_W && pic->h == SCR_H) TmDraw::Blit(iBack, SCR_W, 0, 0, pic);
+    else for (TInt i = 0; i < SCR_W * SCR_H; i++) iBack[i] = 0;
+    const TInt bh = iFText.iH + 4 > 16 ? iFText.iH + 4 : 16, by = 150;
+    TmDraw::Round(iBack, SCR_W, 100, by, 440, bh + 6, (bh + 6) / 2, TmDraw::Rgb(60, 60, 64), TmDraw::Rgb(20, 20, 24));
+    TmDraw::Round(iBack, SCR_W, 104, by + 3, 432, bh, bh / 2, TmDraw::Rgb(255, 190, 60), TmDraw::Rgb(220, 120, 0));
+    char b[40]; b[0] = 0;
+    if (aReady) CCat(b, "Press any key"); else { CCat(b, "Loading "); CCat(b, iTrackC); CCat(b, "..."); }
+    TmDraw::TextCentre(iBack, SCR_W, iFText, 104, 536, by + 3 + (bh - iFText.iH) / 2, b, TmDraw::Rgb(255, 255, 255));
+    iFirstBlit = ETrue;
+    Blit(iBack, ETrue);
     }
 
 void CTmView::SetActive(TBool aOn)
@@ -744,11 +771,10 @@ void CTmView::NextRun()
             if (++iSeriesPos >= iSeriesN) { BackToMenu(); return; }
             UnloadTrack();
             if (!LoadTrack(iSeries[iSeriesPos])) { BackToMenu(); return; }
-            for (TInt k = 0; k < 8; k++) iPlayerBest[k] = 0;
-            iPlayer = 0; TurnStart();
+            TurnStart();
             return;
             }
-        if (TurnOver()) { EndTurn(); return; }
+        AfterAttempt(); return;
         }
     else if (iSeenFinish && iNextFile >= 0) { GoNextTrack(); return; }
     DriveReset();
@@ -766,26 +792,49 @@ void CTmView::GoNextTrack()
     GhostRef();
     }
 
-// the player's turn over: all his attempts used, or his time
-TBool CTmView::TurnOver() const
+// 0.15: the hot seat as the game's: after every attempt the one to drive next is the player without a time yet, else
+// the one with the slowest best (so a player stays on while he is the slowest, and hands over once he is not), among
+// those with attempts (the time mode: time) left; nobody left: the standings
+TBool CTmView::HasLeft(TInt aP) const
     {
-    if (iPlayers <= 1) return EFalse;
-    return iHsMode ? iTurnSteps >= iTimeLimit * 50 : iRound >= iAttempts;
+    return iHsMode ? iTimeUsed[aP] < iTimeLimit * 50 : iUsed[aP] < iAttempts;
     }
 
-// the next player's turn (his message first), or after the last the standings
-void CTmView::EndTurn()
+TInt CTmView::NextPlayer() const
+    {
+    TInt next = -1, worst = 0;
+    for (TInt p = 0; p < iPlayers; p++)
+        {
+        if (!HasLeft(p)) continue;
+        const TInt t = iPlayerBest[p] ? iPlayerBest[p] : 0x7fffffff;      // no time yet: the slowest
+        if (next < 0 || t > worst) { next = p; worst = t; }
+        }
+    return next;
+    }
+
+void CTmView::AfterAttempt()
     {
     DriveReset();
-    if (++iPlayer >= iPlayers) { iPlayer = iPlayers - 1; iStandings = ETrue; iSidesDirty = ETrue; return; }
-    TurnStart();
+    const TInt n = NextPlayer();
+    if (n < 0) { iStandings = ETrue; iSidesDirty = ETrue; return; }
+    if (n != iPlayer) { iPlayer = n; iSidesDirty = ETrue; PauseOpen(EPmTurn); }
     }
 
+// a player gives up: his attempts (his time) spent
+void CTmView::GiveUp()
+    {
+    if (iStandings) return;
+    iUsed[iPlayer] = iAttempts; iTimeUsed[iPlayer] = iTimeLimit * 50;
+    AfterAttempt();
+    }
+
+// a track's start in the hot seat: nobody has driven yet (the first player first)
 void CTmView::TurnStart()
     {
-    iRound = 0; iTurnSteps = 0;
+    for (TInt k = 0; k < 8; k++) { iPlayerBest[k] = 0; iUsed[k] = 0; iTimeUsed[k] = 0; }
     iGhostLast.Clear(); GhostRef();
     DriveReset();
+    iPlayer = NextPlayer(); if (iPlayer < 0) iPlayer = 0;
     PauseOpen(EPmTurn);
     }
 
@@ -793,8 +842,8 @@ void CTmView::TurnStart()
 void CTmView::HsRestart()
     {
     if (iStandings) return;
-    if (iPlayers > 1 && !iHsMode && iRaceSteps > 0 && !iCar->iFinished) iRound++;
-    if (TurnOver()) EndTurn(); else DriveReset();
+    if (iRaceSteps > 0 && !iCar->iFinished && !iHsMode) iUsed[iPlayer]++;
+    if (iRaceSteps > 0 && !iCar->iFinished) AfterAttempt(); else DriveReset();
     }
 
 const TmGhost* CTmView::GhostOf(TInt aMode, TInt& aNum, TInt& aDen) const
@@ -862,7 +911,7 @@ const char* CTmView::GhostName(TInt aMode) const
         case EGhostSilver: return "Silver medal";
         case EGhostBronze: return "Bronze medal";
         case EGhostRecord: return "Your record";
-        case EGhostLast: return iPlayers > 1 ? "Your best run" : "Your last run";
+        case EGhostLast: return iPlayers > 1 ? "The best run" : "Your last run";
         default: return "None";
         }
     }
@@ -932,8 +981,8 @@ void CTmView::DriveFrame(TInt& aCx, TInt& aCy, TInt& aCz, TInt& aYaw, TInt& aPit
         if (iPlayers > 1 && iHsMode && !iCar->iFinished)
             {
             // the time mode: the turn's clock (the run on when it runs out may still finish)
-            iTurnSteps++;
-            if (!(iTurnSteps % 50)) iSidesDirty = ETrue;
+            iTimeUsed[iPlayer]++;
+            if (!(iTimeUsed[iPlayer] % 50)) iSidesDirty = ETrue;
             }
         iRun.Record(*iCar);
         iCam->Update(*iGround, iCar->iS, aCx, aCy, aCz, aYaw, aPitch);
@@ -970,7 +1019,7 @@ void CTmView::DriveFrame(TInt& aCx, TInt& aCy, TInt& aCz, TInt& aYaw, TInt& aPit
         const TInt bronze = iTrack->iMedal[3];
         if (nf >= 0 && (bronze <= 0 || t * 20 <= bronze) && iUi->FileUnlocked(nf)) { iNextFile = nf; iUnlockedNow = !wasOpen; }
         if (!iPlayerBest[iPlayer] || t < iPlayerBest[iPlayer]) iPlayerBest[iPlayer] = t;
-        if (iPlayers > 1 && !iHsMode) iRound++;
+        if (iPlayers > 1 && !iHsMode) iUsed[iPlayer]++;
         iSidesDirty = ETrue;
         }
     // the ghosts where they were at this step of their runs
@@ -997,6 +1046,7 @@ void CTmView::Frame()
         else User::After(25000);
         return;
         }
+    if (iLoadWait) { User::After(25000); return; }
     if (iPause && !iPauseDirty) { User::After(20000); return; }
     TTime t0;
     t0.UniversalTime();
@@ -1127,15 +1177,15 @@ void CTmView::DrawSides()
         TInt left, all;
         if (iHsMode)
             {
-            all = iTimeLimit * 50; left = all - iTurnSteps; if (left < 0) left = 0;
+            all = iTimeLimit * 50; left = all - iTimeUsed[iPlayer]; if (left < 0) left = 0;
             const TInt sec = (left + 49) / 50;
             b[0] = 0; CCat(b, left ? "time left " : "time's up: finish ");
             if (left) { TBuf8<12> d; d.AppendNum(sec / 60); d.Append(':'); if (sec % 60 < 10) d.Append('0'); d.AppendNum(sec % 60); d.Append(0); CCat(b, (const char*) d.Ptr()); }
             }
         else
             {
-            all = iAttempts; left = iAttempts - iRound; if (left < 0) left = 0;
-            b[0] = 0; CCat(b, "attempt "); TBuf8<8> d; d.AppendNum(iRound < iAttempts ? iRound + 1 : iAttempts); d.Append('/'); d.AppendNum(iAttempts); d.Append(0);
+            all = iAttempts; left = iAttempts - iUsed[iPlayer]; if (left < 0) left = 0;
+            b[0] = 0; CCat(b, "attempt "); TBuf8<8> d; d.AppendNum(iUsed[iPlayer] < iAttempts ? iUsed[iPlayer] + 1 : iAttempts); d.Append('/'); d.AppendNum(iAttempts); d.Append(0);
             CCat(b, (const char*) d.Ptr());
             }
         const TInt by = SCR_H - iFSmall.iH - 12;
@@ -1269,9 +1319,10 @@ void CTmView::DrawResult()
     b[0] = 0;
     if (iPlayers > 1)
         {
-        if (!TurnOver()) CCat(b, "Press Enter: the next attempt");
-        else if (iPlayer + 1 >= iPlayers) CCat(b, "Press Enter: the standings");
-        else { CCat(b, "Press Enter: "); CCat(b, iNames[iPlayer + 1]); CCat(b, "'s turn"); }
+        const TInt np = NextPlayer();
+        if (np < 0) CCat(b, "Press Enter: the standings");
+        else if (np == iPlayer) CCat(b, "Press Enter: your next attempt");
+        else { CCat(b, "Press Enter: "); CCat(b, iNames[np]); CCat(b, "'s turn"); }
         }
     else if (iNextFile >= 0) CCat(b, iUnlockedNow ? "Next track open! Enter: go on, Backspace: retry" : "Enter: the next track, Backspace: retry");
     else CCat(b, "Press Enter to restart");
@@ -1357,7 +1408,7 @@ void CTmView::PauseKeyL(TInt aKey)
             else if (aKey == EUiOk)
                 {
                 if (iPauseSel == 0) PauseClose();
-                else if (iPauseSel == 1) { PauseClose(); if (!iStandings) EndTurn(); }
+                else if (iPauseSel == 1) { PauseClose(); GiveUp(); }
                 else BackToMenu();
                 }
             return;
@@ -1454,7 +1505,8 @@ void CTmView::StartRace()
     for (TInt p = 0; p < 8; p++) { iNames[p][0] = 0; if (p < iPlayers) { TInt k = 0; for (; iUi->iNames[p][k] && k < 15; k++) iNames[p][k] = iUi->iNames[p][k]; iNames[p][k] = 0; } iPlayerBest[p] = 0; }
     iAttempts = iUi->iAttempts > 0 ? iUi->iAttempts : 1;
     iHsMode = iUi->iHsMode; iTimeLimit = iUi->iTimeLimit > 0 ? iUi->iTimeLimit : 300;
-    iRound = 0; iPlayer = 0; iTurnSteps = 0; iStandings = EFalse;
+    iPlayer = 0; iStandings = EFalse;
+    for (TInt k = 0; k < 8; k++) { iUsed[k] = 0; iTimeUsed[k] = 0; }
     iSeriesN = iUi->iSeriesN; for (TInt k = 0; k < iSeriesN && k < 8; k++) iSeries[k] = iUi->iSeriesFiles[k];
     iSeriesPos = 0;
     // the opponent chosen in the menu; the hot seat: the player's own best run of his turn
@@ -1481,7 +1533,7 @@ void CTmView::BackToMenu()
     {
     if (iRunIsRecord && iRun.iN) { iGhostRecord.Copy(iRun); SaveRecord(); iRunIsRecord = EFalse; }
     UnloadTrack();
-    iInMenu = ETrue; iKeys = 0; iPause = EFalse;
+    iInMenu = ETrue; iKeys = 0; iPause = EFalse; iLoadWait = EFalse;
     iUi->iDirty = ETrue; iFirstBlit = ETrue;
     }
 
@@ -1601,7 +1653,7 @@ TKeyResponse CTmView::OfferKeyEventL(const TKeyEvent& aKeyEvent, TEventCode aTyp
         case 'A': bit = KEY_LEFT; break;
         case 'D': bit = KEY_RIGHT; break;
         }
-    if (iInMenu || iPause) bit = 0;
+    if (iInMenu || iPause || iLoadWait) bit = 0;
     if (aType == EEventKeyDown) iKeys |= bit;
     else if (aType == EEventKeyUp) iKeys &= ~bit;
     else if (aType == EEventKey)
@@ -1610,6 +1662,16 @@ TKeyResponse CTmView::OfferKeyEventL(const TKeyEvent& aKeyEvent, TEventCode aTyp
         const TInt sc = aKeyEvent.iScanCode;
         if (!iLoaded) { if (c == EKeyEscape) iEikonEnv->EikAppUi()->HandleCommandL(EEikCmdExit); return EKeyWasConsumed; }
         if (iInMenu) { MenuKeyL(aKeyEvent); return EKeyWasConsumed; }
+        if (iLoadWait)
+            {
+            // the loading screen's "Press any key": the race (its countdown from now)
+            iLoadWait = EFalse; iKeys = 0;
+            iDriveStart.UniversalTime(); iDriveSteps = 0; iPauseSince = iDriveStart;
+            for (TInt i = 0; i < SCR_W * SCR_H; i++) iBack[i] = 0;
+            iFirstBlit = ETrue; iSidesDirty = ETrue; iPauseDirty = ETrue;
+            if (c == EKeyEscape) { BackToMenu(); }
+            return EKeyWasConsumed;
+            }
         const TBool joyPress = (c == EKeyDevice3 || sc == EStdKeyDevice3);
         if (iPause)
             {

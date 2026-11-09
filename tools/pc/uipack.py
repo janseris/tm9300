@@ -67,6 +67,14 @@ if A:
     pics['bg'] = bg.convert('RGBA')
     t = Image.open(A + '/73965dea-image.png').convert('RGB').crop((0, 170, 1920, 770)).resize((640, 200), Image.LANCZOS)
     pics['title'] = t.convert('RGBA')
+# 0.15: the loading screens of the environments (Alpine = Snow, Speed = Desert): the picture inside its black bands,
+# cut to the screen's shape around its subject
+for name, env, mid in (('loadsnow', 'Alpine', 0.45), ('loadrally', 'Rally', 0.36), ('loaddesert', 'Speed', 0.55)):
+    try: im = img(env + '/Media/Texture/Image/LoadScreen.dds').convert('RGB')
+    except OSError: continue
+    lum = im.convert('L').point(lambda v: 255 if v > 24 else 0); bb = lum.getbbox(); im = im.crop(bb)
+    ch = im.width * 200 // 640; y0 = max(0, min(im.height - ch, int(im.height * mid - ch / 2)))
+    pics[name] = im.crop((0, y0, im.width, y0 + ch)).resize((640, 200), Image.LANCZOS).convert('RGBA')
 # a preview of what is kept
 prev = Image.new('RGBA', (640, 120), (20, 40, 60, 255)); x = 2; y = 2
 for k, v in pics.items():
