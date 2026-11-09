@@ -59,6 +59,7 @@ int main(int argc, char** argv)
         int n; unsigned char* d = ReadAll(p, n);
         if (d) { int* h = (int*) d; t.iThumbW = h[1]; t.iThumbH = h[2]; for (int m = 0; m < 4; m++) t.iMedal[m] = h[3 + m]; t.iThumb = (const TmPix*) (d + 28); }
         if (nt == 0) t.iBest = 19500 / 20;          // a record on the first (a gold medal shows)
+        if (nt == 1 && t.iMedal[2]) t.iBest = t.iMedal[2] / 20;     // silver on the second
         nt++;
         }
     TmMenu m; m.iVersion = "0.11";

@@ -671,7 +671,8 @@ void TmMenu::DrawGrid(TmPix* f, int s)
                 {
                 const int ms = t.iBest * 20; int k = -1;
                 for (int m = 3; m >= 0; m--) if (t.iMedal[m] && ms <= t.iMedal[m]) k = m;
-                if (k >= 0) Coin(f, s, x + tw - 8, y + th - 6, 9, k);
+                // each medal won, stacked as the game's: the lowest at the back, the best in front at the corner
+                if (k >= 0) for (int m = 3; m >= k; m--) Coin(f, s, x + tw - 8 - (m - k) * 5, y + th - 6 - (m - k), 9, m);
                 }
             char name[24]; name[0] = 0; SCat(name, KEnvName[env]);
             char l[2] = { "ABCDE"[series], 0 }; SCat(name, l);
