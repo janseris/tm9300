@@ -390,7 +390,7 @@ void TmCarState::Slopes(int& aAlong, int& aRight) const
     if (aRight > 4096) aRight = 4096; if (aRight < -4096) aRight = -4096;
     }
 
-TmCar::TmCar() : iClass(0), iCheckpoints(0), iCheckMask(0), iFinished(0), iSteps(0), iFinishSteps(0), iLastKindInst(-1), iTotalCps(0), iWallHits(0), iTopY(0), iCpX(0), iCpY(0), iCpZ(0), iCpYaw(0), iGravity(27 * 256), iBumpY(0), iAirSteps(0)
+TmCar::TmCar() : iClass(0), iCheckpoints(0), iCheckMask(0), iFinished(0), iSteps(0), iFinishSteps(0), iLastKindInst(-1), iTotalCps(0), iWallHits(0), iTopY(0), iCpX(0), iCpY(0), iCpZ(0), iCpYaw(0), iGravity(40 * 256), iBumpY(0), iAirSteps(0), iClimbVy(0), iClimbRaw(0), iTurbo(0)
     {
     iS.x = iS.y = iS.z = 0; iS.vx = iS.vy = iS.vz = 0; iS.yaw = iS.yaw16 = 0; iS.onGround = 1; iS.surf = 0;
     iS.nx = 0; iS.ny = 8192; iS.nz = 0; iS.speed = 0; iS.steerPos = 0;
@@ -424,7 +424,7 @@ void TmCar::Reset(const TmTrack& aT)
         }
     iBumpY = iS.y;
     for (int w = 0; w < 5; w++) { iLast[w].cinst = -1; iLast[w].face = -1; }
-    iCpX = iS.x; iCpY = iS.y; iCpZ = iS.z; iCpYaw = iS.yaw; iTopY = iS.y; iAirSteps = 0;
+    iCpX = iS.x; iCpY = iS.y; iCpZ = iS.z; iCpYaw = iS.yaw; iTopY = iS.y; iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; iTurbo = 0;
     }
 
 void TmCar::Respawn()
@@ -432,7 +432,7 @@ void TmCar::Respawn()
     // standing at the last checkpoint taken (the start when none), the race going on
     iS.x = iCpX; iS.y = iCpY; iS.z = iCpZ; iS.yaw = iCpYaw & 4095; iS.yaw16 = iS.yaw * 16;
     iS.vx = iS.vy = iS.vz = 0; iS.onGround = 1; iS.surf = 0; iS.nx = 0; iS.ny = 8192; iS.nz = 0; iS.speed = 0; iS.steerPos = 0;
-    iBumpY = iS.y; iTopY = iS.y; iAirSteps = 0;
+    iBumpY = iS.y; iTopY = iS.y; iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; iTurbo = 0;
     for (int w = 0; w < 5; w++) { iLast[w].cinst = -1; iLast[w].face = -1; }
     }
 
@@ -467,13 +467,17 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
             else if (v > -15 * 256) a -= 41;                        // reverse, to 15 m/s
             }
         else if (!aIn.throttle) { if (v > 0) a -= drag < v ? drag : v; else if (v < 0) a += drag < -v ? drag : -v; }
-        if (surf == 6) a += 300;                                    // a turbo pad
+        // a turbo pad: 0.16: Desert's a boost of 17.6 m/s^2 for a second from the pad on (its replays: 71 -> 97 m/s over
+        // the pad and the 40 m after it; was 58 m/s^2 on the pad only)
+        // (Rally and Snow as before: their replays fit the pad's push)
+        if (iClass != 2) { if (surf == 6) a += 300; }
+        else { if (surf == 6) iTurbo = 50; if (iTurbo > 0) { a += 90; iTurbo--; } }
         // the slope: g along the heading (f . n) * ny. 0.8: the game's gravity on the ground (29.4 m/s^2: GroundGravityCoef 3;
         // the replays' climbs fit 29.6 for Rally, 28.9 for Snow), 150 a step; was 9.8 m/s^2 (the pull table now leaves the slope
         // out, measured with 27)
         int fn = (sn * s.nx + co * s.nz) >> 14;
         a += ((((fn * s.ny) >> 13) * 150) >> 13);
-        v = Clamp(v + a, -20 * 256, 100 * 256);
+        v = Clamp(v + a, -20 * 256, (iClass == 2 ? 140 : 100) * 256);       // 0.16: Desert's 140 m/s (its car reaches 120 in the replays; the others 100)
         // the turning, and the grip: the sideways speed dies away (a slide on soft ground), scrubbing some speed
         int turn = (KTurn[iClass][band] * KSurfTurn[surf]) >> 8;
         if (band == 0) { int t = (Abs(v) * 42) >> 8; if (t < turn) turn = t; }
@@ -636,22 +640,26 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
             // the ground is left only when it falls away faster than a throw would, by more than 0.25 m and for two
             // steps running: the car's y a step on, by its upward speed and gravity, against the ground there (glued
             // over crests and seams otherwise, as TrackMania's cars)
-            // 0.15: the one step's grace is for a seam (0.5 m at most): a platform further below is fallen to, by the
+            // 0.16: no grace off a ramp (going up faster than 2 m/s: the launch kept). 0.15: the one step's grace is for a seam (0.5 m at most): a platform further below is fallen to, by the
             // air's gravity, no longer put under the car at once
+            // (0.16: the upward speed the ground itself gave the last step, not the slope's under the smoothed normal,
+            // which lags behind a ramp's kicker: the launches were a third too low)
+            if (iClimbVy > 8 * 256 && iClimbVy > s.vy) s.vy = iClimbVy;
             int throwY = s.y + s.vy / 50 - ((iGravity * 256 / 50) >> 8) / 50;
-            if (hit.y >= throwY - 24 || (iAirSteps < 1 && hit.y >= throwY - 128))
+            if (hit.y >= throwY - 24 || (iAirSteps < 1 && hit.y >= throwY - 128 && s.vy < 2 * 256))
                 {
                 if (hit.y < throwY - 24) iAirSteps++; else iAirSteps = 0;
                 // on it: the climb rate from the ground itself (a ramp's end throws the car at that rate)
                 ny = hit.y; s.surf = hit.surf;
                 int vy = (hit.y - s.y) * 50;
                 if (vy > 40 * 256) vy = 40 * 256; if (vy < -40 * 256) vy = -40 * 256;
-                s.vy = vy;
+                // a ramp's climb is the smaller of the last two steps' (a kerb's one step up launches nothing)
+                s.vy = vy; iClimbVy = vy < iClimbRaw ? vy : iClimbRaw; iClimbRaw = vy;
                 // the normal smoothed over a few steps: a kerb under one wheel is not a ramp
                 s.nx += (hit.nx - s.nx) >> 2; s.ny += (hit.ny - s.ny) >> 2; s.nz += (hit.nz - s.nz) >> 2;
                 if (s.ny < 2048) s.ny = 2048;
                 }
-            else { s.onGround = 0; s.nx = 0; s.ny = 8192; s.nz = 0; iAirSteps = 0; }
+            else { s.onGround = 0; s.nx = 0; s.ny = 8192; s.nz = 0; iAirSteps = 0; ny = s.y + s.vy / 50; iClimbVy = 0; iClimbRaw = 0; }
             }
         else if (dh >= 0)
             {

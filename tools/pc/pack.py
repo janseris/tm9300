@@ -44,7 +44,11 @@ LIGHT = (0.45, 0.8, 0.4); _l = math.sqrt(sum(c * c for c in LIGHT)); LIGHT = tup
 TILE = 32.0     # m: the split size for wide meshes
 FAR_DIST = 100  # m: beyond it an instance draws its far form (the fog starts there)
 R_GRID = float(__import__('os').environ.get('R_GRID', '1.2'))    # m: the coarsest clustering of what is not driven on (walls, roofs)
-D_GRID = float(__import__('os').environ.get('D_GRID', '1.4'))    # m: the coarsest of what is driven on (0.15: Desert's sand tiles need 3)
+D_GRID = float(__import__('os').environ.get('D_GRID', '1.4'))
+# 0.16: the coarse grids and the budget only for the solids matching COARSE (a regex: Desert's sand and cliffs); the
+# others (roads, ramps, garages) at 1.4 / 1.2 m and ROAD_BUDGET faces (a ramp clustered at 3 m lost its slope)
+COARSE = __import__('os').environ.get('COARSE')
+ROAD_BUDGET = int(__import__('os').environ.get('ROAD_BUDGET', '0'))    # m: the coarsest of what is driven on (0.15: Desert's sand tiles need 3)
 EDGE_STEP = 2.0 # m: the grid the pieces' edge corners snap to along the edge (the seams)
 WIND = 'reverse'
 
@@ -218,7 +222,7 @@ def is_drivable(mesh, fc):
     n, _ = face_normal(mesh.verts[fc[0]], mesh.verts[fc[1]], mesh.verts[fc[2]])
     return n is not None and abs(n[1]) >= 0.25
 
-def decimate_keep(mesh, budget, keep_edges=None, r_grid=None):
+def decimate_keep(mesh, budget, keep_edges=None, r_grid=None, d_grid=None):
     """decimation that keeps what the car drives on: the faces it can stand on are clustered finely (to ~60 % of
     the budget), the rest (walls, roofs, decoration) coarsely to fit, with the drivable part's corners pinned
     where the fine pass put them so no crack opens at the foot of a wall; a checkpoint arch simplified as one
@@ -229,7 +233,8 @@ def decimate_keep(mesh, budget, keep_edges=None, r_grid=None):
     bd = max(40, int(budget * 0.6)) if len(R) > budget * 0.4 else budget - len(R)
     g = 0.25; md = Mesh(mesh.verts, D); md.rep = list(range(len(mesh.verts)))
     # never coarser than ~1.3 m for what is driven on: a road through an arch kept its shape, the arch pays
-    while len(md.faces) > bd and g < D_GRID: md = cluster(Mesh(mesh.verts, D), g, keep_edges); g *= 1.5
+    if d_grid is None: d_grid = D_GRID
+    while len(md.faces) > bd and g < d_grid: md = cluster(Mesh(mesh.verts, D), g, keep_edges); g *= 1.5
     # the drivable corners pinned: original index -> (its merged corner's id, position)
     used_d = {k for fc in D for k in fc[:3]}
     fixed = {i: (md.rep[i], md.verts[md.rep[i]]) for i in used_d}
@@ -475,7 +480,9 @@ def main():
         else:
             # the corners on the piece's edges stay on them when it is simplified: the seams between pieces
             # stay closed (gaps showed, and the car fell through them)
-            parts = [(0, 0, compact(decimate_keep(m, budget, (bb[0], bb[3], bb[2], bb[5]))))]
+            fine = COARSE is not None and not __import__('re').search(COARSE, sname)
+            if fine: parts = [(0, 0, compact(decimate_keep(m, ROAD_BUDGET or budget, (bb[0], bb[3], bb[2], bb[5]), 1.2, 1.4)))]
+            else: parts = [(0, 0, compact(decimate_keep(m, budget, (bb[0], bb[3], bb[2], bb[5]))))]
         WALLSTAT[0] = WALLSTAT[1] = 0
         parts = [(tx, tz, (drop_water_under(mark_walls(pm, s)) if DEPTHFIX else mark_walls(pm, s))) for tx, tz, pm in parts]
         if os.environ.get('PACKSTATS') and WALLSTAT[0] + WALLSTAT[1]: print(f"    walls {sname}: {WALLSTAT[0]} solid, {WALLSTAT[1]} dropped; collision {len(s['coll']['tris']) // 4 if s.get('coll') and s['coll'].get('tris') else 0} tris")

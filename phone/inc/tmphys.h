@@ -88,12 +88,15 @@ public:
     enum { KMaxCpBoxes = 96 };
     int iCpInst[KMaxCpBoxes], iCpGroup[KMaxCpBoxes], iNCp;     // 0.6: the checkpoint boxes and their checkpoint
     // tuning (set before Reset; 1/256 m/s^2 etc. are computed inside)
-    int iGravity;               // m/s^2 * 256 (27 * 256)
+    int iGravity;               // m/s^2 * 256 (0.16: 40 * 256, the replays' vertical acceleration in the air in all environments)
 private:
     void Race(const TmGround& aG);
     int iBumpY;                 // the ground's last y (when the probe finds nothing)
     TmGroundHit iLast[5];       // the faces under the wheels and the middle last time (the probes' hints)
     int iAirSteps;              // steps running the ground fell away under the car (the car leaves it at the second)
+    int iClimbVy;               // 0.16: the upward speed the ground gave the last steps (1/256 m/s)
+    int iClimbRaw;              //   the last step's alone
+    int iTurbo;                 // 0.16: the turbo's steps left
     };
 
 // the camera that follows a driven car: behind it along its heading, smoothed, kept above the ground

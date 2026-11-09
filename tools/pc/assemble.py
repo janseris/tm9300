@@ -88,7 +88,9 @@ class Track:
         the block's collision mesh covers (a Clip is a small connector: it hides nothing)"""
         covered = set(); self.zone_cut = {}
         for sname, bn, x, y, z, d, ground, kind in self.instances:
-            if not ground or bn.lower() in self.zone_height: continue
+            # (0.16: a tunnel, air variant or not, is dug into the terrain: the zone tile over its cell is not there
+            # either; Desert's garage starts run down a tunnel slope a sand tile covered)
+            if (not ground and 'tunnel' not in bn.lower()) or bn.lower() in self.zone_height: continue
             s = self.solids.get(sname); c = s.get('coll') if s else None
             if not c or not c['tris']: continue
             v = c['verts']; pts = self.place([(v[i], v[i + 1], v[i + 2]) for i in range(0, len(v), 3)], x, y, z, d)

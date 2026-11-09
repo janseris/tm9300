@@ -38,7 +38,7 @@ const TInt KBenchPort = 8000;
 enum { BENCH_VARIANTS = 5, BENCH_LOG = 6144 };
 enum { BAR_W = 64, BAR_H = 152 };           // the counters, top left (F)
 enum { SIDE_W = VIEW_X, RIGHT_X = VIEW_X + VIEW_W };
-static const char* const KVersionC = "0.16";
+static const char* const KVersionC = "0.17";
 enum { KMaxFiles = 64 };
 
 // the benchmark's log to the PC (the local server's /results, into its uploads folder), after Hrimfell's
@@ -554,7 +554,7 @@ void CTmView::BenchStart()
     iLog.Zero();
     TInt f = 0, t = 0; HAL::Get(HALData::EMemoryRAMFree, f); HAL::Get(HALData::EMemoryRAM, t);
     TBuf8<64> name8; name8.Copy(iStatus);
-    iLog.AppendFormat(_L8("tm9300 bench v0.16: %S, %d meshes %d instances %d triangles, display %d bpp direct %d, RAM free %d KB of %d KB\r\n"),
+    iLog.AppendFormat(_L8("tm9300 bench v0.17: %S, %d meshes %d instances %d triangles, display %d bpp direct %d, RAM free %d KB of %d KB\r\n"),
         &name8, iTrack->iNMesh, iTrack->iNInst, iTrack->iTris, iFbBpp, iFb ? 1 : 0, f / 1024, t / 1024);
     iLog.Append(_L8("variant: frames, fps, draw ms (avg), copy ms (avg), slowest frame ms, polys drawn, submitted, instances visible (avg), direct; fps by second\r\n"));
     iShowInfo = EFalse;

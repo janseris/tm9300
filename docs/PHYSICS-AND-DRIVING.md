@@ -393,6 +393,24 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   (`NADEOWALLS=1 pack.py`): the narrow roads' rails and the hills' sides still snag it (RallyE stops at a hill's foot,
   SnowE at 2 checkpoints of 27 instead of 6): not shipped.
 
+## 0.17: Desert, the jumps (9 Nov 2026)
+- **The air's gravity is 40 m/s^2**, in all three environments: the replays' vertical acceleration in the air, from
+  the positions' second differences (the mode, sharply: Desert, Rally and Snow alike; 27 was a wrong fit). With it
+  SnowE goes 26 checkpoints of 27 (was 6), RallyE 19 of 22 (was 13).
+- A ramp's launch: the car leaves it at the climb rate the ground itself gave it (the smaller of the last two steps',
+  so a kerb's one step launches nothing), not at the slope under the smoothed normal, which lags behind a kicker
+  (DesertD3's big jump flew a third too low); no one step's grace off a ramp.
+- Desert's turbo: a boost of 17.6 m/s^2 for a second from the pad on (its replays: 71 -> 97 m/s); Rally's and Snow's
+  as before. Desert's speed cap 140 m/s (its replays reach 120; the others stay at 100).
+- A tunnel's cell has no terrain tile over it (`assemble.py`: a tunnel block, air variant too, is dug into the
+  terrain): the Desert garage starts' tunnel slopes were covered by a sand tile (DesertD1 got stuck at the start).
+- Desert's roads, ramps and garages are simplified as finely as the other environments' (`COARSE` in `pack.py`: the
+  coarse grids only for the sand, cliffs and rocks; `ROAD_BUDGET=300`): a ramp clustered at 3 m lost its slope.
+  Still ~1,100-1,400 triangles drawn a frame on average (Rally 900, Snow 1,600). `tools/pc/packdesert.sh` packs
+  and drives all 21.
+- The auto-driver finishes Desert A1, A4, A5, B1, B3, B5, C1, C2, C3 (D1 too, before the turbo's change); the others
+  fail on its line-keeping after jumps and at the E start (the author turns on the spot). Installed: A1, B3, C1, D1.
+
 ## Next
 
 1. **Speed on Snow**: SnowA1 draws ~2,000 triangles a frame (3.8 M instructions: ~18 fps on the phone), the
