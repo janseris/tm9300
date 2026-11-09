@@ -35,7 +35,7 @@ enum { BAR_W = 64, BAR_H = 152 };           // the counters, top left
 enum { HUD_X = (SCR_W + VIEW_W) / 2, HUD_W = SCR_W - HUD_X };     // 0.8: the race's panel on the right, in the phone's fonts
 enum { RES_W = 260, RES_H = 100, RES_X = (SCR_W - RES_W) / 2, RES_Y = 24 };
 enum { MENU_W = 280, MENU_H = 184, MENU_X = (SCR_W - MENU_W) / 2, MENU_Y = (SCR_H - MENU_H) / 2 };
-_LIT(KVersion, "0.8");
+_LIT(KVersion, "0.9");
 
 // the benchmark's log to the PC (the local server's /results, into its uploads folder), after Hrimfell's
 class CBenchSender : public CActive
@@ -384,7 +384,7 @@ void CTmView::BenchStart()
     iLog.Zero();
     TInt f = 0, t = 0; HAL::Get(HALData::EMemoryRAMFree, f); HAL::Get(HALData::EMemoryRAM, t);
     TBuf8<64> name8; name8.Copy(iStatus);
-    iLog.AppendFormat(_L8("tm9300 bench v0.8: %S, %d meshes %d instances %d triangles, display %d bpp direct %d, RAM free %d KB of %d KB\r\n"),
+    iLog.AppendFormat(_L8("tm9300 bench v0.9: %S, %d meshes %d instances %d triangles, display %d bpp direct %d, RAM free %d KB of %d KB\r\n"),
         &name8, iTrack->iNMesh, iTrack->iNInst, iTrack->iTris, iFbBpp, iFb ? 1 : 0, f / 1024, t / 1024);
     iLog.Append(_L8("variant: frames, fps, draw ms (avg), copy ms (avg), slowest frame ms, polys drawn, submitted, instances visible (avg), direct; fps by second\r\n"));
     iShowInfo = EFalse;

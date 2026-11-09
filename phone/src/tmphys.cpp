@@ -312,7 +312,7 @@ static int ISqrt(unsigned a)
 // the ground under the four wheels (1/256 m; the car 1.8 m wide, the axles 1.7 m before and 1.5 m behind the
 // middle): the middle's height (their mean), the normal from the slopes between them, the surface under the
 // rear wheels; false when none of them is over anything
-static bool WheelsGround(const TmGround& aG, int aX, int aZ, int aYMax, int aSn, int aCo, TmGroundHit& aOut, TmGroundHit* aLast, int aLastY, int& aTop)
+static bool WheelsGround(const TmGround& aG, int aX, int aZ, int aYMax, int aSn, int aCo, TmGroundHit& aOut, TmGroundHit* aLast, int aLastY, int& aTop, int aYMin)
     {
     // the right vector (co, -sn) and the heading (sn, co), * 16384
     const int off[4][2] = { { 435, 230 }, { 435, -230 }, { -384, 230 }, { -384, -230 } };    // (along, right) 1/256 m
@@ -322,7 +322,9 @@ static bool WheelsGround(const TmGround& aG, int aX, int aZ, int aYMax, int aSn,
         int px = aX + ((off[w][0] * aSn + off[w][1] * aCo) >> 14);
         int pz = aZ + ((off[w][0] * aCo - off[w][1] * aSn) >> 14);
         TmGroundHit& h = aLast[w];
-        if (aG.Probe(px, pz, aYMax, aLastY, h)) { hy[w] = h.y; n++; sum += h.y; if (w >= 2) surfR = h.surf; else surfF = h.surf; if (h.ny < bestNy) bestNy = h.ny; }
+        // 0.8: a wheel over an edge finds what is far below (the water under a bridge): that is "over nothing", not
+        // ground (the mean dropped the car off a narrow road with a wheel over its side)
+        if (aG.Probe(px, pz, aYMax, aLastY, h) && h.y >= aYMin) { hy[w] = h.y; n++; sum += h.y; if (w >= 2) surfR = h.surf; else surfF = h.surf; if (h.ny < bestNy) bestNy = h.ny; }
         else hy[w] = 0x7fffffff;
         }
     if (n == 0) return false;
@@ -350,8 +352,8 @@ static bool WheelsGround(const TmGround& aG, int aX, int aZ, int aYMax, int aSn,
 // the flat; the 80th percentile kept it climbing to 80 m/s on downhills)
 static const int KPull[5][10] =
     {
-    { 135, 125, 80, 32, 24, 10, -12, -25, -40, -50 },
-    { 80, 116, 51, 26, 15, 14, 8, 0, 0, 0 },
+    { 230, 135, 89, 30, 30, 24, 20, 20, 20, 18 },       // 0.8: Rally: the replays' median tyre force along the car on straights (slope out)
+    { 153, 127, 46, 25, 12, 12, 12, 8, 8, 8 },          // 0.8: Snow, the same way
     { 150, 150, 150, 50, 50, 46, 46, 46, 30, 0 },
     { 200, 253, 223, 61, 61, 60, 45, 45, 45, 0 },
     { 96, 92, 87, 190, 195, 248, 222, 230, 229, 171 },
@@ -359,21 +361,21 @@ static const int KPull[5][10] =
 // the full-lock turning rate by speed band, in 1/16 yaw units a step (rad/s * 208.6): the replays' 95th percentile
 static const int KTurn[5][10] =
     {
-    { 396, 396, 396, 344, 313, 292, 240, 188, 104, 60 },
-    { 188, 202, 240, 256, 277, 292, 271, 250, 208, 167 },
+    { 396, 396, 396, 344, 313, 292, 280, 280, 280, 280 },   // 0.8: on at high speed (Nadeo: radius 5 m + 0.7 s * speed)
+    { 261, 392, 434, 455, 467, 477, 484, 488, 492, 494 },   // 0.8: Snow, Nadeo's Steer02 radius 2 m + 0.4 s * speed
     { 229, 440, 517, 406, 369, 321, 325, 321, 354, 296 },
     { 288, 359, 263, 204, 192, 236, 298, 323, 363, 302 },
     { 81, 229, 315, 503, 421, 330, 321, 194, 186, 165 },
     };
 // by surface: the pull (/256), the extra drag (/256), the lateral grip's keep factor a step (/256), the turning (/256)
-static const int KSurfPull[9] = { 256, 230, 150, 200, 80, 256, 256, 110, 190 };
+static const int KSurfPull[9] = { 256, 250, 150, 200, 80, 256, 256, 110, 190 };
 static const int KSurfDrag[9] = { 256, 300, 600, 300, 1200, 256, 256, 200, 500 };
 static const int KSurfKeep[9] = { 218, 228, 240, 218, 243, 256, 218, 248, 232 };
 // 0.6: the sideways grip by class, 1/256 m/s a step (m/s^2 * 5.12), fitted to the replays' slip angles; by surface
 // (/256: road, dirt, grass, rock, water, none, turbo, ice, snow); the widest slide (tan * 256); the speed a slide
 // costs (/4096 of the sideways speed a step)
-static const int KGrip[5] = { 165, 250, 260, 300, 300 };
-static const int KSurfGrip[9] = { 256, 240, 190, 240, 120, 256, 256, 70, 220 };
+static const int KGrip[5] = { 297, 740, 260, 300, 300 };
+static const int KSurfGrip[9] = { 256, 238, 170, 240, 120, 256, 256, 8, 50 };
 static const int KSlipMax[5] = { 160, 80, 128, 128, 110 };
 static const int KScrub[5] = { 40, 64, 48, 48, 48 };
 static const int KSurfTurn[9] = { 256, 240, 205, 256, 180, 256, 256, 128, 210 };
@@ -466,9 +468,11 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
             }
         else if (!aIn.throttle) { if (v > 0) a -= drag < v ? drag : v; else if (v < 0) a += drag < -v ? drag : -v; }
         if (surf == 6) a += 300;                                    // a turbo pad
-        // the slope: g along the heading (f . n) * ny
+        // the slope: g along the heading (f . n) * ny. 0.8: the game's gravity on the ground (29.4 m/s^2: GroundGravityCoef 3;
+        // the replays' climbs fit 29.6 for Rally, 28.9 for Snow), 150 a step; was 9.8 m/s^2 (the pull table now leaves the slope
+        // out, measured with 27)
         int fn = (sn * s.nx + co * s.nz) >> 14;
-        a += ((((fn * s.ny) >> 13) * 50) >> 13);
+        a += ((((fn * s.ny) >> 13) * 150) >> 13);
         v = Clamp(v + a, -20 * 256, 100 * 256);
         // the turning, and the grip: the sideways speed dies away (a slide on soft ground), scrubbing some speed
         int turn = (KTurn[iClass][band] * KSurfTurn[surf]) >> 8;
@@ -550,6 +554,18 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
         // or the surface's plane passes through the car's own place (a ramp's foot under the car)
         const int hAtCar = mid.y - (mid.nx * ((s.x - nx) >> 4) + mid.nz * ((s.z - nz) >> 4)) / (mid.ny > 1024 ? mid.ny : 1024) * 16;
         const bool ramp = hAtCar - s.y < 77 && hAtCar - s.y > -77;
+        // 0.8: a surface over 1 m above with a drivable one under it at the car's level: the car goes on under it
+        // (a terrain tile left over a road, the replay's car drives under it; a solid thing over the road has its
+        // steep sides as walls now, which stop the car before this)
+        if (mid.y - ny > allowed && !ramp && mid.y - ny > 256)
+            {
+            TmGroundHit low;
+            if (aG.Probe(nx, nz, mid.y - 64, s.y, low))
+                {
+                const int ltan = (ILen(low.nx, low.nz) * 256) / (low.ny > 1024 ? low.ny : 1024);
+                if (low.y - ny <= 115 + ((move * ltan) >> 8) + 26) mid = low;
+                }
+            }
         if (mid.y - ny > allowed && !ramp)
             {
             // a wall: the car stops and bounces back a quarter of its speed
@@ -573,7 +589,7 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
     const int wheelMax = (found ? mid.y : ny) + reach;
     const int sn3 = R3D::Sin(s.yaw), co3 = R3D::Cos(s.yaw);
     int top = ny;
-    if (found && !WheelsGround(aG, nx, nz, wheelMax, sn3, co3, hit, iLast, s.y, top)) { hit = mid; top = mid.y; }
+    if (found && !WheelsGround(aG, nx, nz, wheelMax, sn3, co3, hit, iLast, s.y, top, mid.y - reach - 128)) { hit = mid; top = mid.y; }
     else if (found && mid.y > hit.y && mid.y - hit.y < 256) hit.y = mid.y;        // a crest under the middle: the body sits on it
     if (found)
         {

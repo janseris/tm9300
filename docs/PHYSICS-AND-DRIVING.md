@@ -265,6 +265,34 @@ still let it over. Regression unchanged (20/42 finish, the same times); up to 14
   (m:ss.cc), km/h, checkpoints, each checkpoint's difference to the ghost (blue ahead, red behind) for 3 s,
   the ghost, the player, the track, "depth fix on/off (toggle: Z)", and the players' bests.
 
+## 0.9: the cars' numbers from the replays and Nadeo's tunings (9 Nov 2026)
+
+The author replays carry position, rotation and velocity every 100 ms; joined with the ground under each sample
+(`tmsurf`), they give the tyre forces per mass (acceleration minus gravity, in the car's frame) by surface and
+speed (`tools/pc/physfit/`). What they say, and what changed:
+
+| | the replays | Nadeo's tuning | 0.8 | 0.9 |
+|---|---|---|---|---|
+| Rally sideways grip, road | 58 m/s² (90th %, flat ground, 30-80 m/s; a hard ceiling: 98th % 61-64) | steer radius 5 m + 0.7 s × v, MaxSideFriction 25 | 32 | 58 (dirt 54, grass 39) |
+| Rally pull, straight (median) | 45 / 26 / 17 / 6 / 6 / 5 / 4 / 4 m/s² by 10 m/s | AccelCurve 60@0, 25@50, 8@100, 4@200 km/h | 26 → −10 past 60 m/s | the replay's medians |
+| Ground gravity | climbs fit 29.6 (Rally), 28.9 (Snow) | GroundGravityCoef 3 | 9.8 | 29.4 |
+| Snow turning | 2.1-2.5 rad/s (98th %) at 50-130 m/s; a flat U-turn at 228 km/h, 32 m radius | radius 2 m + 0.4 s × v | 1.2-1.4 rad/s | Nadeo's radius |
+| Snow sideways grip | road 100-150 m/s² (slip 1°), snow 25, ice 1-4 | MaxSideFriction 100 | 49 | 145 / 28 / 4 |
+
+Two physics bugs the faster car found: a wheel over a road's edge took the ground far below (the water under a
+bridge) into the car's height and dropped it off narrow roads (C2); and a terrain tile left over a road 1-5 m up
+was a wall to climb (A2, A4) — now the car keeps to the surface at its level when the one above is over 1 m up.
+
+The auto-driver was the other half of the gap: it braked for any bend over ~35° at speed. `DRIVER=2` knows the
+car: pure pursuit on the replay's line and the speed each bend allows (its curvature against 52 m/s² sideways
+and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against the medals (all 42 tracks):
+
+- Rally: gold on A1 (19.46), A2, B1, B2, C5; silver on A3, A5, B3, B5, C1, D2; slower on A4 (a missing hill
+  road piece in our import: the replay drives 3-15 m above our ground), C2, C4; 7 do not finish.
+- Snow: faster than the author on A1 and A4, gold on A5, silver on B1 and B3; the C/D/E tracks need wall rides
+  and loops the model does not have.
+- The physics costs ~74k instructions a step on Rally A1 (was ~37k: the walls on everything): ~5 % of the CPU.
+
 ## Next
 
 1. **Speed on Snow**: SnowA1 draws ~2,000 triangles a frame (3.8 M instructions: ~18 fps on the phone), the

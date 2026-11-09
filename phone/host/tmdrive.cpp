@@ -78,10 +78,12 @@ int main(int argc, char** argv)
         run.Begin();
         }
     int frames = 0;
+    static int reach[20000]; for (int i = 0; i < 20000; i++) reach[i] = -1;    // 0.8: the step the car reached each path sample
     const int lookTarget = getenv("LOOK") ? atoi(getenv("LOOK")) : 8;
     for (int step = 0; step < maxsec * 50 && !car.iFinished; step++)
         {
         const TmCarState& s = car.iS;
+        if (prog < 20000 && reach[prog] < 0) reach[prog] = step;
         // the driver: the nearest path sample from here on, then a target some metres further along
         for (;;)
             {
@@ -104,7 +106,7 @@ int main(int argc, char** argv)
         int wantYaw = TmYawTo(dx, dz);
         int err = ((wantYaw - s.yaw + 2048) & 4095) - 2048;        // -2048..2047, positive: turn right
         TmCarInput in;
-        in.steer = err * 2; if (in.steer > 256) in.steer = 256; if (in.steer < -256) in.steer = -256;
+        in.steer = err * (getenv("GAIN") ? atoi(getenv("GAIN")) : 4) / 2; if (in.steer > 256) in.steer = 256; if (in.steer < -256) in.steer = -256;
         in.throttle = 1; in.brake = 0;
         // a sharp turn ahead at speed: brake
         int ti2 = ti; while (ti2 + 1 < t.iNPath && ti2 < ti + 8) ti2++;
@@ -118,6 +120,46 @@ int main(int argc, char** argv)
         double rv = sqrt((double) rx * rx + (double) rz * rz + (double) ry * ry) / 16 / 0.2;     // m/s
         if (!getenv("NOLIMIT") && s.speed > (rv * 1.08 + 1.0) * 256) { in.throttle = 0; if (s.speed > (rv * 1.2 + 2.0) * 256) in.brake = 1; }
         }
+        // 0.8: DRIVER=2: a driver that knows the car: pure pursuit on the replay's line (a point 5 m + 0.3 s ahead,
+        // the turning rate it needs over the car's full-lock rate), and the speed each bend of the line allows
+        // (its sideways limit ACAP m/s^2 and turning limit RCAP rad/s), braked for at BDEC m/s^2 in time
+        if (getenv("DRIVER") && atoi(getenv("DRIVER")) == 2)
+            {
+            const bool snow = t.iCarClass == 1;
+            const double acap = getenv("ACAP") ? atof(getenv("ACAP")) : (snow ? 120.0 : 52.0);
+            const double rcap = getenv("RCAP") ? atof(getenv("RCAP")) : (snow ? 2.2 : 1.3);
+            const double bdec = getenv("BDEC") ? atof(getenv("BDEC")) : 14.0;
+            const double v = s.speed / 256.0, cx = s.x / 256.0, cz = s.z / 256.0;
+            const double hy = s.yaw * 6.283185307 / 4096, fx = sin(hy), fz = cos(hy);
+            const double L = 5 + 0.3 * (v > 0 ? v : 0);
+            int k = prog;
+            while (k + 1 < t.iNPath && hypot(t.iPath[k].x / 16.0 - cx, t.iPath[k].z / 16.0 - cz) < L) k++;
+            const double tx = t.iPath[k].x / 16.0 - cx, tz = t.iPath[k].z / 16.0 - cz;
+            const double lat = tx * fz - tz * fx, fwd = tx * fx + tz * fz;           // right of the heading, ahead
+            const double kap = 2 * lat / (lat * lat + fwd * fwd + 0.01);
+            // the full-lock turning rate at this speed (the car's own table, roughly): Snow 2 m + 0.4 v radius
+            const double vv = v > 1 ? v : 1;
+            const double rfull = snow ? vv / (2 + 0.4 * vv) : (vv < 30 ? 1.9 : vv < 40 ? 1.65 : vv < 50 ? 1.5 : 1.35);
+            double st = (v * kap) / rfull * 256;
+            in.steer = (int) (st > 256 ? 256 : st < -256 ? -256 : st);
+            // the speed: every bend ahead (150 m along the line) by its curvature, with the braking room to it
+            double vmax = 1e9, dist = hypot(t.iPath[prog].x / 16.0 - cx, t.iPath[prog].z / 16.0 - cz);
+            for (int i = prog + 2; i + 2 < t.iNPath && dist < 150; i++)
+                {
+                const TmPath& a = t.iPath[i - 2]; const TmPath& b = t.iPath[i]; const TmPath& c = t.iPath[i + 2];
+                const double ax = a.x / 16.0, az = a.z / 16.0, bx = b.x / 16.0, bz = b.z / 16.0, cx2 = c.x / 16.0, cz2 = c.z / 16.0;
+                const double ab = hypot(bx - ax, bz - az), bc = hypot(cx2 - bx, cz2 - bz), ca = hypot(ax - cx2, az - cz2);
+                const double area2 = fabs((bx - ax) * (cz2 - az) - (bz - az) * (cx2 - ax));
+                const double kk = ab * bc * ca > 1e-6 ? 2 * area2 / (ab * bc * ca) : 0;
+                dist += hypot(t.iPath[i].x / 16.0 - t.iPath[i - 1].x / 16.0, t.iPath[i].z / 16.0 - t.iPath[i - 1].z / 16.0);
+                if (kk < 1e-4) continue;
+                double vl = sqrt(acap / kk); if (rcap / kk < vl) vl = rcap / kk;
+                const double now = sqrt(vl * vl + 2 * bdec * dist);
+                if (now < vmax) vmax = now;
+                }
+            in.throttle = v < vmax - 0.5 ? 1 : 0;
+            in.brake = v > vmax + 1.5 ? 1 : 0;
+            }
         if (getenv("STRAIGHT")) { in.steer = 0; in.throttle = 1; in.brake = 0; if (step % 50 == 49) printf("straight %d s: %.0f km/h %s\n", (step + 1) / 50, car.iS.speed * 3.6 / 256, car.iS.onGround ? "" : "(air)"); }
         if (getenv("STEERBIAS")) { in.steer += atoi(getenv("STEERBIAS")); if (in.steer > 256) in.steer = 256; if (in.steer < -256) in.steer = -256; }
         const int px0 = car.iS.x, py0 = car.iS.y, pz0 = car.iS.z;
@@ -250,6 +292,18 @@ int main(int argc, char** argv)
                 }
 #endif
             }
+        }
+    if (getenv("GAP"))
+        {
+        // where the time went: at every 10th sample of the replay, our time there against the replay's, and the speeds
+        printf("gap by replay second (our time - replay time, s; our km/h / replay km/h):\n");
+        for (int i = 10; i < t.iNPath && i < 20000; i += 10)
+            if (reach[i] >= 0)
+                {
+                double dx = t.iPath[i].x - t.iPath[i - 1].x, dz = t.iPath[i].z - t.iPath[i - 1].z;
+                printf("  %4.1f s: %+5.2f\n", i / 10.0, reach[i] / 50.0 - i / 10.0);
+                (void) dx; (void) dz;
+                }
         }
     if (getenv("GHOST"))
         {
