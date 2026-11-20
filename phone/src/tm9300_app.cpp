@@ -23,6 +23,7 @@
 #include "tmphys.h"
 #include "tmui.h"
 #include <ezlib.h>
+#include "tmlzma.h"
 #include "fastmem.h"
 
 const TUid KUidTm9300 = { 0x0E3D9310 };
@@ -659,16 +660,33 @@ TBool CTmView::LoadTrack(TInt aIndex)
     f.Size(size);
     // 0.18: a track packed with zlib ("TMBZ", its size, the stream: a third of the space on the phone) is inflated
     // into the track's memory; a plain one is read into it
-    TBuf8<8> hd; f.Read(hd);
-    const TBool packed = hd.Length() == 8 && hd[0] == 'T' && hd[1] == 'M' && hd[2] == 'B' && hd[3] == 'Z';
-    const TInt raw = packed ? (hd[4] | (hd[5] << 8) | (hd[6] << 16) | (hd[7] << 24)) : size;
+    // (LZMA: "TMBL", its size, the properties byte, the stream: a fifth of the space)
+    TBuf8<9> hd; f.Read(hd);
+    const TBool packed = hd.Length() >= 8 && hd[0] == 'T' && hd[1] == 'M' && hd[2] == 'B' && hd[3] == 'Z';
+    const TBool lzma = hd.Length() == 9 && hd[0] == 'T' && hd[1] == 'M' && hd[2] == 'B' && hd[3] == 'L';
+    const TInt raw = packed || lzma ? (hd[4] | (hd[5] << 8) | (hd[6] << 16) | (hd[7] << 24)) : size;
     if (raw <= 0 || raw > 32 * 1024 * 1024) { f.Close(); iStatus = _L("Bad track file"); return EFalse; }
     TInt need = raw + 64;
     if (iChunk.CreateLocal(need, need) != KErrNone) { f.Close(); iStatus = _L("No memory for the track"); return EFalse; }
     iData = iChunk.Base();
     iDataSize = raw;
     TInt err = KErrNone;
-    if (!packed)
+    if (lzma)
+        {
+        // the stream into the heap, decoded into the track's memory
+        const TInt n = size - 9;
+        TUint8* in = n > 0 ? (TUint8*) User::Alloc(n) : 0;
+        unsigned short* probs = (unsigned short*) User::Alloc(TmLzmaProbs(hd[8]) * 2 + 16);
+        if (!in || !probs) err = KErrNoMemory;
+        else
+            {
+            TPtr8 p(in, 0, n);
+            err = f.Read(p);
+            if (err == KErrNone && (p.Length() != n || TmLzmaDecode(in, n, iData, raw, hd[8], probs) != raw)) err = KErrCorrupt;
+            }
+        User::Free(in); User::Free(probs);
+        }
+    else if (!packed)
         {
         TInt pos = 0; f.Seek(ESeekStart, pos);
         TPtr8 p(iData, 0, size);

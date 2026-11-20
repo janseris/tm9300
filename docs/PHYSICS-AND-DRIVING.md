@@ -450,9 +450,11 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   respawn-assisted driver needs 31 respawns over Snow's 21 tracks (35 before; SnowC2 finishes now), Desert's 47 (54).
 - Every campaign track of the five environments is installed (105): a package per environment (`tm9300_tracks.sis`
   Rally, `tm9300_snow.sis`, `tm9300_desert.sis`, `tm9300_bay.sis`, `tm9300_island.sis`), each on the phone or the card:
-  the app finds tracks on its own drive, C: and E:. The tracks are packed with zlib for the phone (`tools/tmbz.py`:
-  "TMBZ", the size, the stream; 171 MB -> 68 MB installed), inflated on loading with the phone's ezlib; a plain .tmb
-  still loads. The menus' pictures (`tm9300.ui`, with Bay's and Island's loading screens now) go with the program.
+  the app finds tracks on its own drive, C: and E:. The tracks are packed with LZMA for the phone (`tools/tmbz.py`:
+  "TMBL", the size, the properties byte, the raw stream; preset 9 extreme, lc 0 lp 1 pb 1, a 16 MB dictionary):
+  171 MB -> 31 MB installed (zlib: 68 MB). The app's own decoder (`tmlzma.cpp`, the LZMA specification, decoding
+  straight into the track's memory: 40 ms for the biggest track on the PC) unpacks them on loading; a zlib-packed
+  ("TMBZ", the phone's ezlib) or a plain .tmb still loads. The menus' pictures (`tm9300.ui`, with Bay's and Island's loading screens now) go with the program.
   The heap may grow to 12 MB (a big track's tables take ~2.5 MB beside its data).
 - The auto-driver: `RESPAWN=1` puts the car back on the replay's line when it is 15 m off it or stuck for a second
   (as a player's respawn) and counts it: Bay A1-A5, B1 and Island A1, A3, A4, B2, B4 finish with none; the installed
