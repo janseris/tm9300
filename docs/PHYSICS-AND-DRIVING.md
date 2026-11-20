@@ -459,7 +459,8 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   the road's normal for its up; a step adds gravity, the pull or the brake along the speed and the steering about
   the up, moves, and finds the road again along the up (`TmGround::Ray`: the nearest face crossed from 1.5 m over
   to 1.5 m under the car), turning the speed onto it. It holds while the road's curve presses the car on harder than
-  gravity pulls it off (the press averaged over ~8 steps: a faceted loop turns at the edges), else it flies; back to
+  gravity pulls it off (the press averaged over ~8 steps: a faceted loop turns at the edges; a seam between two
+  pieces' roads is crossed along the road's plane for up to 3 steps), else it flies; back to
   plain driving where the road is flatter than 37 degrees. The press costs speed (0.47 of it: IslandA2's loop takes
   the replay's car from 175 m/s to 51 at the top; gravity alone would leave 147); the replay's climb is matched
   within ~10 m/s at each height. The car is drawn turned in 3D there (`TmView::iCar3D`), and the camera follows it in
@@ -475,5 +476,9 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
    ramp, the camera distance.
 3. The depth test's per-polygon and per-row cost (the planes, the row bookkeeping): ~0.7 M a frame.
 4. Snow's tubes and wall rides on the surface mode (its tracks repacked with surface 12).
-5. Coast and Stadium on the same pipeline (their replays are not dumped yet).
+5. Coast and Stadium on the same pipeline (their packs and replays are not on the PC side yet).
+7. Bay's big loops (`BayPlatformLoopStart4` / `End4`): the two halves of the loop's top are placed 16 m apart
+   (BayC2: a gap at z 792..808 the replay drives through); the turned multi-unit pieces' placing, or a solid's own
+   offset the kit does not carry. None of the installed Bay tracks has one.
+8. Bay's and Island's loading screens (`GameData/{Bay,Island}/Media/Texture/Image/LoadScreen.dds`, on the PC).
 6. A menu (track list, best times kept in `C:\Data\TM9300`), a countdown, a replay of the ghost from the path.

@@ -483,7 +483,7 @@ void TmCarState::Slopes(int& aAlong, int& aRight) const
     if (aRight > 4096) aRight = 4096; if (aRight < -4096) aRight = -4096;
     }
 
-TmCar::TmCar() : iClass(0), iCheckpoints(0), iCheckMask(0), iFinished(0), iSteps(0), iFinishSteps(0), iLastKindInst(-1), iTotalCps(0), iWallHits(0), iTopY(0), iCpX(0), iCpY(0), iCpZ(0), iCpYaw(0), iGravity(40 * 256), iSusB(0), iSusV(0), iBumpY(0), iAirSteps(0), iClimbVy(0), iClimbRaw(0), iTurbo(0), iShadow(0), iShY(0), iShVy(0), iPress(0)
+TmCar::TmCar() : iClass(0), iCheckpoints(0), iCheckMask(0), iFinished(0), iSteps(0), iFinishSteps(0), iLastKindInst(-1), iTotalCps(0), iWallHits(0), iTopY(0), iCpX(0), iCpY(0), iCpZ(0), iCpYaw(0), iGravity(40 * 256), iSusB(0), iSusV(0), iBumpY(0), iAirSteps(0), iClimbVy(0), iClimbRaw(0), iTurbo(0), iShadow(0), iShY(0), iShVy(0), iPress(0), iSurfMiss(0)
     {
     iS.x = iS.y = iS.z = 0; iS.vx = iS.vy = iS.vz = 0; iS.yaw = iS.yaw16 = 0; iS.onGround = 1; iS.surf = 0;
     iS.nx = 0; iS.ny = 8192; iS.nz = 0; iS.speed = 0; iS.steerPos = 0; iS.surfMode = 0; iS.ux = 0; iS.uy = 8192; iS.uz = 0;
@@ -646,7 +646,7 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
                 s.vx -= (vn * w.nx) >> 13; s.vy -= (vn * w.ny) >> 13; s.vz -= (vn * w.nz) >> 13;
                 const int sp2 = ISqrt64((unsigned long long) ((long long) s.vx * s.vx + (long long) s.vy * s.vy + (long long) s.vz * s.vz));
                 if (sp2 > 0) { s.vx = (int) ((long long) s.vx * sp / sp2); s.vy = (int) ((long long) s.vy * sp / sp2); s.vz = (int) ((long long) s.vz * sp / sp2); }
-                s.speed = sp; s.surf = 12; iShadow = 0; iClimbVy = 0; iClimbRaw = 0; iPress = 50 * 256;
+                s.speed = sp; s.surf = 12; iShadow = 0; iClimbVy = 0; iClimbRaw = 0; iPress = 50 * 256; iSurfMiss = 0;
                 Suspension(vy0);
                 Race(aG);
                 return;
@@ -811,7 +811,7 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
                     s.vx -= (vn * s.ux) >> 13; s.vy -= (vn * s.uy) >> 13; s.vz -= (vn * s.uz) >> 13;
                     const int sp2 = ISqrt64((unsigned long long) ((long long) s.vx * s.vx + (long long) s.vy * s.vy + (long long) s.vz * s.vz));
                     if (sp2 > 0) { s.vx = (int) ((long long) s.vx * sp / sp2); s.vy = (int) ((long long) s.vy * sp / sp2); s.vz = (int) ((long long) s.vz * sp / sp2); }
-                    s.surfMode = 1; iShadow = 0; iClimbVy = 0; iClimbRaw = 0; iPress = 50 * 256;
+                    s.surfMode = 1; iShadow = 0; iClimbVy = 0; iClimbRaw = 0; iPress = 50 * 256; iSurfMiss = 0;
                     }
                 }
             else
@@ -920,11 +920,14 @@ void TmCar::SurfaceStep(const TmGround& aG, const TmCarInput& aIn)
     const int up[3] = { s.ux, s.uy, s.uz };
     if (!aG.Ray(ox, oy, oz, dx, dy, dz, h, t, up))
         {
+        // (a seam between two pieces' roads, a loop's rails between them: on along the road's plane for up to 3 steps)
+        if (++iSurfMiss <= 3) { s.x = px; s.y = py; s.z = pz; s.speed = sp; return; }
 #ifdef SURFDEBUG
         printf("  surf: no road (%.1f %.1f %.1f) up (%d %d %d)\n", px / 256.0, py / 256.0, pz / 256.0, s.ux, s.uy, s.uz);
 #endif
         s.x = px; s.y = py; s.z = pz; LeaveSurface(false); return;
         }
+    iSurfMiss = 0;
     int nx = h.nx, ny = h.ny, nz = h.nz;
     if ((long long) nx * s.ux + (long long) ny * s.uy + (long long) nz * s.uz < 0) { nx = -nx; ny = -ny; nz = -nz; }
     s.x = ox + (int) (((long long) dx * t) >> 12); s.y = oy + (int) (((long long) dy * t) >> 12); s.z = oz + (int) (((long long) dz * t) >> 12);
@@ -1022,7 +1025,7 @@ void TmCar::Race(const TmGround& aG)
 // ---- the camera --------------------------------------------------------------------------------------------
 
 // 0.15: 11 m back, 4 m up, looking at a point 30 m on and 1.5 m up: lower, the road ahead in view, as the game's
-TmFollowCam::TmFollowCam() : iBack(11 * 256), iUp(4 * 256), iLookUp(384), iLookAhead(30 * 256), iX(0), iY(0), iZ(0), iYaw16(0), iViewYaw(0), iViewPitch(0), iTn(0), iTh(0) { iLast.cinst = -1; iLast.face = -1; iLast.y = 0; }
+TmFollowCam::TmFollowCam() : iBack(11 * 256), iUp(4 * 256), iLookUp(384), iLookAhead(30 * 256), iX(0), iY(0), iZ(0), iYaw16(0), iViewYaw(0), iViewPitch(0), iTn(0), iTh(0), iWasSurf(0) { iLast.cinst = -1; iLast.face = -1; iLast.y = 0; }
 
 // 0.6: the camera rides on the car's own trail: a point every 0.4 m of the car's way (KTrail of them: 25 m), the camera
 // 8 m back along it and 3 m over where the car was, looking at a point 1 m over the car. 0.8: 6.5 m back and 5.2 m up
@@ -1038,7 +1041,7 @@ void TmFollowCam::Reset(const TmCarState& aS)
     int tx, ty, tz; Target(aS, tx, ty, tz);
     iX = tx; iY = ty; iZ = tz;
     iYaw16 = aS.yaw * 16; iViewYaw = aS.yaw; iViewPitch = -60;
-    iLast.cinst = -1; iLast.face = -1; iLast.y = aS.y;
+    iLast.cinst = -1; iLast.face = -1; iLast.y = aS.y; iWasSurf = 0;
     }
 
 void TmFollowCam::Push(int aX, int aY, int aZ)
@@ -1083,6 +1086,14 @@ void TmFollowCam::Update(const TmGround& aG, const TmCarState& aS, int& aX, int&
     {
     // 0.18: on a loop's road: behind the car along its way and over it along its up (the car's own frame), looking
     // at it (no roll: upside down at a loop's top the view stays upright)
+    // (off it again: the trail seeded afresh behind the car, the camera gliding there from where it is)
+    if (iWasSurf && !aS.surfMode)
+        {
+        const int sn = R3D::Sin(aS.yaw), co = R3D::Cos(aS.yaw);
+        iTn = 0; iTh = 0;
+        for (int k = KTrail - 1; k >= 0; k--) Push(aS.x - ((sn * k * 102) >> 14), aS.y, aS.z - ((co * k * 102) >> 14));
+        }
+    iWasSurf = aS.surfMode;
     if (aS.surfMode && aS.speed > 256)
         {
         const int fx = (int) (((long long) aS.vx << 13) / aS.speed), fy = (int) (((long long) aS.vy << 13) / aS.speed), fz = (int) (((long long) aS.vz << 13) / aS.speed);

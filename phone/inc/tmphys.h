@@ -109,6 +109,7 @@ private:
     int iAirSteps;              // steps running the ground fell away under the car (the car leaves it at the second)
     int iClimbVy;               // 0.16: the upward speed the ground gave the last steps (1/256 m/s)
     int iClimbRaw;              //   the last step's alone
+    int iSurfMiss;              // 0.18: steps running the loop's road was not found under the car
     int iPress;                 // 0.18: on a loop: the road's press on the car, averaged (1/256 m/s^2)
     int iShadow, iShY, iShVy;    // 0.18: the throw's shadow over a ramp's lip: on, its height (1/256 m), its upward speed
     int iTurbo;                 // 0.16: the turbo's steps left
@@ -139,6 +140,7 @@ private:
     enum { KTrail = 64 };       // the car's trail: a point every 0.4 m (25 m)
     int iTx[KTrail], iTy[KTrail], iTz[KTrail];
     int iTn, iTh;               // points held, the newest's index
+    int iWasSurf;               // 0.18: the car was on a loop's road the last update
     };
 
 // 0.8: a ghost: a run as the car's place every 5 steps (100 ms), the steps it took each checkpoint and the finish.
