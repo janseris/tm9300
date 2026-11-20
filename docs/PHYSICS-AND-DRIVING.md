@@ -460,7 +460,7 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   the up, moves, and finds the road again along the up (`TmGround::Ray`: the nearest face crossed from 1.5 m over
   to 1.5 m under the car), turning the speed onto it. It holds while the road's curve presses the car on harder than
   gravity pulls it off (the press averaged over ~8 steps: a faceted loop turns at the edges; a seam between two
-  pieces' roads is crossed along the road's plane for up to 3 steps), else it flies; back to
+  pieces' roads or a gap in a loop's top is flown across for up to 12 steps), else it flies; back to
   plain driving where the road is flatter than 37 degrees. The press costs speed (0.47 of it: IslandA2's loop takes
   the replay's car from 175 m/s to 51 at the top; gravity alone would leave 147); the replay's climb is matched
   within ~10 m/s at each height. The car is drawn turned in 3D there (`TmView::iCar3D`), and the camera follows it in
