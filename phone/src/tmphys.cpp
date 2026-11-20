@@ -254,7 +254,7 @@ bool TmGround::WallHit(int aX0, int aZ0, int aX1, int aZ1, int aY, TmGroundHit& 
         for (int li = g.first[bk[bi]]; li < g.first[bk[bi] + 1]; li++)
             {
             const int f = g.list[li];
-            if (m.surf[f] != 9) continue;
+            if (m.surf[f] != 9 && m.surf[f] != 12) continue;
             const short* nrm = m.nrm + f * 3;
             const unsigned short* idx = m.idx + f * 3;
             const short* a = m.v + idx[0] * 3;
@@ -280,7 +280,7 @@ bool TmGround::WallHit(int aX0, int aZ0, int aX1, int aZ1, int aY, TmGroundHit& 
             const int s3 = ((u0 - u2) >> 2) * ((pv - v2) >> 2) - ((v0 - v2) >> 2) * ((pu - u2) >> 2);
             if (((s1 ^ s3) < 0 && s1 != 0 && s3 != 0) || ((s2 ^ s3) < 0 && s2 != 0 && s3 != 0)) continue;
             bestT = t; found = true;
-            aHit.y = t; aHit.nx = nrm[0]; aHit.ny = nrm[1]; aHit.nz = nrm[2]; aHit.surf = 9; aHit.cinst = iList[k]; aHit.face = f;
+            aHit.y = t; aHit.nx = nrm[0]; aHit.ny = nrm[1]; aHit.nz = nrm[2]; aHit.surf = m.surf[f]; aHit.cinst = iList[k]; aHit.face = f;
             }
         }
     return found;
@@ -291,6 +291,76 @@ bool TmGround::Covers(int aX, int aZ) const
     {
     const int cx = (aX >> 13) - iCellX0, cz = (aZ >> 13) - iCellZ0;
     return cx >= 0 && cz >= 0 && cx < iCellsX && cz < iCellsZ;
+    }
+
+// 0.18: the nearest face the segment crosses (a loop's road under the car, along its up): the cells and the meshes'
+// buckets the segment's box touches, each face's plane, then the crossing inside the face (on the plane its normal
+// is largest across). Walls (9) and nothing (5) are not met
+bool TmGround::Ray(int aX, int aY, int aZ, int aDx, int aDy, int aDz, TmGroundHit& aHit, int& aT, const int* aUp) const
+    {
+    if (!iT || !iFirst) return false;
+    const int bx0 = ((aDx < 0 ? aX + aDx : aX) >> 4) - 16, bx1 = ((aDx < 0 ? aX : aX + aDx) >> 4) + 16;
+    const int by0 = ((aDy < 0 ? aY + aDy : aY) >> 4) - 16, by1 = ((aDy < 0 ? aY : aY + aDy) >> 4) + 16;
+    const int bz0 = ((aDz < 0 ? aZ + aDz : aZ) >> 4) - 16, bz1 = ((aDz < 0 ? aZ : aZ + aDz) >> 4) + 16;
+    int cx0 = (bx0 >> 9) - iCellX0, cx1 = (bx1 >> 9) - iCellX0, cz0 = (bz0 >> 9) - iCellZ0, cz1 = (bz1 >> 9) - iCellZ0;
+    if (cx0 < 0) cx0 = 0; if (cz0 < 0) cz0 = 0; if (cx1 >= iCellsX) cx1 = iCellsX - 1; if (cz1 >= iCellsZ) cz1 = iCellsZ - 1;
+    int best = 4097; bool found = false;
+    for (int cz = cz0; cz <= cz1; cz++) for (int cx = cx0; cx <= cx1; cx++)
+        {
+        const int cell = cz * iCellsX + cx;
+        for (int k = iFirst[cell]; k < iFirst[cell + 1]; k++)
+            {
+            const int ci = iList[k];
+            const TmCInst& c = iT->iCInst[ci];
+            if (bx1 < c.bb[0] || bx0 > c.bb[3] || by1 < c.bb[1] || by0 > c.bb[4] || bz1 < c.bb[2] || bz0 > c.bb[5]) continue;
+            // an instance in two cells: once (it is the first cell of the box's it touches that tests it)
+            const int fcx = (c.bb[0] >> 9) - iCellX0, fcz = (c.bb[2] >> 9) - iCellZ0;
+            if ((fcx > cx0 ? fcx : cx0) != cx || (fcz > cz0 ? fcz : cz0) != cz) continue;
+            const TmColl& m = iT->iColl[c.coll];
+            const TMeshGrid& g = iGrid[c.coll];
+            const int px = aX - c.x * 16, py = aY - c.y * 16, pz = aZ - c.z * 16;
+            int gx0 = ((bx0 - c.x) - g.x0) / g.dx, gx1 = ((bx1 - c.x) - g.x0) / g.dx, gz0 = ((bz0 - c.z) - g.z0) / g.dz, gz1 = ((bz1 - c.z) - g.z0) / g.dz;
+            if (gx0 < 0) gx0 = 0; if (gz0 < 0) gz0 = 0; if (gx1 >= KGrid) gx1 = KGrid - 1; if (gz1 >= KGrid) gz1 = KGrid - 1;
+            for (int gz = gz0; gz <= gz1; gz++) for (int gx = gx0; gx <= gx1; gx++)
+                {
+                const int b = gz * KGrid + gx;
+                for (int li = g.first[b]; li < g.first[b + 1]; li++)
+                    {
+                    const int f = g.list[li];
+                    if (m.surf[f] == 9 || m.surf[f] == 5) continue;
+                    const short* nrm = m.nrm + f * 3;
+                    // (aUp: only faces within 45 degrees of it, either side: a loop's rail beside the road is not road)
+                    if (aUp) { const long long d = (long long) nrm[0] * aUp[0] + (long long) nrm[1] * aUp[1] + (long long) nrm[2] * aUp[2]; if ((d < 0 ? -d : d) < 47453132LL) continue; }
+                    const unsigned short* idx = m.idx + f * 3;
+                    const short* a = m.v + idx[0] * 3;
+                    const int ax = a[0] * 16, ay = a[1] * 16, az = a[2] * 16;
+                    const long long nd = (long long) nrm[0] * aDx + (long long) nrm[1] * aDy + (long long) nrm[2] * aDz;
+                    if (nd == 0) continue;
+                    const long long n0 = (long long) nrm[0] * (ax - px) + (long long) nrm[1] * (ay - py) + (long long) nrm[2] * (az - pz);
+                    const long long tl = (n0 << 12) / nd;
+                    if (tl < 0 || tl > 4096 || tl >= best) continue;
+                    const int t = (int) tl;
+                    const int hx = px + (int) (((long long) aDx * t) >> 12), hy = py + (int) (((long long) aDy * t) >> 12), hz = pz + (int) (((long long) aDz * t) >> 12);
+                    const short* b2 = m.v + idx[1] * 3; const short* c2 = m.v + idx[2] * 3;
+                    // the plane the normal is largest across
+                    const int anx = Abs(nrm[0]), any = Abs(nrm[1]), anz = Abs(nrm[2]);
+                    int u0, v0, u1, v1, u2, v2, pu, pv;
+                    if (any >= anx && any >= anz) { u0 = ax; v0 = az; u1 = b2[0] * 16; v1 = b2[2] * 16; u2 = c2[0] * 16; v2 = c2[2] * 16; pu = hx; pv = hz; }
+                    else if (anx >= anz) { u0 = az; v0 = ay; u1 = b2[2] * 16; v1 = b2[1] * 16; u2 = c2[2] * 16; v2 = c2[1] * 16; pu = hz; pv = hy; }
+                    else { u0 = ax; v0 = ay; u1 = b2[0] * 16; v1 = b2[1] * 16; u2 = c2[0] * 16; v2 = c2[1] * 16; pu = hx; pv = hy; }
+                    const long long s1 = (long long) (u1 - u0) * (pv - v0) - (long long) (v1 - v0) * (pu - u0);
+                    const long long s2 = (long long) (u2 - u1) * (pv - v1) - (long long) (v2 - v1) * (pu - u1);
+                    if ((s1 < 0 && s2 > 0) || (s1 > 0 && s2 < 0)) continue;
+                    const long long s3 = (long long) (u0 - u2) * (pv - v2) - (long long) (v0 - v2) * (pu - u2);
+                    if ((s1 < 0 && s3 > 0) || (s1 > 0 && s3 < 0) || (s2 < 0 && s3 > 0) || (s2 > 0 && s3 < 0)) continue;
+                    best = t; found = true;
+                    aHit.y = c.y * 16 + hy; aHit.nx = nrm[0]; aHit.ny = nrm[1]; aHit.nz = nrm[2]; aHit.surf = m.surf[f]; aHit.cinst = ci; aHit.face = f;
+                    }
+                }
+            }
+        }
+    aT = best;
+    return found;
     }
 
 int TmGround::KindAt(int aKind, int aX, int aY, int aZ) const
@@ -311,6 +381,18 @@ int TmGround::KindAt(int aKind, int aX, int aY, int aZ) const
 static int ISqrt(unsigned a)
     {
     unsigned r = 0, bit = 1u << 30;
+    while (bit > a) bit >>= 2;
+    while (bit) { if (a >= r + bit) { a -= r + bit; r = (r >> 1) + bit; } else r >>= 1; bit >>= 2; }
+    return (int) r;
+    }
+
+#ifndef KLOOPFRIC
+#define KLOOPFRIC 120
+#endif
+static const int KLoopFric = KLOOPFRIC;          // 0.18: the share of a loop's press lost as speed (* 256)
+static int ISqrt64(unsigned long long a)
+    {
+    unsigned long long r = 0, bit = 1ULL << 62;
     while (bit > a) bit >>= 2;
     while (bit) { if (a >= r + bit) { a -= r + bit; r = (r >> 1) + bit; } else r >>= 1; bit >>= 2; }
     return (int) r;
@@ -402,10 +484,10 @@ void TmCarState::Slopes(int& aAlong, int& aRight) const
     if (aRight > 4096) aRight = 4096; if (aRight < -4096) aRight = -4096;
     }
 
-TmCar::TmCar() : iClass(0), iCheckpoints(0), iCheckMask(0), iFinished(0), iSteps(0), iFinishSteps(0), iLastKindInst(-1), iTotalCps(0), iWallHits(0), iTopY(0), iCpX(0), iCpY(0), iCpZ(0), iCpYaw(0), iGravity(40 * 256), iSusB(0), iSusV(0), iBumpY(0), iAirSteps(0), iClimbVy(0), iClimbRaw(0), iTurbo(0), iShadow(0), iShY(0), iShVy(0)
+TmCar::TmCar() : iClass(0), iCheckpoints(0), iCheckMask(0), iFinished(0), iSteps(0), iFinishSteps(0), iLastKindInst(-1), iTotalCps(0), iWallHits(0), iTopY(0), iCpX(0), iCpY(0), iCpZ(0), iCpYaw(0), iGravity(40 * 256), iSusB(0), iSusV(0), iBumpY(0), iAirSteps(0), iClimbVy(0), iClimbRaw(0), iTurbo(0), iShadow(0), iShY(0), iShVy(0), iPress(0)
     {
     iS.x = iS.y = iS.z = 0; iS.vx = iS.vy = iS.vz = 0; iS.yaw = iS.yaw16 = 0; iS.onGround = 1; iS.surf = 0;
-    iS.nx = 0; iS.ny = 8192; iS.nz = 0; iS.speed = 0; iS.steerPos = 0;
+    iS.nx = 0; iS.ny = 8192; iS.nz = 0; iS.speed = 0; iS.steerPos = 0; iS.surfMode = 0; iS.ux = 0; iS.uy = 8192; iS.uz = 0;
     }
 
 void TmCar::Reset(const TmTrack& aT)
@@ -417,7 +499,7 @@ void TmCar::Reset(const TmTrack& aT)
     iS.x = aT.iStartX * 16; iS.y = aT.iStartY * 16; iS.z = aT.iStartZ * 16;
     iS.vx = iS.vy = iS.vz = 0;
     iS.yaw = aT.iStartYaw & 4095; iS.yaw16 = iS.yaw * 16;
-    iS.onGround = 1; iS.surf = 0; iS.nx = 0; iS.ny = 8192; iS.nz = 0; iS.speed = 0; iS.steerPos = 0;
+    iS.onGround = 1; iS.surf = 0; iS.nx = 0; iS.ny = 8192; iS.nz = 0; iS.speed = 0; iS.steerPos = 0; iS.surfMode = 0; iS.ux = 0; iS.uy = 8192; iS.uz = 0;
     iCheckpoints = 0; iCheckMask = 0; iFinished = 0; iSteps = 0; iFinishSteps = 0; iLastKindInst = -1;
     // 0.6: the checkpoints: the checkpoint boxes on one spot (footprints overlapping by more than a metre each way:
     // an elevated checkpoint and the pillars under it) are one checkpoint
@@ -448,7 +530,7 @@ void TmCar::Respawn()
     {
     // standing at the last checkpoint taken (the start when none), the race going on
     iS.x = iCpX; iS.y = iCpY; iS.z = iCpZ; iS.yaw = iCpYaw & 4095; iS.yaw16 = iS.yaw * 16;
-    iS.vx = iS.vy = iS.vz = 0; iS.onGround = 1; iS.surf = 0; iS.nx = 0; iS.ny = 8192; iS.nz = 0; iS.speed = 0; iS.steerPos = 0;
+    iS.vx = iS.vy = iS.vz = 0; iS.onGround = 1; iS.surf = 0; iS.nx = 0; iS.ny = 8192; iS.nz = 0; iS.speed = 0; iS.steerPos = 0; iS.surfMode = 0; iS.ux = 0; iS.uy = 8192; iS.uz = 0;
     iBumpY = iS.y; iTopY = iS.y; iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; iTurbo = 0; iSusB = 0; iSusV = 0; iShadow = 0;
     for (int w = 0; w < 5; w++) { iLast[w].cinst = -1; iLast[w].face = -1; }
     }
@@ -462,6 +544,7 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
     int want = Clamp(aIn.steer, -256, 256);
     if (want > s.steerPos) s.steerPos = want - s.steerPos > 48 ? s.steerPos + 48 : want;
     else if (want < s.steerPos) s.steerPos = s.steerPos - want > 48 ? s.steerPos - 48 : want;
+    if (s.surfMode) { SurfaceStep(aG, aIn); Suspension(vy0); Race(aG); return; }
     const int sn = R3D::Sin(s.yaw), co = R3D::Cos(s.yaw);         // the heading (* 16384)
     if (s.onGround)
         {
@@ -549,6 +632,27 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
         TmGroundHit w;
         int hy = s.y + (pass == 0 ? 64 : pass == 2 ? 358 : 154);
         if (!aG.WallHit(s.x, s.z, nx, nz, hy, w, ny - s.y)) { if (pass == 2) break; continue; }
+        // 0.18: a loop's or a wall ride's steep road met at speed, head on enough: the car goes on along it in 3D
+        if (w.surf == 12 && pass < 2)
+            {
+            const int vn = (int) (((long long) s.vx * w.nx + (long long) s.vy * w.ny + (long long) s.vz * w.nz) >> 13);
+            const int sp = ISqrt64((unsigned long long) ((long long) s.vx * s.vx + (long long) s.vy * s.vy + (long long) s.vz * s.vz));
+            if (sp > 15 * 256 && -vn * 4 > sp)
+                {
+                const int t = w.y;
+                s.x += (int) (((long long) (nx - s.x) * t) >> 12); s.z += (int) (((long long) (nz - s.z) * t) >> 12);
+                s.y += (int) (((long long) (ny - s.y) * t) >> 12);
+                s.ux = w.nx; s.uy = w.ny; s.uz = w.nz; s.surfMode = 1;
+                // the speed turned onto the road, all of it kept
+                s.vx -= (vn * w.nx) >> 13; s.vy -= (vn * w.ny) >> 13; s.vz -= (vn * w.nz) >> 13;
+                const int sp2 = ISqrt64((unsigned long long) ((long long) s.vx * s.vx + (long long) s.vy * s.vy + (long long) s.vz * s.vz));
+                if (sp2 > 0) { s.vx = (int) ((long long) s.vx * sp / sp2); s.vy = (int) ((long long) s.vy * sp / sp2); s.vz = (int) ((long long) s.vz * sp / sp2); }
+                s.speed = sp; s.surf = 12; iShadow = 0; iClimbVy = 0; iClimbRaw = 0; iPress = 50 * 256;
+                Suspension(vy0);
+                Race(aG);
+                return;
+                }
+            }
         // to the wall (a hair short), then the rest of the move along it
         int t = w.y > 128 ? w.y - 128 : 0;
         int mx = nx - s.x, mz = nz - s.z;
@@ -613,7 +717,9 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
     // inside the bank (the uphill sinking, the stones, Snow's banks)
     const int move = ILen(nx - s.x, nz - s.z);
     TmGroundHit& mid = iLast[4];
-    bool found = s.onGround ? aG.Probe(nx, nz, ny + 307 + move, s.y, mid) : aG.Probe(nx, nz, ny + 115 + 102, s.y, mid);
+    // (0.18: the middle without the last face's hint: a face going on under another, higher one (a platform's floor
+    // under a loop's foot, BayC2) kept the car on it, under the ramp)
+    bool found = s.onGround ? aG.Probe(nx, nz, ny + 307 + move, mid) : aG.Probe(nx, nz, ny + 115 + 102, s.y, mid);
     int tan = 0;
     if (found && s.onGround && mid.y - ny > 115)
         {
@@ -694,6 +800,19 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
                 // the normal smoothed over a few steps: a kerb under one wheel is not a ramp
                 s.nx += (hit.nx - s.nx) >> 2; s.ny += (hit.ny - s.ny) >> 2; s.nz += (hit.nz - s.nz) >> 2;
                 if (s.ny < 2048) s.ny = 2048;
+                // 0.18: on ground steeper than 41 degrees going up it at speed (a loop's or a quarter pipe's foot): the
+                // car follows the road in 3D from the next step (the heightfield's climb, held to 80 m/s up and its
+                // normal smoothed, lost IslandA2's loop at 184 m/s)
+                if (hit.ny < 6144 && s.vy > 4 * 256 && s.speed > 20 * 256)
+                    {
+                    const int sp = s.speed;                     // (the speed along the ground: the climb is on top of it here)
+                    s.ux = hit.nx; s.uy = hit.ny; s.uz = hit.nz;
+                    const int vn = (int) (((long long) s.vx * s.ux + (long long) s.vy * s.uy + (long long) s.vz * s.uz) >> 13);
+                    s.vx -= (vn * s.ux) >> 13; s.vy -= (vn * s.uy) >> 13; s.vz -= (vn * s.uz) >> 13;
+                    const int sp2 = ISqrt64((unsigned long long) ((long long) s.vx * s.vx + (long long) s.vy * s.vy + (long long) s.vz * s.vz));
+                    if (sp2 > 0) { s.vx = (int) ((long long) s.vx * sp / sp2); s.vy = (int) ((long long) s.vy * sp / sp2); s.vz = (int) ((long long) s.vz * sp / sp2); }
+                    s.surfMode = 1; iShadow = 0; iClimbVy = 0; iClimbRaw = 0; iPress = 50 * 256;
+                    }
                 }
             else
                 {
@@ -754,6 +873,91 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
     }
     Suspension(vy0);
     Race(aG);
+    }
+
+// 0.18: on a loop's or a wall ride's steep road (surface 12): the car is a point on the road with the road's normal
+// for its up. A step: gravity, the throttle and the brake along the speed, the steering turning the speed about the
+// up; the move; then the road again along the up (a ray from 1.5 m over the car to 1.5 m under it): the car on it,
+// its normal the new up, the speed turned onto it (all of it kept). It holds while the road's curve presses the car
+// on it harder than gravity pulls it off (v * the turn of the up a second against g's part off the road), else it
+// flies; back to plain driving where the road is flatter than 53 degrees
+void TmCar::SurfaceStep(const TmGround& aG, const TmCarInput& aIn)
+    {
+    TmCarState& s = iS;
+    const int gStep = (iGravity * 256 / 50) >> 8;
+    s.vy -= gStep;
+    int sp = ISqrt64((unsigned long long) ((long long) s.vx * s.vx + (long long) s.vy * s.vy + (long long) s.vz * s.vz));
+    // the pull and the brake along the speed (the drag when coasting)
+    int band = (sp >> 8) / 10; if (band > 9) band = 9;
+    const int vm = sp >> 8;
+    int a = -(13 + ((vm * vm * 26) >> 10));
+    if (aIn.throttle && !aIn.brake) a = KPull[iClass][band];
+    if (aIn.brake) a = -144;
+    int nsp = sp + a; if (nsp > KVMax[iClass] * 256) nsp = KVMax[iClass] * 256; if (nsp < 256) nsp = 256;
+    if (sp > 0) { s.vx = (int) ((long long) s.vx * nsp / sp); s.vy = (int) ((long long) s.vy * nsp / sp); s.vz = (int) ((long long) s.vz * nsp / sp); }
+    sp = nsp;
+    // the steering: the speed turned about the up, ~0.8 rad/s at full lock
+    if (s.steerPos)
+        {
+        const int th = (s.steerPos * 67) / 256;                  // rad * 4096 a step
+        const long long cx = ((long long) s.uy * s.vz - (long long) s.uz * s.vy) >> 13;
+        const long long cy = ((long long) s.uz * s.vx - (long long) s.ux * s.vz) >> 13;
+        const long long cz = ((long long) s.ux * s.vy - (long long) s.uy * s.vx) >> 13;
+        s.vx += (int) ((cx * th) >> 12); s.vy += (int) ((cy * th) >> 12); s.vz += (int) ((cz * th) >> 12);
+        }
+    // the move
+    const int px = s.x + s.vx / 50, py = s.y + s.vy / 50, pz = s.z + s.vz / 50;
+    // the road along the up
+    TmGroundHit h; int t;
+    const int ox = px + ((s.ux * 384) >> 13), oy = py + ((s.uy * 384) >> 13), oz = pz + ((s.uz * 384) >> 13);
+    const int dx = -((s.ux * 768) >> 13), dy = -((s.uy * 768) >> 13), dz = -((s.uz * 768) >> 13);
+    const int up[3] = { s.ux, s.uy, s.uz };
+    if (!aG.Ray(ox, oy, oz, dx, dy, dz, h, t, up))
+        {
+#ifdef SURFDEBUG
+        printf("  surf: no road (%.1f %.1f %.1f) up (%d %d %d)\n", px / 256.0, py / 256.0, pz / 256.0, s.ux, s.uy, s.uz);
+#endif
+        s.x = px; s.y = py; s.z = pz; LeaveSurface(false); return;
+        }
+    int nx = h.nx, ny = h.ny, nz = h.nz;
+    if ((long long) nx * s.ux + (long long) ny * s.uy + (long long) nz * s.uz < 0) { nx = -nx; ny = -ny; nz = -nz; }
+    s.x = ox + (int) (((long long) dx * t) >> 12); s.y = oy + (int) (((long long) dy * t) >> 12); s.z = oz + (int) (((long long) dz * t) >> 12);
+    // the curve's press: the up's turn this step (~ |n - u|, rad * 8192) times the speed, a second
+    const int ddx = nx - s.ux, ddy = ny - s.uy, ddz = nz - s.uz;
+    const int turn = ISqrt64((unsigned long long) ((long long) ddx * ddx + (long long) ddy * ddy + (long long) ddz * ddz));
+    const bool concave = ((long long) ddx * s.vx + (long long) ddy * s.vy + (long long) ddz * s.vz) < 0;     // the up turns against the way: a loop's inside
+    const long long press = (long long) sp * turn * 50 / 8192 * (concave ? 1 : -1);      // 1/256 m/s^2
+    const long long pull = -((long long) iGravity * ny) / 8192;                          // gravity off the road (the road over the car)
+    s.ux = nx; s.uy = ny; s.uz = nz; s.surf = h.surf;
+    // the speed onto the road, all of it kept
+    const int vn = (int) (((long long) s.vx * nx + (long long) s.vy * ny + (long long) s.vz * nz) >> 13);
+    s.vx -= (vn * nx) >> 13; s.vy -= (vn * ny) >> 13; s.vz -= (vn * nz) >> 13;
+    const int sp2 = ISqrt64((unsigned long long) ((long long) s.vx * s.vx + (long long) s.vy * s.vy + (long long) s.vz * s.vz));
+    if (sp2 > 0) { s.vx = (int) ((long long) s.vx * sp / sp2); s.vy = (int) ((long long) s.vy * sp / sp2); s.vz = (int) ((long long) s.vz * sp / sp2); }
+    // the road's press costs speed (IslandA2's loop: 175 m/s in, 51 at the top; gravity alone left 147): a share of it
+    if (press > 0) { sp -= (int) ((press * KLoopFric) >> 8) / 50; if (sp < 256) sp = 256; }
+    if (sp2 > 0) { s.vx = (int) ((long long) s.vx * sp / sp2); s.vy = (int) ((long long) s.vy * sp / sp2); s.vz = (int) ((long long) s.vz * sp / sp2); }
+    s.speed = sp;
+#ifdef SURFDEBUG
+    printf("  surf: road at t %d n (%d %d %d) turn %d press %lld pull %lld\n", t, nx, ny, nz, turn, press, pull);
+#endif
+    // (a faceted loop: the turn comes at the faces' edges, nothing on a face: the press averaged over ~8 steps)
+    iPress += (int) ((press - iPress) / 8);
+    if (pull > 0 && iPress < pull) { LeaveSurface(false); return; }                     // too slow for the loop's top: it falls
+    if (ny > 6554) { LeaveSurface(true); return; }                                    // flatter than 37 degrees: plain driving again
+    }
+
+void TmCar::LeaveSurface(bool aOnGround)
+    {
+    TmCarState& s = iS;
+    s.surfMode = 0;
+    // the heading from the speed (its flat part; going straight up or down: as it was)
+    if (Abs(s.vx) + Abs(s.vz) > 256) { s.yaw = TmYawTo(s.vx, s.vz); s.yaw16 = s.yaw << 4; }
+    if (aOnGround) { s.onGround = 1; s.nx = s.ux; s.ny = s.uy; s.nz = s.uz; s.speed = ILen(s.vx, s.vz); }
+    else { s.onGround = 0; s.nx = 0; s.ny = 8192; s.nz = 0; }
+    s.ux = 0; s.uy = 8192; s.uz = 0;
+    iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; iShadow = 0; iBumpY = s.y;
+    for (int w = 0; w < 5; w++) { iLast[w].cinst = -1; iLast[w].face = -1; }
     }
 
 // 0.17 (0.15 in the app, drawn only): the body follows the wheels' vertical movement through a spring: a bump or a
@@ -871,8 +1075,25 @@ void TmFollowCam::Target(const TmCarState& aS, int& aX, int& aY, int& aZ) const
 
 void TmFollowCam::Update(const TmGround& aG, const TmCarState& aS, int& aX, int& aY, int& aZ, int& aYaw, int& aPitch)
     {
+    // 0.18: on a loop's road: behind the car along its way and over it along its up (the car's own frame), looking
+    // at it (no roll: upside down at a loop's top the view stays upright)
+    if (aS.surfMode && aS.speed > 256)
+        {
+        const int fx = (int) (((long long) aS.vx << 13) / aS.speed), fy = (int) (((long long) aS.vy << 13) / aS.speed), fz = (int) (((long long) aS.vz << 13) / aS.speed);
+        const int tx = aS.x - (int) (((long long) fx * iBack) >> 13) + (int) (((long long) aS.ux * iUp) >> 13);
+        const int ty = aS.y - (int) (((long long) fy * iBack) >> 13) + (int) (((long long) aS.uy * iUp) >> 13);
+        const int tz = aS.z - (int) (((long long) fz * iBack) >> 13) + (int) (((long long) aS.uz * iUp) >> 13);
+        iX += (tx - iX) / 2; iY += (ty - iY) / 2; iZ += (tz - iZ) / 2;
+        const int lx = aS.x + ((aS.ux * 384) >> 13) - iX, ly = aS.y + ((aS.uy * 384) >> 13) - iY, lz = aS.z + ((aS.uz * 384) >> 13) - iZ;
+        iViewYaw = TmYawTo(lx, lz);
+        const int d = ILen(lx, lz);
+        iViewPitch = Clamp(((TmYawTo(ly, d) + 2048) & 4095) - 2048, -1000, 1000);
+        aX = iX >> 4; aY = iY >> 4; aZ = iZ >> 4; aYaw = iViewYaw; aPitch = iViewPitch;
+        return;
+        }
     // the trail: a point when the car is 0.4 m from the last (backing up adds none: the camera then stays behind)
-    if (aS.speed >= 0 && ILen(aS.x - iTx[iTh], aS.z - iTz[iTh]) >= 102) Push(aS.x, aS.y, aS.z);
+    // (0.18: on a loop's road none: the camera stays behind the loop, looking at the car going round)
+    if (!aS.surfMode && aS.speed >= 0 && ILen(aS.x - iTx[iTh], aS.z - iTz[iTh]) >= 102) Push(aS.x, aS.y, aS.z);
     int tx, ty, tz;
     if (aS.speed < -2 * 256)
         {
@@ -883,6 +1104,7 @@ void TmFollowCam::Update(const TmGround& aG, const TmCarState& aS, int& aX, int&
     else Target(aS, tx, ty, tz);
     // 0.8: under a roof, a bridge or a track overhead the camera stays 1.5 m under it (and at least 1.2 m over the
     // trail): the first surface over the trail point, up to the camera's height + 0.5 m
+    if (!aS.surfMode)
     {
     TmGroundHit h;
     const int base = ty - iUp;

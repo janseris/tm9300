@@ -52,6 +52,9 @@ COARSE = __import__('os').environ.get('COARSE')
 # 0.18: the solids (a regex) whose steep faces are never walls: Bay's turbo gantries (the replays drive through their
 # posts: the game does not stop the car there)
 NOWALLS = __import__('os').environ.get('NOWALLS')
+# 0.18: the solids (a regex) whose steep faces are road, not walls: loops, wall rides, pipes. Surface 12: a wall to
+# plain driving, the road the car follows in 3D when it meets it at speed (tmphys: SurfaceStep)
+STEEPROAD = __import__('os').environ.get('STEEPROAD', r'Loop|RoadWall|TunnelCircular|MetalTube|Pipeline|Hawk')     # the blocks' names
 ROAD_BUDGET = int(__import__('os').environ.get('ROAD_BUDGET', '0'))    # m: the coarsest of what is driven on (0.15: Desert's sand tiles need 3)
 EDGE_STEP = 2.0 # m: the grid the pieces' edge corners snap to along the edge (the seams)
 WIND = 'reverse'
@@ -343,17 +346,17 @@ def coll_from(mesh):
         if surf == 5: continue
         n, area = face_normal(mesh.verts[a], mesh.verts[b], mesh.verts[cc])
         if n is None: continue
-        if abs(n[1]) < WALL_NY or surf == 9:
+        if abs(n[1]) < WALL_NY or surf in (9, 12):
             # a wall (steeper than ~63 degrees, or a bevelled face the game's collision has a wall at): kept with its
             # normal as it is, for the car to hit, when the solid's own collision mesh has a wall there too
             # (mark_walls): a lamp post's base or a painted edge is not solid
-            if surf != 9 or area < 0.05: continue
-            tris.append((a, b, cc, tuple(int(round(k * 8192)) for k in n), 9)); continue
+            if surf not in (9, 12) or area < 0.05: continue
+            tris.append((a, b, cc, tuple(int(round(k * 8192)) for k in n), surf)); continue
         if n[1] < 0: a, b, cc = a, cc, b; n = (-n[0], -n[1], -n[2])
         tris.append((a, b, cc, tuple(int(round(k * 8192)) for k in n), surf))
     return tris
 
-def mark_walls(mesh, s, nowalls=False):
+def mark_walls(mesh, s, nowalls=False, steep=9):
     """the mesh's steep faces (|ny| < WALL_NY) become surface 9 (solid) when Nadeo's collision solid has a steep face
     within 0.6 m of their middle facing the same way, else 5 (nothing): what the game lets the car through, we do"""
     c = s.get('coll')
@@ -383,7 +386,7 @@ def mark_walls(mesh, s, nowalls=False):
             # 0.6: a bevelled face (26..63 degrees: a rail's side, a wall's chamfer) is a wall when the game's own
             # collision has a steep face right there facing the same way (horizontally): the snow rails, the castle
             # walls (drawn bevelled, solid in the game); else a slope the car drives on
-            if abs(n[1]) < 0.9 and not nowalls:
+            if abs(n[1]) < 0.9 and not nowalls and steep == 9:
                 hn = math.hypot(n[0], n[2])
                 for A, wn, bb in walls:
                     if not (bb[0] <= m[0] <= bb[1] and bb[2] <= m[1] <= bb[3] and bb[4] <= m[2] <= bb[5]): continue
@@ -402,7 +405,7 @@ def mark_walls(mesh, s, nowalls=False):
                 if not (bb[0] <= m[0] <= bb[1] and bb[2] <= m[1] <= bb[3] and bb[4] <= m[2] <= bb[5]): continue
                 if abs(wn[0] * n[0] + wn[1] * n[1] + wn[2] * n[2]) < 0.7: continue
                 if abs(wn[0] * (m[0] - A[0]) + wn[1] * (m[1] - A[1]) + wn[2] * (m[2] - A[2])) < 0.6: solid = True; break
-        out.append((a, b, cc, (col, 9 if solid else 5)))
+        out.append((a, b, cc, (col, steep if solid else 5)))
         WALLSTAT[0 if solid else 1] += 1
     return Mesh(mesh.verts, out)
 
@@ -469,6 +472,12 @@ def main():
     leaf = tuple(leaf) if leaf else (70, 110, 40)
     # 1. the solids used, as meshes in their local frame (metres), simplified
     base_meshes = {}      # solid name -> [ (dx_tile, dz_tile, Mesh) ]  (tiles for wide meshes, else [(0, 0, mesh)])
+    # 0.18: the solids of the loop, wall-ride, pipe and quarter-pipe blocks: their steep faces are road (surface 12)
+    steep_solids = set()
+    if STEEPROAD:
+        for b in t.kit['blocks']:
+            if __import__('re').search(STEEPROAD, b['name']):
+                for var in (b.get('ground') or []) + (b.get('air') or []): steep_solids.update(n for n in var if n)
     def solid_mesh(sname):
         if sname in base_meshes: return base_meshes[sname]
         s = t.solids[sname]
@@ -493,7 +502,8 @@ def main():
             else: parts = [(0, 0, compact(decimate_keep(m, budget, (bb[0], bb[3], bb[2], bb[5]))))]
         WALLSTAT[0] = WALLSTAT[1] = 0
         nowalls = NOWALLS is not None and __import__('re').search(NOWALLS, sname)
-        parts = [(tx, tz, (drop_water_under(mark_walls(pm, s, nowalls)) if DEPTHFIX else mark_walls(pm, s, nowalls))) for tx, tz, pm in parts]
+        steep = 12 if sname in steep_solids else 9
+        parts = [(tx, tz, (drop_water_under(mark_walls(pm, s, nowalls, steep)) if DEPTHFIX else mark_walls(pm, s, nowalls, steep))) for tx, tz, pm in parts]
         if os.environ.get('PACKSTATS') and WALLSTAT[0] + WALLSTAT[1]: print(f"    walls {sname}: {WALLSTAT[0]} solid, {WALLSTAT[1]} dropped; collision {len(s['coll']['tris']) // 4 if s.get('coll') and s['coll'].get('tris') else 0} tris")
         base_meshes[sname] = parts
         return parts

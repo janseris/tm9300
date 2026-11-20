@@ -444,6 +444,18 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   (as a player's respawn) and counts it: Bay A1-A5, B1 and Island A1, A3, A4, B2, B4 finish with none; the installed
   C and D tracks with one or two. `TRACE=a,b` prints every step between two times.
 - Loading screens for Bay and Island wait for their `LoadScreen.dds` (on the PC, outside the paks): black until then.
+- Loops, quarter pipes and wall rides (surface mode): the steep faces of the loop, wall-ride, pipe and tube pieces
+  (`STEEPROAD` in `pack.py`: `Loop`, `Wall/`, `Circular/`, `MetalTube`, `Pipeline`, ...) are surface 12: a wall to
+  plain driving, road to the car that meets them at speed. On ground steeper than 41 degrees going up it faster
+  than 20 m/s, or meeting a surface-12 face head on, the car leaves the heightfield: it is a point on the road with
+  the road's normal for its up; a step adds gravity, the pull or the brake along the speed and the steering about
+  the up, moves, and finds the road again along the up (`TmGround::Ray`: the nearest face crossed from 1.5 m over
+  to 1.5 m under the car), turning the speed onto it. It holds while the road's curve presses the car on harder than
+  gravity pulls it off (the press averaged over ~8 steps: a faceted loop turns at the edges), else it flies; back to
+  plain driving where the road is flatter than 37 degrees. The press costs speed (0.47 of it: IslandA2's loop takes
+  the replay's car from 175 m/s to 51 at the top; gravity alone would leave 147); the replay's climb is matched
+  within ~10 m/s at each height. The car is drawn turned in 3D there (`TmView::iCar3D`), and the camera follows it in
+  its own frame (11 m back along its way, 4 m over it along its up, no roll).
 
 ## Next
 
@@ -454,6 +466,6 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
 2. Tune by feel after the phone test: the pull (the driver is ~10 % quicker than the replays), the steering
    ramp, the camera distance.
 3. The depth test's per-polygon and per-row cost (the planes, the row bookkeeping): ~0.7 M a frame.
-4. Wall rides and loops (Snow C/D).
+4. Snow's tubes and wall rides on the surface mode (its tracks repacked with surface 12).
 5. Coast and Stadium on the same pipeline (their replays are not dumped yet).
 6. A menu (track list, best times kept in `C:\Data\TM9300`), a countdown, a replay of the ghost from the path.

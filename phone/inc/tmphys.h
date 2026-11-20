@@ -40,6 +40,10 @@ public:
     bool WallHit(int aX0, int aZ0, int aX1, int aZ1, int aY, TmGroundHit& aHit, int aDY = 0) const;     // aDY: the move's height change
     // the collision instances of a kind (checkpoint, finish) whose box holds the point (1/256 m): the first one's index, or -1
     bool Covers(int aX, int aZ) const;
+    // 0.18: the nearest face (not a wall, not 'none') the segment from (aX, aY, aZ) along (aDx, aDy, aDz) crosses (1/256 m):
+    // its normal as stored (up), surface, instance and face in aHit, the crossing's fraction (* 4096) in aT
+    // (aUp: only faces within 45 degrees of that direction, * 8192)
+    bool Ray(int aX, int aY, int aZ, int aDx, int aDy, int aDz, TmGroundHit& aHit, int& aT, const int* aUp = 0) const;
     int KindAt(int aKind, int aX, int aY, int aZ) const;
     int iProbes, iTests;        // statistics: probes, triangles tested
     const TmTrack& Track() const { return *iT; }
@@ -69,6 +73,10 @@ struct TmCarState
     // the ground's slope along the heading and to the right (* 4096), for the car's tilt when drawn
     void Slopes(int& aAlong, int& aRight) const;
     int steerPos;               // the steering's position -256..256 (ramped from the keys)
+    // 0.18: on a loop's or a wall ride's steep road (surface 12): the car follows it in 3D, its up the road's normal
+    // (* 8192, towards the car), its speed (vx, vy, vz) along the road
+    int surfMode;
+    int ux, uy, uz;
     };
 
 class TmCar
@@ -101,9 +109,12 @@ private:
     int iAirSteps;              // steps running the ground fell away under the car (the car leaves it at the second)
     int iClimbVy;               // 0.16: the upward speed the ground gave the last steps (1/256 m/s)
     int iClimbRaw;              //   the last step's alone
+    int iPress;                 // 0.18: on a loop: the road's press on the car, averaged (1/256 m/s^2)
     int iShadow, iShY, iShVy;    // 0.18: the throw's shadow over a ramp's lip: on, its height (1/256 m), its upward speed
     int iTurbo;                 // 0.16: the turbo's steps left
     void Suspension(int aVy0);
+    void SurfaceStep(const TmGround& aG, const TmCarInput& aIn);
+    void LeaveSurface(bool aOnGround);
     };
 
 // the camera that follows a driven car: behind it along its heading, smoothed, kept above the ground

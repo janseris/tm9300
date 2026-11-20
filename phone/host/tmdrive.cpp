@@ -100,6 +100,8 @@ int main(int argc, char** argv)
             {
             int dx = t.iPath[ti].x * 16 - s.x, dz = t.iPath[ti].z * 16 - s.z;
             if (abs(dx) + abs(dz) >= look) break;
+            // 0.18: not into a loop: the replay climbing steeply ahead (its x, z turn back there): aim at its foot
+            if (ti > prog && abs(t.iPath[ti + 1].y - t.iPath[ti].y) * 16 > (abs(t.iPath[ti + 1].x - t.iPath[ti].x) + abs(t.iPath[ti + 1].z - t.iPath[ti].z)) * 16 && ti + 1 < t.iNPath) { ti += 0; break; }
             ti++;
             }
         int dx = t.iPath[ti].x * 16 - s.x, dz = t.iPath[ti].z * 16 - s.z;
@@ -149,6 +151,8 @@ int main(int argc, char** argv)
             for (int i = prog + 2; i + 2 < t.iNPath && dist < 150; i++)
                 {
                 const TmPath& a = t.iPath[i - 2]; const TmPath& b = t.iPath[i]; const TmPath& c = t.iPath[i + 2];
+                // 0.18: the replay climbing or falling steeply (a loop, a wall ride): its turn in x, z is not a corner
+                if (abs(c.y - a.y) > 6 * 16) { dist += hypot(t.iPath[i].x / 16.0 - t.iPath[i - 1].x / 16.0, t.iPath[i].z / 16.0 - t.iPath[i - 1].z / 16.0); continue; }
                 const double ax = a.x / 16.0, az = a.z / 16.0, bx = b.x / 16.0, bz = b.z / 16.0, cx2 = c.x / 16.0, cz2 = c.z / 16.0;
                 const double ab = hypot(bx - ax, bz - az), bc = hypot(cx2 - bx, cz2 - bz), ca = hypot(ax - cx2, az - cz2);
                 const double area2 = fabs((bx - ax) * (cz2 - az) - (bz - az) * (cx2 - ax));
@@ -164,6 +168,7 @@ int main(int argc, char** argv)
             }
         if (getenv("STRAIGHT")) { in.steer = 0; in.throttle = 1; in.brake = 0; if (step % 50 == 49) printf("straight %d s: %.0f km/h %s\n", (step + 1) / 50, car.iS.speed * 3.6 / 256, car.iS.onGround ? "" : "(air)"); }
         if (getenv("STEERBIAS")) { in.steer += atoi(getenv("STEERBIAS")); if (in.steer > 256) in.steer = 256; if (in.steer < -256) in.steer = -256; }
+        if (car.iS.surfMode) in.steer = 0;              // 0.18: on a loop's road: straight on (the replay's turn in x, z there is the loop's)
         const int px0 = car.iS.x, py0 = car.iS.y, pz0 = car.iS.z;
         car.Step(g, in);
         if (getenv("TRACE")) { double ta = 0, tb = 0; if (sscanf(getenv("TRACE"), "%lf,%lf", &ta, &tb) == 2 && step >= ta * 50 && step <= tb * 50) printf("step %d: (%.2f,%.2f,%.2f) vy %.1f speed %.1f %s surf %d steer %d\n", step, car.iS.x / 256.0, car.iS.y / 256.0, car.iS.z / 256.0, car.iS.vy / 256.0, car.iS.speed / 256.0, car.iS.onGround ? "ground" : "AIR", car.iS.surf, in.steer); }
@@ -300,7 +305,14 @@ int main(int argc, char** argv)
             {
             s.Slopes(v.iCarSlopeF, v.iCarSlopeR);
             if (getenv("GHOST")) { TmView::TGhostCar& c = v.iGhosts[0]; v.iNGhosts = ghost.At(step + 1, c.x, c.y, c.z, c.yaw, c.slopeF, c.slopeR) ? 1 : 0; }
-            v.Frame(frame, 320, t, cx, cy, cz, yaw, pitch, 200, s.x >> 4, (s.y >> 4) + 3, s.z >> 4, s.yaw, 1);
+            v.iCar3D = 0; int carX = s.x >> 4, carY = (s.y >> 4) + 3, carZ = s.z >> 4;
+            if (s.surfMode && s.speed > 256)
+                {
+                v.iCar3D = 1; v.iCarUp[0] = s.ux; v.iCarUp[1] = s.uy; v.iCarUp[2] = s.uz;
+                v.iCarFwd[0] = (int) ((long long) s.vx * 8192 / s.speed); v.iCarFwd[1] = (int) ((long long) s.vy * 8192 / s.speed); v.iCarFwd[2] = (int) ((long long) s.vz * 8192 / s.speed);
+                carX = (s.x + ((s.ux * 77) >> 13)) >> 4; carY = (s.y + ((s.uy * 77) >> 13)) >> 4; carZ = (s.z + ((s.uz * 77) >> 13)) >> 4;
+                }
+            v.Frame(frame, 320, t, cx, cy, cz, yaw, pitch, 200, carX, carY, carZ, s.yaw, 1);
             char name[256]; sprintf(name, "%s_%04d.ppm", argv[2], step);
             Save(name, frame, 320, 200); frames++;
 #ifdef R3_REFERENCE

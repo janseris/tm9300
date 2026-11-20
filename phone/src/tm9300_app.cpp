@@ -1042,6 +1042,20 @@ void CTmView::DriveFrame(TInt& aCx, TInt& aCy, TInt& aCz, TInt& aYaw, TInt& aPit
     iCar->iS.Slopes(iView->iCarSlopeF, iView->iCarSlopeR);
     // the body's pitch with its bounce (the nose dips as it sinks)
     iView->iCarSlopeF += iCar->iSusV * 2;
+    // 0.18: on a loop's road: drawn turned in 3D, its up the road's normal, its forward its speed's way
+    iView->iCar3D = 0;
+    if (iCar->iS.surfMode)
+        {
+        const TmCarState& cs = iCar->iS;
+        const TInt l = cs.speed;                            // the speed along the road (3D there)
+        if (l > 256)
+            {
+            iView->iCar3D = 1;
+            iView->iCarUp[0] = cs.ux; iView->iCarUp[1] = cs.uy; iView->iCarUp[2] = cs.uz;
+            iView->iCarFwd[0] = (TInt) (((TInt64) cs.vx * 8192) / l).Low(); iView->iCarFwd[1] = (TInt) (((TInt64) cs.vy * 8192) / l).Low(); iView->iCarFwd[2] = (TInt) (((TInt64) cs.vz * 8192) / l).Low();
+            aCarX = (cs.x + ((cs.ux * 77) >> 13)) >> 4; aCarY = (cs.y + ((cs.uy * 77) >> 13)) >> 4; aCarZ = (cs.z + ((cs.uz * 77) >> 13)) >> 4;
+            }
+        }
     }
 
 void CTmView::Frame()

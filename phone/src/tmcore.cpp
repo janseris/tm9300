@@ -114,7 +114,7 @@ const unsigned int* TmTrack::PvsCell(int aCamX, int aCamZ) const
     return (const unsigned int*) (iPvs + (cz * iPvsW + cx) * iPvsWords * 4);
     }
 
-TmView::TmView() : iCarSlopeF(0), iCarSlopeR(0), iNGhosts(0), iIdMode(0), iUsePvs(1), iFarCut(0), iFlipWinding(0), iMeshMode(1), iSkipEnd(0), iR(0), iGhostXyz(0), iGhostCol(0), iGhostN(0), iW(0), iH(0), iMaxPolys(0), iOrder(0), iKey(0), iFar(0), iVtx(0), iXyz(0), iUv0(0), iFlipIdx(0), iIdCol(0), iVtxCap(0), iUvCap(0) {}
+TmView::TmView() : iCarSlopeF(0), iCarSlopeR(0), iCar3D(0), iNGhosts(0), iIdMode(0), iUsePvs(1), iFarCut(0), iFlipWinding(0), iMeshMode(1), iSkipEnd(0), iR(0), iGhostXyz(0), iGhostCol(0), iGhostN(0), iW(0), iH(0), iMaxPolys(0), iOrder(0), iKey(0), iFar(0), iVtx(0), iXyz(0), iUv0(0), iFlipIdx(0), iIdCol(0), iVtxCap(0), iUvCap(0) {}
 TmView::~TmView() { delete iR; delete[] iOrder; delete[] iKey; delete[] iFar; delete[] iVtx; delete[] iXyz; delete[] iUv0; delete[] iFlipIdx; delete[] iIdCol; delete[] iGhostXyz; delete[] iGhostCol; }
 
 bool TmView::Init(int aW, int aH, int aMaxPolys)
@@ -222,6 +222,21 @@ void TmView::DrawCar(const TmMesh& aM, short* aXyz, const R3Pix* aCol, int aX, i
     // the car's model points along +z; its yaw as the camera's (0 = +z, clockwise)
     const int s = R3D::Sin(aYaw), co = R3D::Cos(aYaw);
     const short* v = aM.v; short* o = aXyz;
+    // 0.18: on a loop: the model's right, up and forward axes onto the car's (the right = up x forward)
+    if (iCar3D && aXyz == iXyz)
+        {
+        const int* u = iCarUp; const int* f = iCarFwd;
+        const int rx = (u[1] * f[2] - u[2] * f[1]) >> 13, ry = (u[2] * f[0] - u[0] * f[2]) >> 13, rz = (u[0] * f[1] - u[1] * f[0]) >> 13;
+        for (int k = 0; k < aM.nv; k++, v += 3, o += 3)
+            {
+            const int x = v[0], y = v[1], z = v[2];
+            o[0] = (short) ((x * rx + y * u[0] + z * f[0]) >> 13);
+            o[1] = (short) ((x * ry + y * u[1] + z * f[1]) >> 13);
+            o[2] = (short) ((x * rz + y * u[2] + z * f[2]) >> 13);
+            }
+        if (r.MeshBegin(aXyz, aM.nv, 1, aX, aY, aZ)) r.MeshTris(aM.idx, iUv0, aCol, aM.nf, 0, 0, 0, 0);
+        return;
+        }
     // tilted with the ground first (a shear: fine for the slopes a car stays on), then turned
     for (int k = 0; k < aM.nv; k++, v += 3, o += 3)
         {

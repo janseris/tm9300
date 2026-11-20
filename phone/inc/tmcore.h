@@ -83,6 +83,8 @@ public:
         int aCarX = 0, int aCarY = 0, int aCarZ = 0, int aCarYaw = 0, int aDrawCar = 0);
     // the car's tilt for the next Frame: the ground's slope along its heading and to its right (* 4096; 0 level)
     int iCarSlopeF, iCarSlopeR;
+    // 0.18: on a loop's road the car is drawn turned in 3D: its up and its forward (* 8192) when iCar3D
+    int iCar3D, iCarUp[3], iCarFwd[3];
     // 0.8: ghost cars for the next Frame (0.14: up to four): each one's place (1/16 m), heading and tilt; drawn in the
     // car's colours paled, in its place among the instances by distance, not when within 3 m of the car
     enum { KMaxGhosts = 4 };
