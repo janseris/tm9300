@@ -475,10 +475,9 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
 2. Tune by feel after the phone test: the pull (the driver is ~10 % quicker than the replays), the steering
    ramp, the camera distance.
 3. The depth test's per-polygon and per-row cost (the planes, the row bookkeeping): ~0.7 M a frame.
-4. Snow's tubes and wall rides on the surface mode (its tracks repacked with surface 12).
+4. Wall rides by feel on the phone (the surface mode is fitted on loops only).
 5. Coast and Stadium on the same pipeline (their packs and replays are not on the PC side yet).
-7. Bay's big loops (`BayPlatformLoopStart4` / `End4`): the two halves of the loop's top are placed 16 m apart
+6. Bay's big loops (`BayPlatformLoopStart4` / `End4`): the two halves of the loop's top are placed 16 m apart
    (BayC2: a gap at z 792..808 the replay drives through); the turned multi-unit pieces' placing, or a solid's own
    offset the kit does not carry. None of the installed Bay tracks has one.
-8. Bay's and Island's loading screens (`GameData/{Bay,Island}/Media/Texture/Image/LoadScreen.dds`, on the PC).
-6. A menu (track list, best times kept in `C:\Data\TM9300`), a countdown, a replay of the ghost from the path.
+7. Bay's and Island's loading screens (`GameData/{Bay,Island}/Media/Texture/Image/LoadScreen.dds`, on the PC).
