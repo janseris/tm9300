@@ -170,9 +170,22 @@ static void PlainName(const unsigned char* aS, int aLen, char* aOut, int aCap)
     if (s) { int j = 0; while (aOut[s + j]) { aOut[j] = aOut[s + j]; j++; } aOut[j] = 0; }
     }
 
-int TmGbxHeader(const unsigned char* aData, int aSize, char* aEnv, int aEnvCap, char* aName, int aNameCap, int* aMedals)
+int TmGbxHeaderSize(const unsigned char* aStart, int aLen)
+    {
+    if (aLen < 17 || aStart[0] != 'G' || aStart[1] != 'B' || aStart[2] != 'X') return -1;
+    const int ver = aStart[3] | (aStart[4] << 8);
+    if (ver < 6) return -1;
+    const unsigned int usz = aStart[13] | (aStart[14] << 8) | (aStart[15] << 16) | ((unsigned int)aStart[16] << 24);
+    if (usz > 4 * 1024 * 1024) return -1;
+    return 17 + (int)usz;
+    }
+
+int TmGbxHeader(const unsigned char* aData, int aSize, char* aEnv, int aEnvCap, char* aName, int aNameCap, int* aMedals,
+    char* aUid, int aUidCap, char* aAuthor, int aAuthorCap)
     {
     aEnv[0] = aName[0] = 0;
+    if (aUid && aUidCap) aUid[0] = 0;
+    if (aAuthor && aAuthorCap) aAuthor[0] = 0;
     for (int k = 0; k < 4; k++) aMedals[k] = 0;
     TGbxReader r; r.Init(aData, aSize, 0);
     if (aSize < 16 || aData[0] != 'G' || aData[1] != 'B' || aData[2] != 'X') return -1;
@@ -200,6 +213,13 @@ int TmGbxHeader(const unsigned char* aData, int aSize, char* aEnv, int aEnvCap, 
             XmlAttr(c, sizes[i], "name", raw, sizeof(raw));
             int l = 0; while (raw[l]) l++;
             PlainName((const unsigned char*)raw, l, aName, aNameCap);
+            if (aUid && aUidCap) XmlAttr(c, sizes[i], "uid", aUid, aUidCap);
+            if (aAuthor && aAuthorCap)
+                {
+                XmlAttr(c, sizes[i], "author", raw, sizeof(raw));
+                int la = 0; while (raw[la]) la++;
+                PlainName((const unsigned char*)raw, la, aAuthor, aAuthorCap);
+                }
             }
         r.p += sizes[i];
         }

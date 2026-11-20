@@ -49,23 +49,49 @@ struct TmUiTrack
     int iMedal[4];              // ms: author, gold, silver, bronze (0: not known)
     int iBest;                  // the record, in 20 ms steps (0: none)
     char iTitle[24];            // 0.18: a fan track's name (its map's), shown in Browse
+    char iAuthor[24];           // 0.19: a Gbx track's author (its header's)
     };
 
 enum TmUiKey { EUiUp, EUiDown, EUiLeft, EUiRight, EUiOk, EUiBack, EUiChar, EUiDel };
 enum TmUiAction { EUiNone, EUiQuit, EUiRace };
+
+// 0.19: Browse is a folder explorer, as the game's: the app lists a folder for it (the folders, then the tracks it
+// can race: each registered as a track first, AddTrack). A path: "" the top (the drives and the installed fan
+// tracks), "E:\\", "E:\\TmTracks\\", ... (a folder's path ends with a backslash)
+struct TmUiEntry
+    {
+    enum { EFolder, ETrack, EUp };
+    int iKind;
+    int iTrack;                 // ETrack: the track's installed file index
+    char iName[40];             // shown; EFolder: also the name added to the path (a drive's "C:")
+    char iLabel[40];            // EFolder: shown instead of the name when set ("Phone memory (C:)")
+    };
+class MTmFolders
+    {
+public:
+    // aPath's entries into aOut (up to aMax); -1: the folder cannot be read. aCampaigns: the top also holds
+    // "Campaigns\\" (the installed official tracks: the hot seat's chooser)
+    virtual int ListFolder(const char* aPath, TmUiEntry* aOut, int aMax, bool aCampaigns) = 0;
+    // a track's picture made (its thumbnail from its file) the first time it is shown; aT updated
+    virtual void Picture(int aFile, TmUiTrack& aT) = 0;
+    };
 // the opponents, as the app's ghost modes
 enum TmUiOpp { EOppNone, EOppNadeo, EOppGold, EOppSilver, EOppBronze, EOppRecord, EOppLast };
 
 class TmMenu
     {
 public:
-    enum TScreen { ETitle, EMain, ECampaign, EMode, ESolo, EOpponent, EParty, EHotSeat, ESeries, EBrowse };
-    enum { KMaxTracks = 192, KMaxPlayers = 8, KNameLen = 12 };
+    enum TScreen { ETitle, EMain, ECampaign, EMode, ESolo, EOpponent, EParty, EHotSeat, ESeries, EBrowse, ETracks };
+    enum { KMaxTracks = 256, KMaxPlayers = 8, KNameLen = 12, KMaxEntries = 256, KPathLen = 256 };
     TmMenu();
     ~TmMenu();
     // the fonts (big, text, small), the installed tracks (copied); the background is drawn here once
     bool Init(const TmFont* aBig, const TmFont* aText, const TmFont* aSmall, const TmUiTrack* aTracks, int aN, const TmUiPack* aPack = 0);
     void SetBest(int aFile, int aSteps);     // a new record on a track (its medal shows on the grid)
+    // 0.19: a track found while browsing (the menu's copy of it; the same file again: updated); false: no room
+    bool AddTrack(const TmUiTrack& aT);
+    MTmFolders* iFolders;       // the app's folder lister (0: Browse lists the installed fan tracks)
+    char iBrowsePath[KPathLen]; // the folder Browse shows (the app keeps it between runs)
     int Key(int aKey, int aChar = 0);        // TmUiAction
     void Draw(TmPix* aFrame, int aStride);   // the whole screen
     void Show(TScreen aScreen) { iScreen = aScreen; iDirty = true; }
@@ -85,7 +111,8 @@ public:
     char iProfiles[KMaxProfiles][KNameLen + 1];
     int iNProfiles;
     bool iProfilesChanged;
-    int iSeriesFiles[8], iSeriesN;   // the hot seat: the series' tracks in order
+    enum { KMaxSeries = 32 };
+    int iSeriesFiles[KMaxSeries], iSeriesN;   // the hot seat: the series' tracks in order
     int Medals() const;         // medals won over all tracks (a medal counts with those under it)
     // 0.14: the campaign as the game's: a track opens once the one before it (in its environment, White 1 .. Black)
     // has a medal; the first of each environment is open
@@ -108,7 +135,18 @@ private:
     void DrawTitle(TmPix* aF, int aS);
     void DrawBrowse(TmPix* aF, int aS);     // 0.18: the fan tracks
     int FanTracks(int* aIdx) const;         // their indices into iTracks, by name
-    int iBrowseSel;             // the fan track chosen (Browse); its count: Back
+    int iBrowseSel;             // the entry chosen (Browse); their count: Back
+    TmUiEntry* iEntries;        // the folder's entries (heap, KMaxEntries)
+    int iNEntries;
+    void BrowseOpen(const char* aPath);      // list a folder (falls back to the top when it cannot be read)
+    const TmUiTrack* TrackOfFile(int aFile) const;
+    void BrowsePicture();                    // the chosen track's picture asked for when it has none yet
+    bool iBrowseHot;            // 0.19: the hot seat's chooser (ETracks): several tracks ticked, Play starts them
+    int iPick[KMaxSeries], iNPick;           // the ticked tracks (file indices), in the order ticked
+    char iHotPath[KPathLen];    // the hot seat chooser's folder
+    int PickIndex(int aFile) const;
+    void BrowseKey(int aKey, TScreen aBack);
+    int StartHotSeat();                      // the players packed, the race asked for (EUiRace)
     TScreen iOppFrom;           // where the opponent's choice came from (Solo or Browse)
     int TrackAt(int aSeries, int aEnv, int aNum) const;
     int PrevTrack(int aTi) const;            // the track before it in its environment (-1: the first)
@@ -179,6 +217,6 @@ namespace TmDraw
 
 enum TmIcon { EIcoPlayer, EIcoParty, EIcoQuit, EIcoBack, EIcoFlagWhite, EIcoFlagGreen, EIcoFlagBlue, EIcoFlagRed, EIcoFlagBlack,
     EIcoLock, EIcoLan, EIcoRally, EIcoSnow, EIcoCar, EIcoOnline, EIcoEditors, EIcoProfile, EIcoUnited, EIcoNations, EIcoStar,
-    EIcoMyCampaign, EIcoBrowse, EIcoRaces, EIcoPlatforms, EIcoStunts, EIcoPuzzle, EIcoMedals };
+    EIcoMyCampaign, EIcoBrowse, EIcoRaces, EIcoPlatforms, EIcoStunts, EIcoPuzzle, EIcoMedals, EIcoFolder, EIcoDrive };
 
 #endif

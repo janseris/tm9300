@@ -6,10 +6,13 @@
 // LZO1X: aSrc (aSrcLen bytes) into aDst (room for aDstLen); the bytes written, or -1 on bad data
 int TmLzoDecompress(const unsigned char* aSrc, int aSrcLen, unsigned char* aDst, int aDstLen);
 
-// the header only (quick, for the track list): the environment ("Rally", "Alpine", "Speed", "Bay", "Island" ...),
+// the header only (quick, for the track list; 0.19: the map's uid and author too): the environment ("Rally", "Alpine", "Speed", "Bay", "Island" ...),
 // the map's name without TrackMania's $ codes (plain ASCII), the medal times (ms: author, gold, silver, bronze);
 // 0 = a Challenge.Gbx
-int TmGbxHeader(const unsigned char* aData, int aSize, char* aEnv, int aEnvCap, char* aName, int aNameCap, int* aMedals);
+int TmGbxHeader(const unsigned char* aData, int aSize, char* aEnv, int aEnvCap, char* aName, int aNameCap, int* aMedals,
+    char* aUid = 0, int aUidCap = 0, char* aAuthor = 0, int aAuthorCap = 0);
+// the bytes a header takes (the start of the file: 17 + its size; read that much for TmGbxHeader); -1 not a Gbx
+int TmGbxHeaderSize(const unsigned char* aStart, int aLen);
 
 struct TmGbxBlock
     {

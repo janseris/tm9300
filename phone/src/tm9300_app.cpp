@@ -26,6 +26,7 @@
 #include "tmlzma.h"
 #include "tmgbx.h"
 #include "tmkit.h"
+#include "tmjpeg.h"
 #include "fastmem.h"
 
 const TUid KUidTm9300 = { 0x0E3D9310 };
@@ -33,7 +34,8 @@ enum { SCR_W = 640, SCR_H = 200 };
 enum { VIEW_W = 320, VIEW_H = 200, VIEW_X = (SCR_W - VIEW_W) / 2 };   // the 3D view, in the middle of the screen
 _LIT(KTrackDir, "?:\\system\\apps\\tm9300\\");
 _LIT(KTrackPattern, "*.tmb");
-_LIT(KGbxDir, "?:\\TmTracks\\");          // 0.19: the game's own tracks (.Challenge.Gbx) the user copies here
+_LIT(KGbxDir, "?:\\Documents\\TrackMania\\Tracks\\");    // 0.19: the game's own tracks, where the PC game keeps them
+_LIT(KBrowseFile, "C:\\Data\\TM9300\\browse.txt");
 _LIT(KUiPack, "tm9300.ui");
 _LIT(KUiFont, "tm9300.fnt");
 _LIT(KBenchDir, "C:\\Data\\TM9300\\");
@@ -44,7 +46,7 @@ enum { BENCH_VARIANTS = 5, BENCH_LOG = 6144 };
 enum { BAR_W = 64, BAR_H = 152 };           // the counters, top left (F)
 enum { SIDE_W = VIEW_X, RIGHT_X = VIEW_X + VIEW_W };
 static const char* const KVersionC = "0.19";
-enum { KMaxFiles = 192 };      // 0.18: every campaign track of five environments (105); 0.19: and the Gbx tracks
+enum { KMaxFiles = 256 };      // 0.18: every campaign track of five environments (105); 0.19: and the Gbx tracks
 
 // the benchmark's log to the PC (the local server's /results, into its uploads folder), after Hrimfell's
 class CBenchSender : public CActive
@@ -232,7 +234,7 @@ static void ToC(char* aOut, const TDesC& aIn, TInt aMax)
     }
 static void CCat(char* aD, const char* aS) { while (*aD) aD++; while (*aS) *aD++ = *aS++; *aD = 0; }
 
-class CTmView : public CCoeControl, public MDirectScreenAccess
+class CTmView : public CCoeControl, public MDirectScreenAccess, public MTmFolders
     {
 public:
     void ConstructL(const TRect& aRect);
@@ -255,6 +257,15 @@ private:
     TBuf<20> iFiles[KMaxFiles];
     TText iFileDrive[KMaxFiles];    // 0.18: the drive each track is on (its package may be on the memory card)
     TFileName* iGbx[KMaxFiles];     // 0.19: a .Challenge.Gbx track's file (0: a .tmb)
+    TUint32 iGbxUid[KMaxFiles];     // its map's uid (hashed): the same map in two folders is one track
+public:
+    // 0.19: Browse's folders (MTmFolders)
+    int ListFolder(const char* aPath, TmUiEntry* aOut, int aMax, bool aCampaigns);
+    void Picture(int aFile, TmUiTrack& aT);
+private:
+    TInt RegisterGbx(const TDesC& aPath);
+    void LoadBrowsePath();
+    void SaveBrowsePath();
     TBool GbxBuild(TInt aIndex, TFileName& aTmb);
     void ReadRecord(TmUiTrack& aT, const TDesC& aName);
     TInt iNFiles;
@@ -365,7 +376,7 @@ private:
     TInt iHsMode, iTimeLimit, iTimeUsed[8];        // the time mode: seconds a player, the steps each has driven
     char iNames[8][16];
     TInt iPlayerBest[8];
-    TInt iSeries[8], iSeriesN, iSeriesPos;
+    TInt iSeries[TmMenu::KMaxSeries], iSeriesN, iSeriesPos;
     TBool iStandings;
     // 0.14: the campaign: a medal opens the next track, and Enter goes on to it (-1: none; iUnlockedNow: just opened)
     TInt iNextFile;
@@ -417,6 +428,8 @@ void CTmView::ConstructL(const TRect& aRect)
     iUi = new (ELeave) TmMenu;
     iUi->iVersion = KVersionC;
     if (iFBig.iMask && iFText.iMask && iFSmall.iMask) iUi->Init(&iFBig, &iFText, &iFSmall, iUiTracks, iNFiles, iPack.iN ? &iPack : 0);
+    iUi->iFolders = this;
+    LoadBrowsePath();
     LoadProfiles();
     iInMenu = ETrue;
     iLoaded = iFBig.iMask && iFText.iMask && iFSmall.iMask;
@@ -528,66 +541,12 @@ void CTmView::ScanTracks()
             }
     delete list;
     }
-    // 0.19: the game's own tracks (.Challenge.Gbx: from TMX, the game's editor, a friend) in \TmTracks\ on the phone
-    // or the card: in Browse by their maps' names; a track is built from its environment's block kit (the tracks
-    // package's .tmk) when it is first chosen
+    // 0.19: the game's own tracks (Documents\TrackMania\Tracks\ on the phone and the card, as the PC game's) are found
+    // in Browse, folder by folder (ListFolder); its folders made the first time, as the game's
     {
-    const TText gd[3] = { 'C', 'E', 'D' };
-    for (TInt di = 0; di < 3; di++)
-        {
-        TFileName dir(KGbxDir); dir[0] = gd[di];
-        CDir* list = 0;
-        TFileName pat(dir); pat.Append(_L("*.gbx"));
-        if (fs.GetDir(pat, KEntryAttNormal, ESortByName, list) != KErrNone || !list) { delete list; continue; }
-        for (TInt i = 0; i < list->Count() && iNFiles < KMaxFiles; i++)
-            {
-            const TDesC& fn = (*list)[i].iName;
-            TFileName path(dir); path.Append(fn);
-            RFile f;
-            if (f.Open(fs, path, EFileRead | EFileShareReadersOnly) != KErrNone) continue;
-            TInt sz = 0; f.Size(sz);
-            const TInt n = sz < 262144 ? sz : 262144;     // (the header: the XML, the thumbnail)
-            TUint8* b = n > 16 ? (TUint8*) User::Alloc(n) : 0;
-            char env[16], title[24]; TInt medals[4];
-            TInt r = -1;
-            if (b) { TPtr8 p(b, 0, n); if (f.Read(p) == KErrNone && p.Length() == n) r = TmGbxHeader(b, n, env, sizeof(env), title, sizeof(title), (int*) medals); }
-            User::Free(b); f.Close();
-            if (r) continue;
-            static const char* const KEnvs[5] = { "Rally", "Alpine", "Speed", "Island", "Bay" };   // the UI's order
-            TInt e = -1;
-            for (TInt k = 0; k < 5; k++) { const char* a = KEnvs[k]; TInt j = 0; while (a[j] && a[j] == env[j]) j++; if (!a[j] && !env[j]) e = k; }
-            if (e < 0) continue;      // (Stadium, Coast: not on the phone)
-            // its name among the files (its ghost, its built .tmb): g_ and its file name's letters
-            TBuf<20> nm(_L("g_"));
-            for (TInt c = 0; c < fn.Length() && fn[c] != '.' && nm.Length() < 16; c++)
-                {
-                const TUint ch = fn[c];
-                if ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) nm.Append(ch);
-                }
-            if (nm.Length() == 2) nm.Append(_L("track"));
-            for (TInt tries = 2; tries < 10; tries++)
-                {
-                TBool dup = EFalse; for (TInt j = 0; j < iNFiles; j++) if (iFiles[j].CompareF(nm) == 0) dup = ETrue;
-                if (!dup) break;
-                if (nm.Length() >= 16) nm.SetLength(15);
-                if (tries > 2) nm.SetLength(nm.Length() - 1);
-                nm.AppendNum(tries);
-                }
-            iGbx[iNFiles] = new TFileName(path);
-            if (!iGbx[iNFiles]) continue;
-            TmUiTrack& t = iUiTracks[iNFiles];
-            Mem::FillZ(&t, sizeof(t));
-            ToC(t.iName, nm, 19);
-            t.iEnv = e; t.iSeries = 5; t.iNum = 1; t.iFile = iNFiles;
-            if (title[0]) { TInt c = 0; for (; c < 23 && title[c]; c++) t.iTitle[c] = title[c]; t.iTitle[c] = 0; }
-            else ToC(t.iTitle, nm.Mid(2), 23);
-            for (TInt m = 0; m < 4; m++) t.iMedal[m] = medals[m];
-            iFiles[iNFiles] = nm; iFileDrive[iNFiles] = gd[di];
-            ReadRecord(t, nm);
-            iNFiles++;
-            }
-        delete list;
-        }
+    _LIT(KMy, "C:\\Documents\\TrackMania\\Tracks\\Challenges\\My Challenges\\");
+    _LIT(KDown, "C:\\Documents\\TrackMania\\Tracks\\Challenges\\Downloaded\\");
+    fs.MkDirAll(KMy); fs.MkDirAll(KDown);
     }
     iTrackCount = iNFiles;
     // the menus' pictures
@@ -747,12 +706,13 @@ static TUint8* ReadAll(RFs& aFs, const TDesC& aName, TInt aMax, TInt& aSize)
     }
 
 // 0.19: a Gbx track built with its environment's block kit (rally.tmk ... beside the program, from the tracks
-// packages) into <its folder>\cache\<name>.tmb, again when the Gbx or the kit is newer than that
+// packages) into <its drive>:\Data\TM9300\cache\<name>.tmb, again when the Gbx or the kit is newer than that
 TBool CTmView::GbxBuild(TInt aIndex, TFileName& aTmb)
     {
     RFs& fs = iCoeEnv->FsSession();
     const TFileName& src = *iGbx[aIndex];
-    aTmb = src.Left(src.LocateReverse('\\') + 1); aTmb.Append(_L("cache\\")); aTmb.Append(iFiles[aIndex]); aTmb.Append(_L(".tmb"));
+    aTmb = _L("C:\\Data\\TM9300\\cache\\"); aTmb[0] = src[0] == 'Z' || src[0] == 'z' ? 'C' : src[0];
+    aTmb.Append(iFiles[aIndex]); aTmb.Append(_L(".tmb"));
     TInt env = 0;
     for (TInt k = 0; k < iNFiles; k++) if (iUiTracks[k].iFile == aIndex) env = iUiTracks[k].iEnv;
     TFileName kit;
@@ -800,6 +760,240 @@ TBool CTmView::GbxBuild(TInt aIndex, TFileName& aTmb)
     delete kt; delete t;
     User::Free(k); User::Free(g);
     return r == 0;
+    }
+
+// 0.19: a Gbx file's header (the start of the file: its size there, then that much)
+static TUint8* ReadHeader(RFs& aFs, const TDesC& aName, TInt& aSize)
+    {
+    aSize = 0;
+    RFile f;
+    if (f.Open(aFs, aName, EFileRead | EFileShareReadersOnly) != KErrNone) return 0;
+    TBuf8<17> h; f.Read(h);
+    TInt n = h.Length() == 17 ? TmGbxHeaderSize(h.Ptr(), 17) : -1;
+    TUint8* b = n > 17 && n < 2 * 1024 * 1024 ? (TUint8*) User::Alloc(n) : 0;
+    if (b)
+        {
+        Mem::Copy(b, h.Ptr(), 17);
+        TPtr8 p(b + 17, 0, n - 17);
+        if (f.Read(p) != KErrNone || p.Length() != n - 17) { User::Free(b); b = 0; } else aSize = n;
+        }
+    f.Close();
+    return b;
+    }
+
+static TUint32 HashC(const char* a) { TUint32 h = 2166136261u; while (*a) { h = (h ^ (TUint8) *a++) * 16777619u; } return h; }
+
+// a Gbx track found while browsing: its file index (the same map seen before: that one, its path updated); -1 not a
+// track of the phone's environments
+TInt CTmView::RegisterGbx(const TDesC& aPath)
+    {
+    RFs& fs = iCoeEnv->FsSession();
+    TInt n = 0;
+    TUint8* b = ReadHeader(fs, aPath, n);
+    if (!b) return -1;
+    char env[16], title[24], uid[40], author[24]; TInt medals[4];
+    const TInt r = TmGbxHeader(b, n, env, sizeof(env), title, sizeof(title), (int*) medals, uid, sizeof(uid), author, sizeof(author));
+    User::Free(b);
+    if (r) return -1;
+    static const char* const KEnvs[5] = { "Rally", "Alpine", "Speed", "Island", "Bay" };   // the UI's order
+    TInt e = -1;
+    for (TInt k = 0; k < 5; k++) { const char* a = KEnvs[k]; TInt j = 0; while (a[j] && a[j] == env[j]) j++; if (!a[j] && !env[j]) e = k; }
+    if (e < 0) return -1;
+    const TUint32 hash = HashC(uid[0] ? uid : title);
+    for (TInt i = 0; i < iNFiles; i++)
+        if (iGbx[i] && iGbxUid[i] == hash) { *iGbx[i] = aPath; return i; }
+    if (iNFiles >= KMaxFiles) return -1;
+    // its name (its ghost, its built track): g, its title's letters, its uid's hash
+    TBuf<20> nm(_L("g"));
+    for (TInt c = 0; title[c] && nm.Length() < 7; c++)
+        { const TUint ch = (TUint8) title[c]; if ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) nm.Append(ch); }
+    nm.AppendNumFixedWidth(hash, EHex, 8);
+    iGbx[iNFiles] = new TFileName(aPath);
+    if (!iGbx[iNFiles]) return -1;
+    iGbxUid[iNFiles] = hash;
+    TmUiTrack& t = iUiTracks[iNFiles];
+    Mem::FillZ(&t, sizeof(t));
+    ToC(t.iName, nm, 19);
+    t.iEnv = e; t.iSeries = 5; t.iNum = 1; t.iFile = iNFiles;
+    if (title[0]) { TInt c = 0; for (; c < 23 && title[c]; c++) t.iTitle[c] = title[c]; t.iTitle[c] = 0; }
+    else { TParsePtrC pp(aPath); TBuf<24> fn(pp.Name().Left(23)); ToC(t.iTitle, fn, 23); }
+    { TInt c = 0; for (; c < 23 && author[c]; c++) t.iAuthor[c] = author[c]; t.iAuthor[c] = 0; }
+    for (TInt m = 0; m < 4; m++) t.iMedal[m] = medals[m];
+    iFiles[iNFiles] = nm; iFileDrive[iNFiles] = (TText) aPath[0];
+    ReadRecord(t, nm);
+    if (iUi) iUi->AddTrack(t);
+    return iNFiles++;
+    }
+
+static void SetName(TmUiEntry& aE, const TDesC& aName)
+    {
+    TInt k = 0;
+    for (; k < aName.Length() && k < 39; k++) aE.iName[k] = aName[k] < 128 ? (char) aName[k] : '?';
+    aE.iName[k] = 0; aE.iLabel[0] = 0;
+    }
+static void SetNameC(TmUiEntry& aE, const char* aName)
+    {
+    TInt k = 0; for (; aName[k] && k < 39; k++) aE.iName[k] = aName[k];
+    aE.iName[k] = 0; aE.iLabel[0] = 0;
+    }
+static TInt CmpC(const char* a, const char* b)
+    {
+    for (;; a++, b++) { TInt x = *a, y = *b; if (x >= 'A' && x <= 'Z') x += 32; if (y >= 'A' && y <= 'Z') y += 32; if (x != y || !x) return x - y; }
+    }
+
+// 0.19: a folder of Browse: "Campaigns\..." the installed campaigns (the PC game's Campaigns\United\Race\<environment>\
+// <series>\), else Documents\TrackMania\Tracks\<path> on the phone, the card (and D:) together: the folders, then the
+// tracks (a .Challenge.Gbx of the phone's environments; at the top also the installed fan tracks)
+int CTmView::ListFolder(const char* aPath, TmUiEntry* aOut, int aMax, bool aCampaigns)
+    {
+    RFs& fs = iCoeEnv->FsSession();
+    TInt n = 0;
+    static const char* const KEnvDir[5] = { "Rally", "Snow", "Desert", "Island", "Bay" };
+    static const char* const KSer[5] = { "White", "Green", "Blue", "Red", "Black" };
+    // the virtual campaigns
+    const char* camp = "Campaigns\\";
+    TInt cl = 0; while (camp[cl] && aPath[cl] && (aPath[cl] | 32) == (camp[cl] | 32)) cl++;
+    if (!camp[cl])
+        {
+        // the parts after Campaigns\ : United, Race, the environment, the series
+        char part[4][40]; TInt np = 0;
+        const char* q = aPath + cl;
+        while (*q && np < 4) { TInt k = 0; while (*q && *q != '\\' && k < 39) part[np][k++] = *q++; part[np][k] = 0; if (*q == '\\') q++; np++; }
+        if (np == 0) { if (iTrackCount && n < aMax) { aOut[n].iKind = TmUiEntry::EFolder; SetNameC(aOut[n++], "United"); } return n; }
+        if (CmpC(part[0], "United")) return -1;
+        if (np == 1) { aOut[n].iKind = TmUiEntry::EFolder; SetNameC(aOut[n++], "Race"); return n; }
+        if (CmpC(part[1], "Race")) return -1;
+        TInt env = -1;
+        if (np >= 3) { for (TInt k = 0; k < 5; k++) if (!CmpC(part[2], KEnvDir[k])) env = k; if (env < 0) return -1; }
+        TInt ser = -1;
+        if (np >= 4) { for (TInt k = 0; k < 5; k++) if (!CmpC(part[3], KSer[k])) ser = k; if (ser < 0) return -1; }
+        for (TInt e = 0; e < 5 && np == 2; e++)
+            {
+            TBool any = EFalse; for (TInt i = 0; i < iTrackCount; i++) if (iUiTracks[i].iSeries < 5 && iUiTracks[i].iEnv == e) any = ETrue;
+            if (any && n < aMax) { aOut[n].iKind = TmUiEntry::EFolder; SetNameC(aOut[n++], KEnvDir[e]); }
+            }
+        for (TInt k = 0; k < 5 && np == 3; k++)
+            {
+            TBool any = EFalse; for (TInt i = 0; i < iTrackCount; i++) if (iUiTracks[i].iSeries == k && iUiTracks[i].iEnv == env) any = ETrue;
+            if (any && n < aMax) { aOut[n].iKind = TmUiEntry::EFolder; SetNameC(aOut[n++], KSer[k]); }
+            }
+        for (TInt num = 1; num <= 5 && np == 4; num++)
+            for (TInt i = 0; i < iTrackCount && n < aMax; i++)
+                if (iUiTracks[i].iSeries == ser && iUiTracks[i].iEnv == env && iUiTracks[i].iNum == num)
+                    {
+                    // (the game's names: RallyA1 ... SnowE)
+                    char nm[24]; TInt k = 0; const char* en = KEnvDir[env]; while (*en) nm[k++] = *en++;
+                    nm[k++] = (char) ('A' + ser); if (ser < 4) nm[k++] = (char) ('0' + num); nm[k] = 0;
+                    aOut[n].iKind = TmUiEntry::ETrack; aOut[n].iTrack = i; SetNameC(aOut[n++], nm);
+                    }
+        return n;
+        }
+    // the folders on the drives
+    TFileName rel;
+    for (TInt k = 0; aPath[k]; k++) rel.Append((TChar) (TUint8) aPath[k]);
+    TBool any = EFalse;
+    TInt nf = 0;
+    if (!aPath[0] && aCampaigns && n < aMax) { aOut[n].iKind = TmUiEntry::EFolder; SetNameC(aOut[n++], "Campaigns"); nf++; }
+    const TText gd[3] = { 'C', 'E', 'D' };
+    TInt firstTrack = -1;
+    // (folders first: two passes, the folders of every drive, then the tracks)
+    for (TInt pass = 0; pass < 2; pass++)
+        {
+        if (pass == 1) firstTrack = n;
+        for (TInt di = 0; di < 3; di++)
+            {
+            TFileName dir(KGbxDir); dir[0] = gd[di]; dir.Append(rel);
+            CDir* list = 0;
+            TFileName pat(dir); pat.Append(_L("*"));
+            if (fs.GetDir(pat, KEntryAttNormal | KEntryAttDir, ESortByName, list) != KErrNone || !list) { delete list; continue; }
+            any = ETrue;
+            for (TInt i = 0; i < list->Count() && n < aMax; i++)
+                {
+                const TEntry& en = (*list)[i];
+                if (pass == 0 && en.IsDir())
+                    {
+                    TmUiEntry& e = aOut[n]; e.iKind = TmUiEntry::EFolder; SetName(e, en.iName);
+                    TBool dup = EFalse; for (TInt j = 0; j < n; j++) if (aOut[j].iKind == TmUiEntry::EFolder && !CmpC(aOut[j].iName, e.iName)) dup = ETrue;
+                    if (!dup) { n++; nf++; }
+                    }
+                else if (pass == 1 && !en.IsDir())
+                    {
+                    TBuf<16> ext(en.iName.Right(4)); ext.LowerCase();
+                    if (ext.Compare(_L(".gbx"))) continue;
+                    TFileName full(dir); full.Append(en.iName);
+                    const TInt file = RegisterGbx(full);
+                    if (file < 0) continue;
+                    TBool dup = EFalse; for (TInt j = firstTrack; j < n; j++) if (aOut[j].iTrack == file) dup = ETrue;
+                    if (dup) continue;
+                    TmUiEntry& e = aOut[n++]; e.iKind = TmUiEntry::ETrack; e.iTrack = file; SetNameC(e, iUiTracks[file].iTitle);
+                    }
+                }
+            delete list;
+            }
+        }
+    // at the top: the installed fan tracks too
+    if (!aPath[0])
+        for (TInt i = 0; i < iTrackCount && n < aMax; i++)
+            if (iUiTracks[i].iSeries > 4 && !iGbx[i]) { aOut[n].iKind = TmUiEntry::ETrack; aOut[n].iTrack = i; SetNameC(aOut[n++], iUiTracks[i].iTitle[0] ? iUiTracks[i].iTitle : iUiTracks[i].iName); }
+    if (!any && aPath[0]) return -1;
+    // the folders by name, the tracks by name
+    for (TInt a = 1; a < n; a++)
+        for (TInt b2 = a; b2 > 0; b2--)
+            {
+            TmUiEntry& x = aOut[b2 - 1]; TmUiEntry& y = aOut[b2];
+            const TBool swap = x.iKind == y.iKind && !(x.iKind == TmUiEntry::EFolder && !CmpC(x.iName, "Campaigns")) && CmpC(x.iName, y.iName) > 0;
+            if (!swap) break;
+            TmUiEntry t = x; x = y; y = t;
+            }
+    return n;
+    }
+
+// 0.19: a Gbx track's picture: the JPEG in its header (upside down, as the game keeps it), 80 x 60
+void CTmView::Picture(int aFile, TmUiTrack& aT)
+    {
+    if (aFile < 0 || aFile >= iNFiles || !iGbx[aFile] || iThumbs[aFile]) return;
+    RFs& fs = iCoeEnv->FsSession();
+    TInt n = 0;
+    TUint8* b = ReadHeader(fs, *iGbx[aFile], n);
+    if (!b) return;
+    _LIT8(KJpg, "<Thumbnail.jpg>");
+    TPtrC8 hd(b, n);
+    const TInt at = hd.Find(KJpg);
+    enum { KW = 80, KH = 60 };
+    if (at >= 0)
+        {
+        TUint16* px = (TUint16*) User::Alloc(KW * KH * 2);
+        if (px && TmJpegDecode(b + at + 15, n - at - 15, px, KW, KH, true))
+            {
+            iThumbs[aFile] = (TUint8*) px;
+            aT.iThumb = (const TmPix*) px; aT.iThumbW = KW; aT.iThumbH = KH;
+            iUiTracks[aFile].iThumb = aT.iThumb; iUiTracks[aFile].iThumbW = KW; iUiTracks[aFile].iThumbH = KH;
+            }
+        else User::Free(px);
+        }
+    User::Free(b);
+    }
+
+// 0.19: Browse's folder kept between runs
+void CTmView::LoadBrowsePath()
+    {
+    RFs& fs = iCoeEnv->FsSession();
+    RFile f;
+    if (f.Open(fs, KBrowseFile, EFileRead | EFileShareReadersOnly) != KErrNone) return;
+    TBuf8<256> d; f.Read(d); f.Close();
+    TInt k = 0;
+    for (; k < d.Length() && k < TmMenu::KPathLen - 1 && d[k] >= 32; k++) iUi->iBrowsePath[k] = (char) d[k];
+    iUi->iBrowsePath[k] = 0;
+    }
+
+void CTmView::SaveBrowsePath()
+    {
+    RFs& fs = iCoeEnv->FsSession();
+    fs.MkDirAll(KBrowseFile);
+    RFile f;
+    if (f.Replace(fs, KBrowseFile, EFileWrite) != KErrNone) return;
+    f.Write(TPtrC8((const TUint8*) iUi->iBrowsePath));
+    f.Close();
     }
 
 void CTmView::UnloadTrack()
@@ -1774,13 +1968,14 @@ void CTmView::SaveProfiles()
 // ---- the menus' side ----
 void CTmView::StartRace()
     {
+    SaveBrowsePath();
     iPlayers = iUi->iPlayers > 1 ? iUi->iPlayers : 1;
     for (TInt p = 0; p < 8; p++) { iNames[p][0] = 0; if (p < iPlayers) { TInt k = 0; for (; iUi->iNames[p][k] && k < 15; k++) iNames[p][k] = iUi->iNames[p][k]; iNames[p][k] = 0; } iPlayerBest[p] = 0; }
     iAttempts = iUi->iAttempts > 0 ? iUi->iAttempts : 1;
     iHsMode = iUi->iHsMode; iTimeLimit = iUi->iTimeLimit > 0 ? iUi->iTimeLimit : 300;
     iPlayer = 0; iStandings = EFalse;
     for (TInt k = 0; k < 8; k++) { iUsed[k] = 0; iTimeUsed[k] = 0; }
-    iSeriesN = iUi->iSeriesN; for (TInt k = 0; k < iSeriesN && k < 8; k++) iSeries[k] = iUi->iSeriesFiles[k];
+    iSeriesN = iUi->iSeriesN; for (TInt k = 0; k < iSeriesN && k < TmMenu::KMaxSeries; k++) iSeries[k] = iUi->iSeriesFiles[k];
     iSeriesPos = 0;
     // the opponent chosen in the menu; the hot seat: the player's own best run of his turn
     switch (iUi->iRaceOpp)

@@ -347,6 +347,23 @@ void Icon(TmPix* f, int s, int x, int y, int kind)
     switch (kind)
         {
         case EIcoPlayer: Person(f, s, x + 6, y + 1, green, dgreen); break;
+        case EIcoFolder:
+            {
+            // 0.19: a folder: its tab, its body
+            const TmPix y1 = Rgb(255, 214, 90), y2 = Rgb(200, 140, 30);
+            Round(f, s, x + 2, y + 4, 10, 6, 2, y1, y1);
+            Round(f, s, x + 2, y + 7, 21, 14, 2, y1, y2);
+            Fill(f, s, x + 3, y + 9, 19, 1, Rgb(255, 236, 160));
+            break;
+            }
+        case EIcoDrive:
+            {
+            // 0.19: a drive (the phone's memory, the card): a card with its contacts
+            Round(f, s, x + 4, y + 3, 17, 19, 2, Rgb(170, 180, 190), Rgb(90, 100, 110));
+            for (int k = 0; k < 4; k++) Fill(f, s, x + 7 + k * 3, y + 4, 2, 5, Rgb(250, 210, 80));
+            Fill(f, s, x + 7, y + 13, 11, 5, Rgb(60, 140, 230));
+            break;
+            }
         case EIcoParty: Person(f, s, x + 1, y + 1, green, dgreen); Person(f, s, x + 11, y + 3, green, dgreen); break;
         case EIcoQuit: case EIcoBack:
             {
@@ -393,12 +410,13 @@ static const int KEnvRank[7] = { 3, 6, 2, 1, 4, 5, 0 };
 enum { LEFT_W = 196, RIGHT_X = 204 };
 
 TmMenu::TmMenu() : iDirty(true), iScreen(ETitle), iVersion(""), iRaceFile(-1), iRaceOpp(EOppGold), iPlayers(1), iAttempts(3), iHsMode(0), iTimeLimit(300), iNProfiles(0), iProfilesChanged(false), iSeriesN(0),
-    iLockMsg(false), iPack(0), iBig(0), iText(0), iSmall(0), iNTracks(0), iBg(0), iInGrid(false), iGridCol(0), iGridRow(0), iNEnvs(0), iOppSel(0), iHsRow(2), iChooser(false), iChooserSel(0), iRowH(24), iPlateH(29), iEditing(-1), iSeriesSel(0), iTitleTick(0), iBrowseSel(0), iOppFrom(ESolo)
+    iLockMsg(false), iPack(0), iBig(0), iText(0), iSmall(0), iNTracks(0), iBg(0), iInGrid(false), iGridCol(0), iGridRow(0), iNEnvs(0), iOppSel(0), iHsRow(2), iChooser(false), iChooserSel(0), iRowH(24), iPlateH(29), iEditing(-1), iSeriesSel(0), iTitleTick(0), iBrowseSel(0), iOppFrom(ESolo), iEntries(0), iNEntries(0), iBrowseHot(false), iNPick(0)
     {
+    iFolders = 0; iBrowsePath[0] = 0; iHotPath[0] = 0;
     for (int i = 0; i < 10; i++) iSel[i] = 0;
     for (int p = 0; p < KMaxPlayers; p++) iNames[p][0] = 0;
     }
-TmMenu::~TmMenu() { delete[] iBg; }
+TmMenu::~TmMenu() { delete[] iBg; delete[] iEntries; }
 
 bool TmMenu::Init(const TmFont* aBig, const TmFont* aText, const TmFont* aSmall, const TmUiTrack* aTracks, int aN, const TmUiPack* aPack)
     {
@@ -856,27 +874,45 @@ void TmMenu::DrawChooser(TmPix* f, int s)
 
 void TmMenu::DrawSeries(TmPix* f, int s)
     {
-    const int x = RIGHT_X + 40, w = 640 - x - 20;
-    Round(f, s, x, 2, w, 196, 6, Rgb(50, 70, 82), Rgb(34, 50, 60));
-    Round(f, s, x + 4, 4, w - 8, iText->iH + 4, 5, Rgb(240, 150, 30), Rgb(200, 110, 10));
-    Text(f, s, *iText, x + 12, 6, "Available campaigns", Rgb(255, 255, 255));
+    // 0.19: as the game's: a panel, "Available campaigns" on its orange plate, a row a series (the environment's
+    // mark, the series, its tracks), as many rows as fit, the page under them
+    const TmPix orange1 = Rgb(240, 160, 30), orange2 = Rgb(200, 110, 10);
+    const int x = LEFT_W + 30, w = 640 - x - 16;
+    Round(f, s, x, 2, w, 196, 6, Rgb(64, 30, 26), Rgb(36, 14, 14));
+    RoundLine(f, s, x, 2, w, 196, 6, Rgb(120, 70, 60));
+    const int hh = iText->iH + 4;
+    Round(f, s, x + 4, 5, w - 8, hh, 5, orange1, orange2);
+    Text(f, s, *iText, x + 12, 7, "Available campaigns", Rgb(255, 255, 255));
     int count = 0; for (int e = 0; e < iNEnvs; e++) for (int k = 0; k < 5; k++) if (SeriesCount(iEnvs[e], k)) count++;
     char b[24]; b[0] = 0; SNum(b, count);
-    Text(f, s, *iText, x + w - 12 - iText->Width(b), 6, b, Rgb(255, 255, 255));
-    // 0.15: five series an environment installed (three: fifteen rows, the small font's height each)
+    Text(f, s, *iText, x + w - 12 - iText->Width(b), 7, b, Rgb(255, 255, 255));
     const int nrows = iNEnvs * 5;
-    const int rh = nrows ? (196 - iText->iH - 12) / nrows : 16;
-    for (int row = 0; row < nrows; row++)
+    const int ly = 5 + hh + 4, rh = iText->iH + 4, foot = iSmall->iH + 4;
+    const int per = (196 - ly - foot) / rh > 0 ? (196 - ly - foot) / rh : 1;
+    Fill(f, s, x + 4, ly - 1, w - 8, per * rh + 2, Rgb(44, 40, 36));
+    const int page = iSeriesSel < nrows ? iSeriesSel / per : 0, pages = (nrows + per - 1) / per;
+    static const unsigned char KEnvCol[7][3] = { { 70, 150, 40 }, { 120, 170, 230 }, { 220, 170, 80 }, { 40, 170, 150 }, { 120, 120, 130 }, { 230, 120, 40 }, { 60, 90, 200 } };
+    for (int r = 0; r < per && page * per + r < nrows; r++)
         {
+        const int row = page * per + r;
         const int e = iEnvs[row / 5], k = row % 5, n = SeriesCount(e, k);
-        const int y = 10 + iText->iH + row * rh;
+        const int y = ly + r * rh;
         const bool sel = row == iSeriesSel;
-        Round(f, s, x + 8, y, w - 16, rh - 1, 2, sel ? Rgb(255, 250, 215) : Rgb(236, 236, 236), sel ? Rgb(230, 222, 170) : Rgb(212, 212, 212));
+        const TmPix blue = Rgb(40, 140, 255);
+        Fill(f, s, x + 8, y, w - 16, rh - 2, sel ? Rgb(36, 52, 70) : Rgb(212, 212, 212));
+        Fill(f, s, x + 8, y, 4, rh - 2, sel ? blue : Rgb(80, 80, 80));
+        if (sel) { Fill(f, s, x + 8, y, w - 16, 1, blue); Fill(f, s, x + 8, y + rh - 3, w - 16, 1, blue); Fill(f, s, x + w - 9, y, 1, rh - 2, blue); }
+        const TmPix ec = Rgb(KEnvCol[e][0], KEnvCol[e][1], KEnvCol[e][2]);
+        Round(f, s, x + 16, y + 2, rh - 6, rh - 6, 3, ec, Mix(ec, 0, 90));
+        const TmPix tc = sel ? blue : n ? Rgb(40, 44, 48) : Rgb(150, 150, 150);
         char nm[32]; nm[0] = 0; SCat(nm, KEnvName[e]); SCat(nm, " "); SCat(nm, KSeriesName[k]);
-        Text(f, s, *iSmall, x + 16, y + (rh - 1 - iSmall->iH) / 2, nm, n ? Rgb(40, 44, 48) : Rgb(150, 150, 150));
+        Text(f, s, *iText, x + 16 + rh, y + (rh - 2 - iText->iH) / 2, nm, tc);
         char tr[24]; tr[0] = 0; SNum(tr, n); SCat(tr, n == 1 ? " track" : " tracks");
-        Text(f, s, *iSmall, x + w - 20 - iSmall->Width(tr), y + (rh - 1 - iSmall->iH) / 2, tr, n ? Rgb(40, 44, 48) : Rgb(150, 150, 150));
+        Text(f, s, *iText, x + w - 20 - iText->Width(tr), y + (rh - 2 - iText->iH) / 2, tr, tc);
         }
+    // the page
+    char pg[16]; pg[0] = 0; SNum(pg, page + 1); SCat(pg, " / "); SNum(pg + SLen(pg), pages);
+    TextCentre(f, s, *iSmall, x, x + w, 196 - foot + 1, pg, Rgb(60, 140, 255));
     }
 
 void TmMenu::DrawTitle(TmPix* f, int s)
@@ -922,59 +958,221 @@ int TmMenu::FanTracks(int* aIdx) const
     return n;
     }
 
+bool TmMenu::AddTrack(const TmUiTrack& aT)
+    {
+    for (int i = 0; i < iNTracks; i++) if (iTracks[i].iFile == aT.iFile) { iTracks[i] = aT; return true; }
+    if (iNTracks >= KMaxTracks) return false;
+    iTracks[iNTracks++] = aT;
+    return true;
+    }
+
+const TmUiTrack* TmMenu::TrackOfFile(int aFile) const
+    {
+    for (int i = 0; i < iNTracks; i++) if (iTracks[i].iFile == aFile) return &iTracks[i];
+    return 0;
+    }
+
+// 0.19: a folder's entries: ".." first below the top, then what the app lists (the folders, then the tracks); with
+// no lister, the installed fan tracks
+void TmMenu::BrowseOpen(const char* aPath)
+    {
+    char* cur = iBrowseHot ? iHotPath : iBrowsePath;
+    if (!iEntries) iEntries = new TmUiEntry[KMaxEntries];
+    iNEntries = 0; iBrowseSel = 0;
+    if (!iEntries) return;
+    if (!iFolders)
+        {
+        int idx[KMaxTracks]; const int n = FanTracks(idx);
+        for (int k = 0; k < n && iNEntries < KMaxEntries; k++)
+            {
+            TmUiEntry& e = iEntries[iNEntries++];
+            e.iKind = TmUiEntry::ETrack; e.iTrack = iTracks[idx[k]].iFile; e.iLabel[0] = 0;
+            SCpy(e.iName, iTracks[idx[k]].iTitle[0] ? iTracks[idx[k]].iTitle : iTracks[idx[k]].iName, 39);
+            }
+        cur[0] = 0;
+        return;
+        }
+    char path[KPathLen]; SCpy(path, aPath, KPathLen - 1);
+    for (int attempt = 0; attempt < 2; attempt++)
+        {
+        const int n = iFolders->ListFolder(path, iEntries, KMaxEntries, iBrowseHot);
+        if (n >= 0) { iNEntries = n; break; }
+        path[0] = 0;          // (the folder gone: the top)
+        }
+    SCpy(cur, path, KPathLen - 1);
+    BrowsePicture();
+    }
+
+void TmMenu::BrowsePicture()
+    {
+    if (!iFolders || iBrowseSel >= iNEntries || iEntries[iBrowseSel].iKind != TmUiEntry::ETrack) return;
+    for (int i = 0; i < iNTracks; i++)
+        if (iTracks[i].iFile == iEntries[iBrowseSel].iTrack && !iTracks[i].iThumb && iTracks[i].iThumbW == 0)
+            {
+            iFolders->Picture(iTracks[i].iFile, iTracks[i]);
+            if (!iTracks[i].iThumb) iTracks[i].iThumbW = -1;     // (tried)
+            }
+    }
+
+int TmMenu::PickIndex(int aFile) const
+    {
+    for (int k = 0; k < iNPick; k++) if (iPick[k] == aFile) return k;
+    return -1;
+    }
+
+// the parent of a folder's path ("E:\\A\\B\\" -> "E:\\A\\", "E:\\" -> ""); the last part's name into aLast
+static void ParentPath(char* aPath, char* aLast, int aLastCap)
+    {
+    int n = SLen(aPath);
+    if (n > 0 && aPath[n - 1] == '\\') n--;
+    int k = n; while (k > 0 && aPath[k - 1] != '\\') k--;
+    int j = 0; for (int i = k; i < n && j < aLastCap - 1; i++) aLast[j++] = aPath[i];
+    aLast[j] = 0;
+    aPath[k] = 0;
+    }
+
+// 0.19: Browse as the game's: the title and Back on the left; the folder in the middle (an orange plate with the
+// tracks it holds, the path with the up button, the folders and the tracks); the chosen track on the right (its
+// name, author, picture, medals, environment and Play)
 void TmMenu::DrawBrowse(TmPix* f, int s)
     {
-    int idx[KMaxTracks]; const int n = FanTracks(idx);
-    char sub[24]; sub[0] = 0; SNum(sub, n); SCpy(sub + SLen(sub), n == 1 ? " fan track" : " fan tracks", 20);
-    DrawLeft(f, s, "Browse", sub, EIcoBrowse);
-    // the list, scrolled so the chosen one shows
-    const int top = RowY(0), bottom = RowY(-1) - 4, rows = (bottom - top) / iRowH > 0 ? (bottom - top) / iRowH : 1;
+    const int n = iNEntries;
+    const char* curPath = iBrowseHot ? iHotPath : iBrowsePath;
+    if (iBrowseHot) DrawLeft(f, s, "Hot Seat", "Choose the tracks", EIcoParty);
+    else DrawLeft(f, s, "Play Solo", "Choose a track", EIcoPlayer);
+    DrawItem(f, s, RowY(-1), EIcoBack, "Back", iBrowseSel == n + (iBrowseHot ? 1 : 0));
+    const TmPix orange1 = Rgb(240, 160, 30), orange2 = Rgb(200, 110, 10), panel1 = Rgb(64, 30, 26), panel2 = Rgb(36, 14, 14);
+    int tracks = 0;
+    for (int k = 0; k < n; k++) if (iEntries[k].iKind == TmUiEntry::ETrack) tracks++;
+    // the middle: the folder
+    const int mx = LEFT_W + 8, mw = 244;
+    Round(f, s, mx, 2, mw, 196, 6, panel1, panel2);
+    RoundLine(f, s, mx, 2, mw, 196, 6, Rgb(120, 70, 60));
+    const int hh = iText->iH + 4;
+    Round(f, s, mx + 4, 5, mw - 8, hh, 5, orange1, orange2);
+    Text(f, s, *iText, mx + 10, 7, "Available tracks:", Rgb(255, 255, 255));
+    { char b[12]; b[0] = 0; SNum(b, tracks); Text(f, s, *iText, mx + mw - 12 - iText->Width(b), 7, b, Rgb(255, 255, 255)); }
+    // the path, the up button before it
+    const int py = 5 + hh + 3, ph = iSmall->iH + 8;
+    Round(f, s, mx + 4, py, mw - 8, ph, 4, Rgb(40, 34, 34), Rgb(26, 22, 22));
+    Round(f, s, mx + 6, py + 1, ph + 6, ph - 2, (ph - 2) / 2, Rgb(230, 230, 230), Rgb(150, 150, 150));
+    {
+    // (a folder with an arrow up)
+    const int ix = mx + 9 + (ph - 8) / 2, iy = py + 3;
+    Fill(f, s, ix, iy + 2, 12, ph - 9, Rgb(240, 200, 80)); Fill(f, s, ix, iy + 1, 5, 2, Rgb(240, 200, 80));
+    for (int j = 0; j < 4; j++) Fill(f, s, ix + 6 - j, iy + 2 + j, 1 + 2 * j, 1, Rgb(230, 120, 20));
+    Fill(f, s, ix + 5, iy + 6, 3, ph - 13 > 1 ? ph - 13 : 1, Rgb(230, 120, 20));
+    }
+    const char* path = curPath[0] ? curPath : (iFolders ? "" : "Fan tracks\\");
+    while (path[0] && iSmall->Width(path) > mw - 30 - ph) path++;
+    Text(f, s, *iSmall, mx + 14 + ph, py + 4, path, Rgb(140, 210, 230));
+    // the list
+    const int ly = py + ph + 4, lh = 196 - ly, rh = iText->iH + 6, rows = lh / rh > 0 ? lh / rh : 1;
+    Fill(f, s, mx + 4, ly, mw - 8, lh, Rgb(44, 40, 36));
     int first = iBrowseSel < n ? iBrowseSel - rows / 2 : n - rows; if (first > n - rows) first = n - rows; if (first < 0) first = 0;
     for (int r = 0; r < rows && first + r < n; r++)
         {
-        const TmUiTrack& t = iTracks[idx[first + r]];
-        DrawItem(f, s, top + r * iRowH, t.iEnv == 1 ? EIcoSnow : t.iEnv == 0 ? EIcoRally : EIcoCar, t.iTitle[0] ? t.iTitle : t.iName, iBrowseSel == first + r);
+        // a row as the game's: a light bar, an orange tab for a track (a dark one for a folder), the environment's
+        // mark, the name, the author's time on the right; the chosen one white, framed in orange
+        const TmUiEntry& e = iEntries[first + r];
+        const int y = ly + 1 + r * rh;
+        const bool sel = iBrowseSel == first + r;
+        const bool trk = e.iKind == TmUiEntry::ETrack;
+        // (as the game's: a chosen track a dark blue bar framed in blue, its text blue; in the hot seat's chooser the
+        // ticked ones so and the one under the cursor white with blue text)
+        const bool picked = trk && (iBrowseHot ? PickIndex(e.iTrack) >= 0 : sel);
+        const TmPix blue = Rgb(40, 140, 255);
+        if (picked && !(iBrowseHot && sel)) Fill(f, s, mx + 6, y, mw - 12, rh - 2, Rgb(36, 52, 70));
+        else Fill(f, s, mx + 6, y, mw - 12, rh - 2, sel ? Rgb(252, 252, 252) : Rgb(196, 196, 196));
+        Fill(f, s, mx + 6, y, 4, rh - 2, picked || (sel && trk) ? blue : trk ? orange1 : Rgb(80, 80, 80));
+        if (picked || sel) { const TmPix fc = picked || trk ? blue : orange1; Fill(f, s, mx + 6, y, mw - 12, 1, fc); Fill(f, s, mx + 6, y + rh - 3, mw - 12, 1, fc); Fill(f, s, mx + mw - 7, y, 1, rh - 2, fc); }
+        const TmPix tc = picked || (sel && trk) ? blue : Rgb(40, 40, 40);
+        const TmUiTrack* t = trk ? TrackOfFile(e.iTrack) : 0;
+        int tx = mx + 14;
+        if (t)
+            {
+            // the environment's mark: a small badge in its colour
+            static const unsigned char KEnvCol[7][3] = { { 70, 150, 40 }, { 120, 170, 230 }, { 220, 170, 80 }, { 40, 170, 150 }, { 120, 120, 130 }, { 230, 120, 40 }, { 60, 90, 200 } };
+            const int ec = t->iEnv >= 0 && t->iEnv < 7 ? t->iEnv : 0;
+            Round(f, s, tx, y + 2, rh - 6, rh - 6, 3, Rgb(KEnvCol[ec][0], KEnvCol[ec][1], KEnvCol[ec][2]), Mix(Rgb(KEnvCol[ec][0], KEnvCol[ec][1], KEnvCol[ec][2]), 0, 90));
+            tx += rh - 2;
+            }
+        char b[48];
+        if (e.iKind == TmUiEntry::EUp) SCpy(b, "..\\", 40);
+        else { SCpy(b, e.iLabel[0] ? e.iLabel : e.iName, 40); if (!trk) { const int l = SLen(b); b[l] = '\\'; b[l + 1] = 0; } }
+        int right = mx + mw - 10;
+        if (t && t->iMedal[0] > 0)
+            {
+            char tm[16]; FormatTime(tm, t->iMedal[0]);
+            const int w = ClockWidth(*iSmall, tm);
+            Clock(f, s, *iSmall, right - w, y + (rh - 2 - iSmall->iH) / 2, tm, tc);
+            right -= w + 6;
+            }
+        Text(f, s, *iText, tx, y + (rh - 2 - iText->iH) / 2, b, tc, right);
         }
-    DrawItem(f, s, RowY(-1), EIcoBack, "Back", iBrowseSel >= n);
-    // the right: the chosen track
-    const int x = RIGHT_X + 10, w = 640 - x - 8;
-    Round(f, s, x, 3, w, 194, 6, Rgb(46, 66, 78), Rgb(30, 46, 56));
-    RoundLine(f, s, x, 3, w, 194, 6, Rgb(110, 140, 150));
+    if (first > 0) Fill(f, s, mx + mw / 2 - 6, ly + 1, 12, 2, Rgb(200, 200, 200));
+    if (first + rows < n) Fill(f, s, mx + mw / 2 - 6, 193, 12, 2, Rgb(200, 200, 200));
     if (n == 0)
         {
-        TextCentre(f, s, *iText, x, x + w, 70, "No fan tracks installed", Rgb(255, 255, 255));
-        TextCentre(f, s, *iSmall, x, x + w, 70 + iText->iH + 6, "Convert a track on the PC (tools/pc/fantrack.py)", Rgb(180, 200, 210));
-        TextCentre(f, s, *iSmall, x, x + w, 70 + iText->iH + 8 + iSmall->iH, "and install its package", Rgb(180, 200, 210));
-        return;
+        TextCentre(f, s, *iSmall, mx, mx + mw, ly + 20, "No tracks here", Rgb(220, 220, 220));
+        TextCentre(f, s, *iSmall, mx, mx + mw, ly + 24 + iSmall->iH, "Copy .Challenge.Gbx files of Rally,", Rgb(170, 170, 170));
+        TextCentre(f, s, *iSmall, mx, mx + mw, ly + 26 + 2 * iSmall->iH, "Snow, Desert, Bay or Island here", Rgb(170, 170, 170));
         }
-    if (iBrowseSel >= n) return;
-    const TmUiTrack& t = iTracks[idx[iBrowseSel]];
-    Round(f, s, x + 4, 6, w - 8, iText->iH + 4, 4, Rgb(50, 160, 50), Rgb(26, 110, 26));
-    TextCentre(f, s, *iText, x + 4, x + w - 4, 8, t.iTitle[0] ? t.iTitle : t.iName, Rgb(255, 255, 255));
-    // the picture, as big as fits beside the times
-    const int py = 12 + iText->iH, tw = 192, th = t.iThumbH > 0 && t.iThumbW > 0 ? tw * t.iThumbH / t.iThumbW : 120;
-    if (t.iThumb)
-        for (int j = 0; j < th && py + j < 192; j++)
-            {
-            const int sy = (j * t.iThumbH) / th;
-            for (int i = 0; i < tw; i++) f[(py + j) * s + x + 8 + i] = t.iThumb[sy * t.iThumbW + (i * t.iThumbW) / tw];
-            }
-    else Fill(f, s, x + 8, py, tw, th, Rgb(60, 90, 60));
-    // the environment, the medals, the record
-    const int cx = x + 8 + tw + 12;
-    int y = py;
-    Text(f, s, *iText, cx, y, t.iEnv >= 0 && t.iEnv < 7 ? KEnvName2[t.iEnv] : "?", Rgb(90, 170, 255)); y += iText->iH + 6;
-    static const char* const KM[4] = { "Nadeo", "Gold", "Silver", "Bronze" };
-    for (int m = 0; m < 4; m++)
+    // the right: the chosen track ("???" for a folder, as the game's)
+    const int rx = mx + mw + 8, rw = 640 - rx - 4;
+    Round(f, s, rx, 2, rw, 196, 6, panel1, panel2);
+    RoundLine(f, s, rx, 2, rw, 196, 6, Rgb(120, 70, 60));
+    const TmUiEntry* e = iBrowseSel < n ? &iEntries[iBrowseSel] : 0;
+    const TmUiTrack* t = e && e->iKind == TmUiEntry::ETrack ? TrackOfFile(e->iTrack) : 0;
+    Round(f, s, rx + 4, 5, rw - 8, hh, 5, orange1, orange2);
+    TextCentre(f, s, *iText, rx + 6, rx + rw - 6, 7, t ? (t->iTitle[0] ? t->iTitle : t->iName) : "???", Rgb(255, 255, 255));
+    int y = 5 + hh + 3;
+    // the author, the environment on the right
+    Person(f, s, rx + 6, y, Rgb(250, 200, 60), Rgb(170, 110, 20));
+    if (t)
         {
-        if (t.iMedal[m] <= 0) continue;
-        Coin(f, s, cx + 6, y + iSmall->iH / 2, 6, m);
-        Text(f, s, *iSmall, cx + 16, y, KM[m], Rgb(220, 220, 220));
-        char b[16]; FormatTime(b, t.iMedal[m]); Text(f, s, *iSmall, cx + 66, y, b, Rgb(220, 220, 220));
-        y += iSmall->iH + 3;
+        const char* en = t->iEnv >= 0 && t->iEnv < 7 ? KEnvName2[t->iEnv] : "?";
+        const int ew = iSmall->Width(en);
+        Text(f, s, *iSmall, rx + rw - 8 - ew, y + 2, en, Rgb(90, 170, 255));
+        if (t->iAuthor[0]) Text(f, s, *iSmall, rx + 22, y + 2, t->iAuthor, Rgb(230, 230, 230), rx + rw - 14 - ew);
         }
-    y += 4;
-    if (t.iBest) { char b[16]; FormatTime(b, t.iBest * 20); Text(f, s, *iSmall, cx, y, "Record", Rgb(255, 210, 90)); Text(f, s, *iSmall, cx + 66, y, b, Rgb(255, 210, 90)); }
+    y += 18;
+    // the picture, 4:3 as the game's (white without one)
+    const int th = 72, tw = 96, tx = rx + (rw - tw) / 2;
+    if (t && t->iThumb && t->iThumbW > 0 && t->iThumbH > 0)
+        for (int j = 0; j < th; j++)
+            {
+            const int sy = (j * t->iThumbH) / th;
+            for (int i = 0; i < tw; i++) f[(y + j) * s + tx + i] = t->iThumb[sy * t->iThumbW + (i * t->iThumbW) / tw];
+            }
+    else Fill(f, s, tx, y, tw, th, Rgb(236, 236, 236));
+    RoundLine(f, s, tx - 1, y - 1, tw + 2, th + 2, 1, Rgb(150, 150, 150));
+    y += th + 4;
+    // the medals: bronze, silver, gold, the author's (as the game's), their times under them
+    for (int k = 0; k < 4; k++)
+        {
+        const int m = 3 - k;
+        const int cx = rx + (rw * (2 * k + 1)) / 8;
+        const bool has = t && t->iMedal[m] > 0;
+        if (has) Coin(f, s, cx, y + 7, 7, m);
+        else Round(f, s, cx - 7, y, 15, 15, 7, Rgb(90, 50, 46), Rgb(60, 30, 28));
+        if (has) { char b[16]; FormatTime(b, t->iMedal[m]); TextCentre(f, s, *iSmall, cx - 24, cx + 24, y + 16, b, Rgb(220, 220, 220)); }
+        }
+    y += 17 + iSmall->iH + 1;
+    // the record (the game's: the mode and the best time)
+    if (t && t->iBest)
+        {
+        char b[40]; SCpy(b, "Record ", 10); FormatTime(b + SLen(b), t->iBest * 20);
+        TextCentre(f, s, *iSmall, rx, rx + rw, y, b, Rgb(255, 210, 90));
+        }
+    // Play
+    const int by = 195 - hh;
+    const bool canPlay = iBrowseHot ? iNPick > 0 : t != 0;
+    Round(f, s, rx + 6, by, rw - 12, hh, hh / 2, canPlay ? Rgb(250, 250, 250) : Rgb(150, 150, 150), canPlay ? Rgb(200, 200, 200) : Rgb(110, 110, 110));
+    if (iBrowseHot && iBrowseSel == n) RoundLine(f, s, rx + 6, by, rw - 12, hh, hh / 2, Rgb(40, 140, 255));
+    char pl[24]; SCpy(pl, "Play", 8);
+    if (iBrowseHot && iNPick) { SCat(pl, " ("); SNum(pl + SLen(pl), iNPick); SCat(pl, ")"); }
+    TextCentre(f, s, *iText, rx + 6, rx + rw - 6, by + 2, pl, iBrowseHot && iBrowseSel == n ? Rgb(40, 140, 255) : Rgb(40, 40, 40));
     }
 
 void TmMenu::Draw(TmPix* f, int s)
@@ -1008,12 +1206,69 @@ void TmMenu::Draw(TmPix* f, int s)
             DrawHotSeat(f, s);
             break;
         case ESeries:
+            {
             DrawLeft(f, s, "Hot Seat", "Choose a series", EIcoParty);
-            DrawItem(f, s, RowY(-1), EIcoBack, "Back", iSeriesSel == iNEnvs * 5);
+            const int ns = iNEnvs * 5;
+            DrawItem(f, s, RowY(-4), EIcoFolder, "Official tracks", iSeriesSel == ns);
+            DrawItem(f, s, RowY(-3), EIcoFolder, "My tracks", iSeriesSel == ns + 1);
+            DrawItem(f, s, RowY(-2), EIcoFolder, "Downloaded tracks", iSeriesSel == ns + 2);
+            DrawItem(f, s, RowY(-1), EIcoBack, "Back", iSeriesSel == ns + 3);
             DrawSeries(f, s);
             break;
+            }
+        case ETracks: DrawBrowse(f, s); break;
         default: break;
         }
+    }
+
+// 0.19: the explorer's keys: up and down over the entries (then Play in the hot seat's chooser, then Back), Enter
+// opens a folder, plays a track (Solo: the opponent's choice) or ticks it (the hot seat), Left / Esc a folder up
+void TmMenu::BrowseKey(int aKey, TScreen aBack)
+    {
+    const int n = iNEntries, nr = n + (iBrowseHot ? 2 : 1);
+    char* cur = iBrowseHot ? iHotPath : iBrowsePath;
+    const bool ok = aKey == EUiOk || aKey == EUiRight;
+    if (aKey == EUiUp) { iBrowseSel = (iBrowseSel + nr - 1) % nr; BrowsePicture(); }
+    else if (aKey == EUiDown) { iBrowseSel = (iBrowseSel + 1) % nr; BrowsePicture(); }
+    else if (iBrowseHot && ok && iBrowseSel == n) {}      // (Play: the caller)
+    else if ((ok && iBrowseSel == nr - 1) || ((aKey == EUiBack || aKey == EUiLeft) && !cur[0])) iScreen = aBack;
+    else if (aKey == EUiBack || aKey == EUiLeft)
+        {
+        // up a folder, the one we came from chosen
+        char path[KPathLen], last[40]; SCpy(path, cur, KPathLen - 1);
+        ParentPath(path, last, sizeof(last));
+        BrowseOpen(path);
+        for (int k = 0; k < iNEntries; k++) if (iEntries[k].iKind == TmUiEntry::EFolder && !SCmpI(iEntries[k].iName, last)) iBrowseSel = k;
+        BrowsePicture();
+        }
+    else if (ok && iBrowseSel < n && iEntries[iBrowseSel].iKind == TmUiEntry::EFolder)
+        {
+        char path[KPathLen]; SCpy(path, cur, KPathLen - 1);
+        const int l = SLen(path), m = SLen(iEntries[iBrowseSel].iName);
+        if (l + m + 2 < KPathLen) { SCpy(path + l, iEntries[iBrowseSel].iName, m); path[l + m] = '\\'; path[l + m + 1] = 0; BrowseOpen(path); }
+        }
+    else if (ok && iBrowseSel < n && iEntries[iBrowseSel].iKind == TmUiEntry::ETrack)
+        {
+        const int file = iEntries[iBrowseSel].iTrack;
+        if (!iBrowseHot) { iRaceFile = file; iOppFrom = EBrowse; iScreen = EOpponent; iOppSel = 0; }
+        else
+            {
+            // ticked or unticked (as the game's: a press each, no Shift or Ctrl)
+            const int k = PickIndex(file);
+            if (k >= 0) { for (int i = k; i + 1 < iNPick; i++) iPick[i] = iPick[i + 1]; iNPick--; }
+            else if (iNPick < KMaxSeries) iPick[iNPick++] = file;
+            }
+        }
+    }
+
+// the hot seat's players packed (the empty slots out) and its first race asked for
+int TmMenu::StartHotSeat()
+    {
+    int m = 0;
+    for (int p = 0; p < KMaxPlayers; p++) if (iNames[p][0]) { if (m != p) SCpy(iNames[m], iNames[p], KNameLen); m++; }
+    for (int p = m; p < KMaxPlayers; p++) iNames[p][0] = 0;
+    iPlayers = m; iRaceFile = iSeriesFiles[0]; iRaceOpp = EOppNone;
+    return EUiRace;
     }
 
 int TmMenu::Key(int aKey, int aChar)
@@ -1040,16 +1295,20 @@ int TmMenu::Key(int aKey, int aChar)
             const int k = ListKey(ECampaign, aKey);
             if (k == -2 || k == 5 || aKey == EUiLeft) iScreen = EMain;
             else if (k == 0) iScreen = EMode;
-            else if (k == 4) { iScreen = EBrowse; iBrowseSel = 0; }
+            else if (k == 4) { iScreen = EBrowse; iBrowseHot = false; BrowseOpen(iBrowsePath); }
             return EUiNone;
             }
-        case EBrowse:
+        case EBrowse: BrowseKey(aKey, ECampaign); return EUiNone;
+        case ETracks:
             {
-            int idx[KMaxTracks]; const int n = FanTracks(idx);
-            if (aKey == EUiUp) iBrowseSel = (iBrowseSel + n) % (n + 1);
-            else if (aKey == EUiDown) iBrowseSel = (iBrowseSel + 1) % (n + 1);
-            else if (aKey == EUiBack || aKey == EUiLeft || ((aKey == EUiOk || aKey == EUiRight) && iBrowseSel >= n)) iScreen = ECampaign;
-            else if ((aKey == EUiOk || aKey == EUiRight) && iBrowseSel < n) { iRaceFile = iTracks[idx[iBrowseSel]].iFile; iOppFrom = EBrowse; iScreen = EOpponent; iOppSel = 0; }
+            const bool play = aKey == EUiOk && iBrowseSel == iNEntries;
+            BrowseKey(aKey, ESeries);
+            if (play && iNPick > 0)
+                {
+                iSeriesN = 0;
+                for (int k = 0; k < iNPick; k++) iSeriesFiles[iSeriesN++] = iPick[k];
+                return StartHotSeat();
+                }
             return EUiNone;
             }
         case EMode:
@@ -1167,21 +1426,27 @@ int TmMenu::Key(int aKey, int aChar)
             }
         case ESeries:
             {
-            const int nr = iNEnvs * 5 + 1;
+            // 0.19: the campaigns' series in the middle, then on the left Official tracks, My tracks, Downloaded
+            // tracks (the explorer, several tracks ticked) and Back, as the game's; Left / Right between the two
+            const int ns = iNEnvs * 5, nr = ns + 4;
             if (aKey == EUiBack || (aKey == EUiOk && iSeriesSel == nr - 1)) { iScreen = EHotSeat; return EUiNone; }
             if (aKey == EUiUp) iSeriesSel = (iSeriesSel + nr - 1) % nr;
             else if (aKey == EUiDown) iSeriesSel = (iSeriesSel + 1) % nr;
-            else if (aKey == EUiOk)
+            else if (aKey == EUiLeft && iSeriesSel < ns) iSeriesSel = ns;
+            else if ((aKey == EUiOk || aKey == EUiRight) && iSeriesSel >= ns && iSeriesSel < ns + 3)
+                {
+                static const char* const KRoot[3] = { "Campaigns\\", "Challenges\\My Challenges\\", "Challenges\\Downloaded\\" };
+                iBrowseHot = true; iNPick = 0; iScreen = ETracks;
+                BrowseOpen(KRoot[iSeriesSel - ns]);
+                }
+            else if (aKey == EUiRight && iSeriesSel == nr - 1) iSeriesSel = 0;
+            else if (aKey == EUiOk && iSeriesSel < ns)
                 {
                 const int env = iEnvs[iSeriesSel / 5], ser = iSeriesSel % 5;
                 iSeriesN = 0;
-                for (int n = 1; n <= 5 && iSeriesN < 8; n++) { int ti = TrackAt(ser, env, n); if (ti >= 0) iSeriesFiles[iSeriesN++] = iTracks[ti].iFile; }
+                for (int n = 1; n <= 5 && iSeriesN < KMaxSeries; n++) { int ti = TrackAt(ser, env, n); if (ti >= 0) iSeriesFiles[iSeriesN++] = iTracks[ti].iFile; }
                 if (!iSeriesN) return EUiNone;
-                int m = 0;
-                for (int p = 0; p < KMaxPlayers; p++) if (iNames[p][0]) { if (m != p) SCpy(iNames[m], iNames[p], KNameLen); m++; }
-                for (int p = m; p < KMaxPlayers; p++) iNames[p][0] = 0;
-                iPlayers = m; iRaceFile = iSeriesFiles[0]; iRaceOpp = EOppNone;
-                return EUiRace;
+                return StartHotSeat();
                 }
             return EUiNone;
             }

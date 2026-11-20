@@ -484,11 +484,23 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
 
 ## 0.19: the game's own tracks on the phone (.Challenge.Gbx)
 
-- Copy any `.Challenge.Gbx` of Rally, Snow, Desert, Bay or Island (TMX's, the game editor's, a friend's) into
-  `\TmTracks\` on the phone or the memory card (`C:\TmTracks\`, `E:\TmTracks\`). Play Solo > Browse lists it by
-  its map's name with its medal times (from the file's header: `TmGbxHeader`); chosen the first time, the app builds
-  the track itself into `\TmTracks\cache\<name>.tmb` (again when the Gbx or the kit is newer) and loads that.
-  Stadium and Coast tracks are skipped. No PC step any more; `fantrack.py` still works.
+- The game's own tracks where the PC game keeps them: `Documents\TrackMania\Tracks\` on the phone (`C:\Documents\...`)
+  and the card (`E:\Documents\...`), shown together (copy the PC's `Documents\TrackMania\Tracks` folder over and the
+  phone shows the same tree; `Challenges\My Challenges\` and `Challenges\Downloaded\` are made on the first run).
+  Play Solo > Browse is the game's explorer: the title and Back on the left; in the middle "Available tracks" with
+  the count, the path with the up button (Left / Esc), the folders (`Name\`) and the tracks (an orange tab, the
+  environment's mark, the map's name, the author's time); on the right the chosen track as the game's (its name, its
+  author and environment, its picture: the JPEG in the Gbx's header, `tmjpeg.cpp`, a baseline decoder of our own;
+  bronze, silver, gold and author medals with their times, the record, Play). The installed fan tracks show at the
+  top. The folder is kept between runs (`C:\Data\TM9300\browse.txt`). A track is known by its map's uid (the same
+  map in two folders is one track; its record and its built file go by it); built the first time it is raced into
+  `<its drive>:\Data\TM9300\cache\` (again when the Gbx or the kit is newer). Stadium and Coast files are not listed.
+- Hot Seat > the series, as the game's: the campaigns' series in the middle (a page of rows: the environment's mark,
+  the series, its tracks; the page under them), Official tracks, My tracks and Downloaded tracks on the left. Those
+  open the explorer at `Campaigns\` (the installed campaigns as the PC's folders: `United\Race\Rally\White\` ...),
+  `Challenges\My Challenges\` and `Challenges\Downloaded\`; Enter ticks a track or unticks it (as the game's: a press
+  each, no Shift or Ctrl), the ticked ones in a dark blue bar, and Play (with their count) races them in the order
+  ticked (up to 32).
 - `tmgbx.cpp`: the Gbx reader in C++ (the LZO1X decoder, the header chunks, the reference table, chunk 0x0304301F's
   block list with skins), every read bounds-checked (a cut or bit-flipped file fails, it does not crash: fuzzed under
   ASan). It reads the 112 campaign and StarTrack tracks exactly as `gbxtrack.py` does.
@@ -526,7 +538,6 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
 5. Campaign tracks from their Gbx files: a package would be its kit, the 21 Gbx files (~30 KB each), their replay
    paths and pictures (~1-3.5 MB instead of 4-11 MB, ~25 MB less in all) if the phone built each track when it is
    loaded (a build unpacks 4-6 MB of kit: the chunks could be ordered by how often the solids are used).
-6. A thumbnail for Gbx tracks in Browse (the file's JPEG, or a map drawn from the block list).
-7. Bay's big loops (`BayPlatformLoopStart4` / `End4`): the two halves of the loop's top are placed 16 m apart
+6. Bay's big loops (`BayPlatformLoopStart4` / `End4`): the two halves of the loop's top are placed 16 m apart
    (BayC2: a gap at z 792..808 the replay drives through); the turned multi-unit pieces' placing, or a solid's own
    offset the kit does not carry. None of the installed Bay tracks has one.

@@ -5,6 +5,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include "tmui.h"
+#include "tmgbx.h"
+#include "tmjpeg.h"
+#include <dirent.h>
+#include <sys/stat.h>
+#include <strings.h>
 
 static unsigned char* ReadAll(const char* p, int& n)
     {
@@ -24,6 +29,70 @@ static void Save(const char* name, const TmPix* f)
     for (int i = 0; i < 640 * 200; i++) { int c = f[i]; unsigned char rgb[3] = { (unsigned char) (((c >> 11) & 31) << 3), (unsigned char) (((c >> 5) & 63) << 2), (unsigned char) ((c & 31) << 3) }; fwrite(rgb, 1, 3, o); }
     fclose(o);
     }
+// 0.19: Browse's folders on the PC: $TMROOT stands for Documents\\TrackMania\\Tracks\\ (the phone's lister: tm9300_app.cpp)
+struct THostFolders : MTmFolders
+    {
+    TmMenu* m; int next; char paths[256][512]; int files[256]; int n;
+    int ListFolder(const char* aPath, TmUiEntry* aOut, int aMax, bool aCampaigns)
+        {
+        int k = 0;
+        if (!strncasecmp(aPath, "Campaigns\\", 10)) { if (!aPath[10]) { aOut[k].iKind = TmUiEntry::EFolder; strcpy(aOut[k].iName, "United"); aOut[k].iLabel[0] = 0; k++; } return k; }
+        char dir[512]; snprintf(dir, sizeof(dir), "%s/%s", getenv("TMROOT"), aPath);
+        for (char* q = dir; *q; q++) if (*q == '\\') *q = '/';
+        DIR* d = opendir(dir); if (!d) return aPath[0] ? -1 : 0;
+        if (!aPath[0] && aCampaigns) { aOut[k].iKind = TmUiEntry::EFolder; strcpy(aOut[k].iName, "Campaigns"); aOut[k].iLabel[0] = 0; k++; }
+        struct dirent* e; int firstTrack;
+        char names[256][256]; int nn = 0;
+        while ((e = readdir(d)) && nn < 256) if (e->d_name[0] != '.') strcpy(names[nn++], e->d_name);
+        closedir(d);
+        for (int a = 1; a < nn; a++) for (int b = a; b > 0 && strcasecmp(names[b - 1], names[b]) > 0; b--) { char t[256]; strcpy(t, names[b]); strcpy(names[b], names[b - 1]); strcpy(names[b - 1], t); }
+        for (int i = 0; i < nn && k < aMax; i++)
+            {
+            char full[1024]; snprintf(full, sizeof(full), "%s/%s", dir, names[i]); struct stat st; stat(full, &st);
+            if (S_ISDIR(st.st_mode)) { aOut[k].iKind = TmUiEntry::EFolder; strncpy(aOut[k].iName, names[i], 39); aOut[k].iName[39] = 0; aOut[k].iLabel[0] = 0; k++; }
+            }
+        firstTrack = k;
+        for (int i = 0; i < nn && k < aMax; i++)
+            {
+            char full[1024]; snprintf(full, sizeof(full), "%s/%s", dir, names[i]); struct stat st; stat(full, &st);
+            if (S_ISDIR(st.st_mode) || strcasecmp(names[i] + strlen(names[i]) - 4, ".gbx")) continue;
+            FILE* f = fopen(full, "rb"); unsigned char h[17]; if (!f || fread(h, 1, 17, f) != 17) { if (f) fclose(f); continue; }
+            int hs = TmGbxHeaderSize(h, 17); unsigned char* b = new unsigned char[hs]; memcpy(b, h, 17); if (fread(b + 17, 1, hs - 17, f)) {} fclose(f);
+            char env[16], title[24], uid[40], au[24]; int med[4];
+            if (TmGbxHeader(b, hs, env, 16, title, 24, med, uid, 40, au, 24)) { delete[] b; continue; }
+            static const char* const KE[5] = { "Rally", "Alpine", "Speed", "Island", "Bay" };
+            int ev = -1; for (int q = 0; q < 5; q++) if (!strcmp(env, KE[q])) ev = q;
+            if (ev < 0) { delete[] b; continue; }
+            int file = -1; for (int q = 0; q < n; q++) if (!strcmp(paths[q], full)) file = files[q];
+            if (file < 0)
+                {
+                TmUiTrack t; memset(&t, 0, sizeof(t)); t.iEnv = ev; t.iSeries = 5; t.iNum = 1; t.iFile = next++;
+                strcpy(t.iTitle, title); strcpy(t.iAuthor, au); for (int q = 0; q < 4; q++) t.iMedal[q] = med[q];
+                m->AddTrack(t); strcpy(paths[n], full); files[n++] = file = t.iFile;
+                }
+            delete[] b;
+            aOut[k].iKind = TmUiEntry::ETrack; aOut[k].iTrack = file; strcpy(aOut[k].iName, title); aOut[k].iLabel[0] = 0; k++;
+            }
+        (void) firstTrack;
+        return k;
+        }
+    void Picture(int aFile, TmUiTrack& aT)
+        {
+        for (int q = 0; q < n; q++) if (files[q] == aFile)
+            {
+            int sz; FILE* f = fopen(paths[q], "rb"); fseek(f, 0, SEEK_END); sz = ftell(f); fseek(f, 0, SEEK_SET);
+            unsigned char* d = new unsigned char[sz]; if (fread(d, 1, sz, f)) {} fclose(f);
+            for (int i = 0; i + 15 < sz; i++) if (!memcmp(d + i, "<Thumbnail.jpg>", 15))
+                {
+                TmPix* px = new TmPix[80 * 60];
+                if (TmJpegDecode(d + i + 15, sz - i - 15, px, 80, 60, true)) { aT.iThumb = px; aT.iThumbW = 80; aT.iThumbH = 60; }
+                break;
+                }
+            delete[] d;
+            }
+        }
+    };
+
 int main(int argc, char** argv)
     {
     char p[512];
@@ -88,6 +157,30 @@ int main(int argc, char** argv)
             }
         mm.Draw(frame, 640);
         sprintf(p, "%s_%s.ppm", argv[4], shots[s].name); Save(p, frame);
+        }
+    // 0.19: Browse as the game's explorer, the hot seat's track chooser ($TMROOT)
+    if (getenv("TMROOT"))
+        {
+        // (keys from the screen each starts on: Browse from Play Solo's list, the chooser from the hot seat's series)
+        struct { const char* name; int start; const char* keys; } bs[] = {
+            { "x_top", 0, "" }, { "x_track", 0, "dd" }, { "x_my", 0, "odo" }, { "x_my2", 0, "ododdd" }, { "x_snow", 0, "odoooo" }, { "x_up", 0, "odooool" },
+            { "x_series", 1, "" }, { "x_series2", 1, "ld" }, { "x_hot", 1, "ldo" }, { "x_hot2", 1, "ldododdo" }, { "x_hotplay", 1, "ldododdodd" }, { "x_seriesD", 1, "ddddddddddddd" }, { "x_official", 1, "lo" } };
+        for (unsigned q = 0; q < sizeof(bs) / sizeof(bs[0]); q++)
+            {
+            static THostFolders hf; hf.next = 1000; hf.n = 0;
+            TmMenu* mm = new TmMenu; mm->iVersion = "0.19"; mm->Init(&big, &text, &small, tr, nt, &pack);
+            hf.m = mm; mm->iFolders = &hf;
+            if (bs[q].start == 0) { mm->Show(TmMenu::ECampaign); for (int z = 0; z < 4; z++) mm->Key(EUiDown); mm->Key(EUiOk); }
+            else { strcpy(mm->iNames[0], "KNUCKLES"); strcpy(mm->iNames[1], "PAVEL"); mm->Show(TmMenu::ESeries); }
+            for (const char* k = bs[q].keys; *k; k++)
+                {
+                int key = *k == 'o' ? EUiOk : *k == 'd' ? EUiDown : *k == 'u' ? EUiUp : *k == 'l' ? EUiLeft : *k == 'r' ? EUiRight : EUiBack;
+                mm->Key(key);
+                }
+            mm->Draw(frame, 640);
+            sprintf(p, "%s_%s.ppm", argv[4], bs[q].name); Save(p, frame);
+            delete mm;
+            }
         }
     // 0.14: the hot seat's chooser and the race's dialogs (over a grey 3D view)
     {
