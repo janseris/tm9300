@@ -165,6 +165,24 @@ int main(int argc, char** argv)
                 }
             in.throttle = v < vmax - 0.5 ? 1 : 0;
             in.brake = v > vmax + 1.5 ? 1 : 0;
+            // 0.19: and the replay's slowing down ahead on level ground (the next 2 s), braked for in time at BDEC2
+            // m/s^2 (SnowD5: the replay brakes from 85 to 70 m/s before the drop to the finish; the driver flew over
+            // it at 99)
+            if (!getenv("NOLIMIT") && !getenv("NOAHEAD"))
+                {
+                const double bd = getenv("BDEC2") ? atof(getenv("BDEC2")) : 14.0;
+                double d2 = 0;
+                for (int j = prog; j + 2 < t.iNPath && j < prog + 20; j++)
+                    {
+                    const double ax = (t.iPath[j + 1].x - t.iPath[j].x) / 16.0, az = (t.iPath[j + 1].z - t.iPath[j].z) / 16.0;
+                    d2 += sqrt(ax * ax + az * az);
+                    const double qx = (t.iPath[j + 2].x - t.iPath[j].x) / 16.0, qz = (t.iPath[j + 2].z - t.iPath[j].z) / 16.0, qy = (t.iPath[j + 2].y - t.iPath[j].y) / 16.0;
+                    const double fl = sqrt(qx * qx + qz * qz);
+                    if (fl < 1 || fabs(qy) > 0.1 * fl) continue;      // (level ground only: a climb's or a drop's flat speed is not the pace)
+                    const double vt = fl / 0.2 * 1.08 + 1.0;
+                    if (v > vt && (v * v - vt * vt) / (2 * bd) >= d2) { in.throttle = 0; in.brake = 1; break; }
+                    }
+                }
             }
         if (getenv("STRAIGHT")) { in.steer = 0; in.throttle = 1; in.brake = 0; if (step % 50 == 49) printf("straight %d s: %.0f km/h %s\n", (step + 1) / 50, car.iS.speed * 3.6 / 256, car.iS.onGround ? "" : "(air)"); }
         if (getenv("STEERBIAS")) { in.steer += atoi(getenv("STEERBIAS")); if (in.steer > 256) in.steer = 256; if (in.steer < -256) in.steer = -256; }

@@ -54,7 +54,9 @@ COARSE = __import__('os').environ.get('COARSE')
 NOWALLS = __import__('os').environ.get('NOWALLS')
 # 0.18: the solids (a regex) whose steep faces are road, not walls: loops, wall rides, pipes. Surface 12: a wall to
 # plain driving, the road the car follows in 3D when it meets it at speed (tmphys: SurfaceStep)
-STEEPROAD = __import__('os').environ.get('STEEPROAD', r'Loop|RoadWall|TunnelCircular|MetalTube|Pipeline|Hawk')     # the blocks' names
+# 0.19: and the banked spirals (Desert's SpeedSpinLeft / Right) and Snow's twisting roads (AlpineRoadWoodTiltSpin /
+# UnSpin): their steep banks were walls, the car stopped at a spiral's mouth (DesertD4) where the replay sweeps round
+STEEPROAD = __import__('os').environ.get('STEEPROAD', r'Loop|RoadWall|TunnelCircular|MetalTube|Pipeline|Hawk|Spin')     # the blocks' names
 ROAD_BUDGET = int(__import__('os').environ.get('ROAD_BUDGET', '0'))    # m: the coarsest of what is driven on (0.15: Desert's sand tiles need 3)
 EDGE_STEP = 2.0 # m: the grid the pieces' edge corners snap to along the edge (the seams)
 WIND = 'reverse'

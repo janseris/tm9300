@@ -827,10 +827,14 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
                 if (iClass == 4 && s.vy > 2 * 256) s.vy = s.vy * 276 / 256;
                 if (s.vy > 2 * 256)
                     {
+                    // 0.19: the car leaves along the ramp at its speed on it: the ground's speed is flat speed with the
+                    // climb on top, so flat and climb are both scaled to the flat speed's length (the direction the
+                    // ramp's). Was: the climb kept, the flat speed cut to make up the length, which on a steep lip
+                    // threw the car steeper than the ramp (RallyC3's 35-degree lip: 44 degrees, 17 m over the finish)
                     const int hx = s.vx >> 4, hz = s.vz >> 4, hy = s.vy >> 4;
                     const unsigned h2 = (unsigned) (hx * hx + hz * hz), y2 = (unsigned) (hy * hy);
-                    const int h = ISqrt(h2), n = ISqrt(y2 < h2 * 3 / 4 ? h2 - y2 : h2 / 4);
-                    if (h > 0) { s.vx = (int) (((long long) s.vx * n) / h); s.vz = (int) (((long long) s.vz * n) / h); }
+                    const int h = ISqrt(h2), t = ISqrt(h2 + y2);
+                    if (t > 0) { s.vx = (int) (((long long) s.vx * h) / t); s.vz = (int) (((long long) s.vz * h) / t); s.vy = (int) (((long long) s.vy * h) / t); }
                     }
                 }
             }

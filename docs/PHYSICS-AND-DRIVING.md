@@ -525,6 +525,21 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   face: a line; a point) no longer "cover" the points on them.
 - Host tools: `phone/host/gbx2tmb.cpp` (kit + Gbx [+ path] -> .tmb, the stats).
 
+- The take-off (`tmphys.cpp`): the car leaves along the ramp at its speed on it. The ground's speed is flat speed with
+  the climb on top, so flat speed and climb are both scaled to the flat speed's length. Before, the climb was kept and
+  the flat speed cut, which on a steep lip threw the car steeper than the ramp: RallyC3's 35-degree hill lip launched
+  at 44 degrees and the car flew 17 m over the finish. Jump test (mean |log| landing distance): Rally 0.110 -> 0.101,
+  Desert 0.203 -> 0.194, Bay 0.195 -> 0.194, Island 0.169 -> 0.167, Snow 0.180 -> 0.219 (its jumps were short
+  before and still are: something else).
+- `STEEPROAD` takes the banked spirals (Desert's `SpeedSpinLeft` / `Right`, nine tracks) and Snow's twisting roads
+  (`AlpineRoadWoodTiltSpin` / `UnSpin`: SnowD2, D5): their banks were walls, and the car stopped at a spiral's mouth
+  (DesertD4). Those nine tracks repacked, the Desert and Snow kits rebuilt.
+- The host driver (`DRIVER=2`) brakes in time for the replay's slowing down ahead on level ground (SnowD5: the
+  replay brakes from 85 to 70 m/s before the drop to the finish; the driver flew over it).
+- The regression, all 105 campaign tracks (unaided / with respawns / respawns in all), before -> after:
+  Rally 16/20/11 -> 19/21/5, Snow 12/18/31 -> 11/21/24, Desert 7/19/51 -> 12/21/33, Bay 5/18/49 -> 7/17/47,
+  Island 8/15/69 -> 8/17/69. Every Rally, Snow and Desert track finishes with respawns.
+
 ## Next
 
 1. **Speed on Snow**: SnowA1 draws ~2,000 triangles a frame (3.8 M instructions: ~18 fps on the phone), the
