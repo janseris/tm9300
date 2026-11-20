@@ -386,10 +386,9 @@ static int ISqrt(unsigned a)
     return (int) r;
     }
 
-#ifndef KLOOPFRIC
-#define KLOOPFRIC 120
-#endif
-static const int KLoopFric = KLOOPFRIC;          // 0.18: the share of a loop's press lost as speed (* 256)
+// 0.18: the share of a loop's press lost as speed (* 256), per car: Island's loses 175 -> 51 m/s up IslandA2's
+// loop (gravity alone: 147), Bay's 111 -> 85 up BayC2's (gravity alone: 93); the others unmeasured
+static const int KLoopFric[5] = { 30, 30, 30, 18, 120 };
 static int ISqrt64(unsigned long long a)
     {
     unsigned long long r = 0, bit = 1ULL << 62;
@@ -794,7 +793,8 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
                 // on it: the climb rate from the ground itself (a ramp's end throws the car at that rate)
                 ny = hit.y; s.surf = hit.surf;
                 int vy = (hit.y - s.y) * 50;
-                if (vy > 80 * 256) vy = 80 * 256; if (vy < -80 * 256) vy = -80 * 256;     // (0.18: 80 m/s: Island's ramps throw its car at 52; was 40)
+                const int vcap = iClass == 4 ? 120 * 256 : 80 * 256;      // (0.18: 80 m/s, Island's 120: its ramps throw its car at 95; was 40)
+                if (vy > vcap) vy = vcap; if (vy < -vcap) vy = -vcap;
                 // a ramp's climb is the smaller of the last two steps' (a kerb's one step up launches nothing)
                 s.vy = vy; iClimbVy = vy < iClimbRaw ? vy : iClimbRaw; iClimbRaw = vy;
                 // the normal smoothed over a few steps: a kerb under one wheel is not a ramp
@@ -819,6 +819,9 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
                 s.onGround = 0; s.nx = 0; s.ny = 8192; s.nz = 0; iAirSteps = 0; ny = s.y + s.vy / 50; iClimbVy = 0; iClimbRaw = 0; iShadow = 0;
                 // 0.18: thrown up off a ramp, the speed turns upwards: what goes up is taken from the flat speed (the
                 // replays: BayD2's kicker, 96 m/s flat -> 86 flat and 33 up), or the car flew a fifth too far
+                // 0.18: Island's car springs off a kicker 1.08 times the ramp's climb (its replays' take-offs; Bay's,
+                // Desert's and Rally's cars leave at the climb)
+                if (iClass == 4 && s.vy > 2 * 256) s.vy = s.vy * 276 / 256;
                 if (s.vy > 2 * 256)
                     {
                     const int hx = s.vx >> 4, hz = s.vz >> 4, hy = s.vy >> 4;
@@ -853,6 +856,9 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
             if (vn < 0) { s.vx -= (vn * s.nx) >> 13; s.vy -= (vn * s.ny) >> 13; s.vz -= (vn * s.nz) >> 13; }
             iBumpY = ny;
             }
+        // 0.18: on Island and Bay, nothing under the car (the sea) and 40 m under the last ground: back at the last
+        // checkpoint, as the player's respawn (the race goes on)
+        else if (iClass >= 3 && ny < iBumpY - 40 * 256) { Respawn(); return; }
         else if (ny < iBumpY - 200 * 256) { ny = iBumpY; s.onGround = 1; s.vy = 0; s.nx = 0; s.ny = 8192; s.nz = 0; }
         }
     else
@@ -935,7 +941,7 @@ void TmCar::SurfaceStep(const TmGround& aG, const TmCarInput& aIn)
     const int sp2 = ISqrt64((unsigned long long) ((long long) s.vx * s.vx + (long long) s.vy * s.vy + (long long) s.vz * s.vz));
     if (sp2 > 0) { s.vx = (int) ((long long) s.vx * sp / sp2); s.vy = (int) ((long long) s.vy * sp / sp2); s.vz = (int) ((long long) s.vz * sp / sp2); }
     // the road's press costs speed (IslandA2's loop: 175 m/s in, 51 at the top; gravity alone left 147): a share of it
-    if (press > 0) { sp -= (int) ((press * KLoopFric) >> 8) / 50; if (sp < 256) sp = 256; }
+    if (press > 0) { sp -= (int) ((press * KLoopFric[iClass]) >> 8) / 50; if (sp < 256) sp = 256; }
     if (sp2 > 0) { s.vx = (int) ((long long) s.vx * sp / sp2); s.vy = (int) ((long long) s.vy * sp / sp2); s.vz = (int) ((long long) s.vz * sp / sp2); }
     s.speed = sp;
 #ifdef SURFDEBUG

@@ -982,7 +982,10 @@ void CTmView::DriveFrame(TInt& aCx, TInt& aCy, TInt& aCz, TInt& aYaw, TInt& aPit
         iDriveSteps++;
         // the countdown: the car waits on the line
         if (iRaceSteps < 0) { iRaceSteps++; iCam->Update(*iGround, iCar->iS, aCx, aCy, aCz, aYaw, aPitch); continue; }
+        const TInt px = iCar->iS.x, pz = iCar->iS.z;
         iCar->Step(*iGround, in); iRaceSteps++;
+        // 0.18: put back at a checkpoint by the car itself (fallen into Island's sea): the camera behind it again
+        { const TInt dx = iCar->iS.x - px, dz = iCar->iS.z - pz; if (dx > 30 * 256 || dx < -30 * 256 || dz > 30 * 256 || dz < -30 * 256) iCam->Reset(iCar->iS); }
         if (iPlayers > 1 && iHsMode && !iCar->iFinished)
             {
             // the time mode: the turn's clock (the run on when it runs out may still finish)

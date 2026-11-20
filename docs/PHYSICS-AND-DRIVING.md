@@ -440,6 +440,14 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   for Rally, Snow and Desert, whose terrain covers the map in the game). Flown into the ground from below, the car is
   put on the lowest surface over it (the road under a tunnel's roof, not the roof). Never faster on the flat than the
   car's top speed.
+- Island's car springs off a kicker at 1.08 times the ramp's climb (its replays' take-offs average 1.19 times; the
+  full figure flew it over checkpoints), its climb held to 120 m/s (others 80): Island's apex error -3.1 m -> -0.3 m.
+- Loops' friction per car (`KLoopFric`): Island 0.47 of the press, Bay 0.07 (BayC2's loop: 111 -> 85 m/s, gravity
+  alone 93), the others 0.12 (unmeasured).
+- Island and Bay: fallen into the sea (nothing under the car, 40 m under the last ground) the car is put back at its
+  last checkpoint, the race going on (the app puts the camera behind it again).
+- Snow's tracks and Desert's repacked with surface 12 (Snow's metal tubes, Desert's pipelines and loops): the
+  respawn-assisted driver needs 31 respawns over Snow's 21 tracks (35 before; SnowC2 finishes now), Desert's 47 (54).
 - The auto-driver: `RESPAWN=1` puts the car back on the replay's line when it is 15 m off it or stuck for a second
   (as a player's respawn) and counts it: Bay A1-A5, B1 and Island A1, A3, A4, B2, B4 finish with none; the installed
   C and D tracks with one or two. `TRACE=a,b` prints every step between two times.
