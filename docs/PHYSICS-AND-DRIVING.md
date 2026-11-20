@@ -452,7 +452,8 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   Rally, `tm9300_snow.sis`, `tm9300_desert.sis`, `tm9300_bay.sis`, `tm9300_island.sis`), each on the phone or the card:
   the app finds tracks on its own drive, C: and E:. The tracks are packed with LZMA for the phone (`tools/tmbz.py`:
   "TMBL", the size, the properties byte, the raw stream; preset 9 extreme, lc 0 lp 1 pb 1, a 16 MB dictionary):
-  171 MB -> 31 MB installed (zlib: 68 MB). The app's own decoder (`tmlzma.cpp`, the LZMA specification, decoding
+  171 MB -> 31 MB installed (zlib: 68 MB). Filtered first ("TMBF": the corners' and the normals' x, y, z split into
+  low and high byte planes, each triangle's corner index from the highest so far + 1): 27 MB. The app's own decoder (`tmlzma.cpp`, the LZMA specification, decoding
   straight into the track's memory: 40 ms for the biggest track on the PC) unpacks them on loading; a zlib-packed
   ("TMBZ", the phone's ezlib) or a plain .tmb still loads. The menus' pictures (`tm9300.ui`, with Bay's and Island's loading screens now) go with the program.
   The heap may grow to 12 MB (a big track's tables take ~2.5 MB beside its data).

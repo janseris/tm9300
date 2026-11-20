@@ -663,7 +663,8 @@ TBool CTmView::LoadTrack(TInt aIndex)
     // (LZMA: "TMBL", its size, the properties byte, the stream: a fifth of the space)
     TBuf8<9> hd; f.Read(hd);
     const TBool packed = hd.Length() >= 8 && hd[0] == 'T' && hd[1] == 'M' && hd[2] == 'B' && hd[3] == 'Z';
-    const TBool lzma = hd.Length() == 9 && hd[0] == 'T' && hd[1] == 'M' && hd[2] == 'B' && hd[3] == 'L';
+    const TBool lzma = hd.Length() == 9 && hd[0] == 'T' && hd[1] == 'M' && hd[2] == 'B' && (hd[3] == 'L' || hd[3] == 'F');
+    const TBool filtered = lzma && hd[3] == 'F';      // (the meshes' arrays filtered before LZMA: a sixth of the space)
     const TInt raw = packed || lzma ? (hd[4] | (hd[5] << 8) | (hd[6] << 16) | (hd[7] << 24)) : size;
     if (raw <= 0 || raw > 32 * 1024 * 1024) { f.Close(); iStatus = _L("Bad track file"); return EFalse; }
     TInt need = raw + 64;
@@ -685,6 +686,13 @@ TBool CTmView::LoadTrack(TInt aIndex)
             if (err == KErrNone && (p.Length() != n || TmLzmaDecode(in, n, iData, raw, hd[8], probs) != raw)) err = KErrCorrupt;
             }
         User::Free(in); User::Free(probs);
+        if (err == KErrNone && filtered)
+            {
+            TUint8* tmp = (TUint8*) User::Alloc(393216);
+            if (!tmp) err = KErrNoMemory;
+            else if (!TmTmbUnfilter(iData, raw, tmp)) err = KErrCorrupt;
+            User::Free(tmp);
+            }
         }
     else if (!packed)
         {

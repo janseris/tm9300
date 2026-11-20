@@ -8,4 +8,9 @@
 int TmLzmaProbs(int aProps);
 int TmLzmaDecode(const unsigned char* aIn, int aInSize, unsigned char* aOut, int aOutSize, int aProps, unsigned short* aProbs);
 
+// 0.18: undoes tools/tmbz.py's filter ("TMBF") in the decoded track, in place: the corners' and the normals' byte
+// planes back to x, y, z shorts, the corner indices back from "the highest so far + 1 minus it". aTmp: a scratch of
+// 393216 bytes (the biggest array: 65535 corners). false: the track's layout does not fit its size
+bool TmTmbUnfilter(unsigned char* aD, int aSize, unsigned char* aTmp);
+
 #endif

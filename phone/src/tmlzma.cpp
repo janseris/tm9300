@@ -162,3 +162,63 @@ int TmLzmaDecode(const unsigned char* aIn, int aInSize, unsigned char* aOut, int
         }
     return r.bad ? -1 : (int) pos;
     }
+
+static inline unsigned int U16(const unsigned char* p) { return p[0] | (p[1] << 8); }
+static inline unsigned int U32(const unsigned char* p) { return p[0] | (p[1] << 8) | (p[2] << 16) | ((unsigned int) p[3] << 24); }
+
+// an array of aN (x, y, z) shorts from its byte planes (the low bytes of all x, all y, all z, then the high ones)
+static void Planes(unsigned char* aP, unsigned int aN, unsigned char* aTmp)
+    {
+    const unsigned int n3 = aN * 3;
+    for (unsigned int k = 0; k < n3 * 2; k++) aTmp[k] = aP[k];
+    for (unsigned int c = 0; c < 3; c++)
+        for (unsigned int j = 0; j < aN; j++)
+            {
+            aP[j * 6 + c * 2] = aTmp[c * aN + j];
+            aP[j * 6 + c * 2 + 1] = aTmp[n3 + c * aN + j];
+            }
+    }
+
+// the corner indices: each was (the highest so far + 1) - it
+static void Indices(unsigned char* aP, unsigned int aCount)
+    {
+    unsigned int m = 0;
+    for (unsigned int j = 0; j < aCount; j++)
+        {
+        const unsigned int v = (m - U16(aP + j * 2)) & 0xffff;
+        aP[j * 2] = (unsigned char) v; aP[j * 2 + 1] = (unsigned char) (v >> 8);
+        if (v + 1 > m) m = v + 1;
+        }
+    }
+
+bool TmTmbUnfilter(unsigned char* aD, int aSize, unsigned char* aTmp)
+    {
+    const unsigned int size = (unsigned int) aSize;
+    if (size < 64) return false;
+    unsigned int p = 4;
+    const unsigned int nMesh = U32(aD + p), nInst = U32(aD + p + 4), nPath = U32(aD + p + 8); p += 12 + 24;
+    const unsigned int nColl = U32(aD + p); p += 8 + 16;
+    for (unsigned int i = 0; i < nMesh; i++)
+        {
+        if (p + 16 > size) return false;
+        const unsigned int nv = U16(aD + p), nf = U16(aD + p + 2); p += 16;
+        if (p + nv * 6 + nf * 8 > size) return false;
+        Planes(aD + p, nv, aTmp); p += nv * 6;
+        Indices(aD + p, nf * 3); p += nf * 6;
+        p += nf * 2;
+        if (p & 3) p += 4 - (p & 3);
+        }
+    p += nInst * 40 + nPath * 16;
+    for (unsigned int i = 0; i < nColl; i++)
+        {
+        if (p + 16 > size) return false;
+        const unsigned int nv = U16(aD + p), nf = U16(aD + p + 2); p += 16;
+        if (p + nv * 6 + nf * 13 > size) return false;
+        Planes(aD + p, nv, aTmp); p += nv * 6;
+        Indices(aD + p, nf * 3); p += nf * 6;
+        Planes(aD + p, nf, aTmp); p += nf * 6;
+        p += nf;
+        if (p & 3) p += 4 - (p & 3);
+        }
+    return p <= size;
+    }
