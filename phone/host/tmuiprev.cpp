@@ -47,8 +47,8 @@ int main(int argc, char** argv)
     }
     int pn; unsigned char* pd = ReadAll(argv[2], pn);
     TmUiPack pack; if (!pack.Load(pd, pn)) printf("no pack\n");
-    TmUiTrack tr[64]; int nt = 0;
-    for (int i = 5; i < argc && nt < 64; i++)
+    TmUiTrack tr[128]; int nt = 0;
+    for (int i = 5; i < argc && nt < 128; i++)
         {
         TmUiTrack& t = tr[nt]; memset(&t, 0, sizeof(t));
         strncpy(t.iName, argv[i], 19);

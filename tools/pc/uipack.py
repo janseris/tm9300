@@ -69,7 +69,7 @@ if A:
     pics['title'] = t.convert('RGBA')
 # 0.15: the loading screens of the environments (Alpine = Snow, Speed = Desert): the picture inside its black bands,
 # cut to the screen's shape around its subject
-for name, env, mid in (('loadsnow', 'Alpine', 0.45), ('loadrally', 'Rally', 0.36), ('loaddesert', 'Speed', 0.55)):
+for name, env, mid in (('loadsnow', 'Alpine', 0.45), ('loadrally', 'Rally', 0.36), ('loaddesert', 'Speed', 0.55), ('loadbay', 'Bay', 0.55), ('loadisland', 'Island', 0.6)):
     try: im = img(env + '/Media/Texture/Image/LoadScreen.dds').convert('RGB')
     except OSError: continue
     lum = im.convert('L').point(lambda v: 255 if v > 24 else 0); bb = lum.getbbox(); im = im.crop(bb)

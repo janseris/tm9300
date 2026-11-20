@@ -59,7 +59,7 @@ class TmMenu
     {
 public:
     enum TScreen { ETitle, EMain, ECampaign, EMode, ESolo, EOpponent, EParty, EHotSeat, ESeries };
-    enum { KMaxTracks = 64, KMaxPlayers = 8, KNameLen = 12 };
+    enum { KMaxTracks = 128, KMaxPlayers = 8, KNameLen = 12 };
     TmMenu();
     ~TmMenu();
     // the fonts (big, text, small), the installed tracks (copied); the background is drawn here once

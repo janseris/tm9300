@@ -6,3 +6,5 @@
 "tm9300.rsc"-"!:\system\apps\tm9300\tm9300.rsc"
 ; the game's font (tools/tmfont.py from GameData/Menu/Media/Font/United_Textures/United_00.dds: never in git)
 "../data/tm9300.fnt"-"!:\system\apps\tm9300\tm9300.fnt"
+; 0.18: the menus' pictures and the loading screens (cut from the game's own files on the PC: never in git), with the program
+"../data/tm9300.ui"-"!:\system\apps\tm9300\tm9300.ui"

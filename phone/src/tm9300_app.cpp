@@ -22,6 +22,7 @@
 #include "tmcore.h"
 #include "tmphys.h"
 #include "tmui.h"
+#include <ezlib.h>
 #include "fastmem.h"
 
 const TUid KUidTm9300 = { 0x0E3D9310 };
@@ -39,7 +40,7 @@ enum { BENCH_VARIANTS = 5, BENCH_LOG = 6144 };
 enum { BAR_W = 64, BAR_H = 152 };           // the counters, top left (F)
 enum { SIDE_W = VIEW_X, RIGHT_X = VIEW_X + VIEW_W };
 static const char* const KVersionC = "0.18";
-enum { KMaxFiles = 64 };
+enum { KMaxFiles = 128 };      // 0.18: every campaign track of five environments (105)
 
 // the benchmark's log to the PC (the local server's /results, into its uploads folder), after Hrimfell's
 class CBenchSender : public CActive
@@ -248,6 +249,7 @@ private:
     void BackToMenu();
     TFileName iDir;                 // the program's folder: the tracks, their pictures, the menus' pictures
     TBuf<20> iFiles[KMaxFiles];
+    TText iFileDrive[KMaxFiles];    // 0.18: the drive each track is on (its package may be on the memory card)
     TInt iNFiles;
     TmUiTrack iUiTracks[KMaxFiles];
     TUint8* iThumbs[KMaxFiles];
@@ -444,13 +446,23 @@ void CTmView::ScanTracks()
     TFileName app = iEikonEnv->EikAppUi()->Application()->AppFullName();
     iDir[0] = app.Length() ? app[0] : (TText)'C';
     iNFiles = 0;
+    // 0.18: the program's drive first, then the phone's and the card's: each environment's tracks are a package of
+    // their own, installed where the user chose
+    const TText drives[4] = { iDir[0], 'C', 'E', 'D' };
+    for (TInt di = 0; di < 4; di++)
+    {
+    TBool seen = EFalse; for (TInt dj = 0; dj < di; dj++) if (drives[dj] == drives[di]) seen = ETrue;
+    if (seen) continue;
+    TFileName dir(iDir); dir[0] = drives[di];
     CDir* list = 0;
-    TFileName pat(iDir); pat.Append(KTrackPattern);
+    TFileName pat(dir); pat.Append(KTrackPattern);
     if (fs.GetDir(pat, KEntryAttNormal, ESortByName, list) == KErrNone && list)
         for (TInt i = 0; i < list->Count() && iNFiles < KMaxFiles; i++)
             {
             TBuf<20> n((*list)[i].iName.Left(20));
             TInt dot = n.LocateReverse('.'); if (dot > 0) n.SetLength(dot);
+            TBool dup = EFalse; for (TInt j = 0; j < iNFiles; j++) if (iFiles[j].CompareF(n) == 0) dup = ETrue;
+            if (dup) continue;
             TmUiTrack& t = iUiTracks[iNFiles];
             Mem::FillZ(&t, sizeof(t));
             ToC(t.iName, n, 19);
@@ -466,9 +478,9 @@ void CTmView::ScanTracks()
             t.iSeries = letter - 'A';
             t.iNum = k + 1 < n.Length() && n[k + 1] >= '1' && n[k + 1] <= '5' ? n[k + 1] - '0' : 1;
             t.iFile = iNFiles;
-            iFiles[iNFiles] = n;
+            iFiles[iNFiles] = n; iFileDrive[iNFiles] = drives[di];
             // its picture and medals
-            TFileName tn(iDir); tn.Append(n); tn.Append(_L(".tmt"));
+            TFileName tn(dir); tn.Append(n); tn.Append(_L(".tmt"));
             RFile f;
             if (f.Open(fs, tn, EFileRead | EFileShareReadersOnly) == KErrNone)
                 {
@@ -499,6 +511,7 @@ void CTmView::ScanTracks()
             iNFiles++;
             }
     delete list;
+    }
     iTrackCount = iNFiles;
     // the menus' pictures
     TFileName pn(iDir); pn.Append(KUiPack);
@@ -638,20 +651,60 @@ TBool CTmView::LoadTrack(TInt aIndex)
     iTrackName = iFiles[aIndex].Left(16);
     ToC(iTrackC, iTrackName, 16);
     DrawLoading(EFalse);
-    TFileName name(iDir); name.Append(iFiles[aIndex]); name.Append(_L(".tmb"));
+    TFileName name(iDir); name[0] = iFileDrive[aIndex]; name.Append(iFiles[aIndex]); name.Append(_L(".tmb"));
     iStatus = iFiles[aIndex];
     RFile f;
     if (f.Open(fs, name, EFileRead | EFileShareReadersOnly) != KErrNone) { iStatus = _L("Cannot open the track"); return EFalse; }
     TInt size = 0;
     f.Size(size);
-    TInt need = size + 64;
+    // 0.18: a track packed with zlib ("TMBZ", its size, the stream: a third of the space on the phone) is inflated
+    // into the track's memory; a plain one is read into it
+    TBuf8<8> hd; f.Read(hd);
+    const TBool packed = hd.Length() == 8 && hd[0] == 'T' && hd[1] == 'M' && hd[2] == 'B' && hd[3] == 'Z';
+    const TInt raw = packed ? (hd[4] | (hd[5] << 8) | (hd[6] << 16) | (hd[7] << 24)) : size;
+    if (raw <= 0 || raw > 32 * 1024 * 1024) { f.Close(); iStatus = _L("Bad track file"); return EFalse; }
+    TInt need = raw + 64;
     if (iChunk.CreateLocal(need, need) != KErrNone) { f.Close(); iStatus = _L("No memory for the track"); return EFalse; }
     iData = iChunk.Base();
-    iDataSize = size;
-    TPtr8 p(iData, 0, size);
-    TInt err = f.Read(p);
+    iDataSize = raw;
+    TInt err = KErrNone;
+    if (!packed)
+        {
+        TInt pos = 0; f.Seek(ESeekStart, pos);
+        TPtr8 p(iData, 0, size);
+        err = f.Read(p);
+        if (p.Length() != size) err = KErrCorrupt;
+        }
+    else
+        {
+        // the stream through a 64 KB window into the track's memory
+        const TInt KWin = 65536;
+        TUint8* in = (TUint8*) User::Alloc(KWin);
+        z_stream z; Mem::FillZ(&z, sizeof(z));
+        if (!in || inflateInit(&z) != Z_OK) err = KErrNoMemory;
+        else
+            {
+            z.next_out = iData; z.avail_out = raw;
+            TInt zr = Z_OK;
+            while (err == KErrNone && zr == Z_OK)
+                {
+                if (z.avail_in == 0)
+                    {
+                    TPtr8 p(in, 0, KWin);
+                    err = f.Read(p); if (err != KErrNone) break;
+                    if (p.Length() == 0) { err = KErrCorrupt; break; }
+                    z.next_in = in; z.avail_in = p.Length();
+                    }
+                zr = inflate(&z, Z_NO_FLUSH);
+                }
+            if (err == KErrNone && (zr != Z_STREAM_END || (TInt) z.total_out != raw)) err = KErrCorrupt;
+            inflateEnd(&z);
+            }
+        User::Free(in);
+        }
     f.Close();
-    if (err != KErrNone || p.Length() != size) { iStatus = _L("Cannot read the track"); UnloadTrack(); return EFalse; }
+    size = raw;
+    if (err != KErrNone) { iStatus = _L("Cannot read the track"); UnloadTrack(); return EFalse; }
     iTrack = new TmTrack;
     iView = new TmView;
     if (!iTrack || !iView || !iTrack->Load(iData, size) || !iView->Init(VIEW_W, VIEW_H, 2500)) { iStatus = _L("Bad track file"); UnloadTrack(); return EFalse; }

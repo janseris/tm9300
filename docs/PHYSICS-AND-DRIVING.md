@@ -448,6 +448,12 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   last checkpoint, the race going on (the app puts the camera behind it again).
 - Snow's tracks and Desert's repacked with surface 12 (Snow's metal tubes, Desert's pipelines and loops): the
   respawn-assisted driver needs 31 respawns over Snow's 21 tracks (35 before; SnowC2 finishes now), Desert's 47 (54).
+- Every campaign track of the five environments is installed (105): a package per environment (`tm9300_tracks.sis`
+  Rally, `tm9300_snow.sis`, `tm9300_desert.sis`, `tm9300_bay.sis`, `tm9300_island.sis`), each on the phone or the card:
+  the app finds tracks on its own drive, C: and E:. The tracks are packed with zlib for the phone (`tools/tmbz.py`:
+  "TMBZ", the size, the stream; 171 MB -> 68 MB installed), inflated on loading with the phone's ezlib; a plain .tmb
+  still loads. The menus' pictures (`tm9300.ui`, with Bay's and Island's loading screens now) go with the program.
+  The heap may grow to 12 MB (a big track's tables take ~2.5 MB beside its data).
 - The auto-driver: `RESPAWN=1` puts the car back on the replay's line when it is 15 m off it or stuck for a second
   (as a player's respawn) and counts it: Bay A1-A5, B1 and Island A1, A3, A4, B2, B4 finish with none; the installed
   C and D tracks with one or two. `TRACE=a,b` prints every step between two times.
@@ -476,8 +482,6 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
    ramp, the camera distance.
 3. The depth test's per-polygon and per-row cost (the planes, the row bookkeeping): ~0.7 M a frame.
 4. Wall rides by feel on the phone (the surface mode is fitted on loops only).
-5. Coast and Stadium on the same pipeline (their packs and replays are not on the PC side yet).
-6. Bay's big loops (`BayPlatformLoopStart4` / `End4`): the two halves of the loop's top are placed 16 m apart
+5. Bay's big loops (`BayPlatformLoopStart4` / `End4`): the two halves of the loop's top are placed 16 m apart
    (BayC2: a gap at z 792..808 the replay drives through); the turned multi-unit pieces' placing, or a solid's own
    offset the kit does not carry. None of the installed Bay tracks has one.
-7. Bay's and Island's loading screens (`GameData/{Bay,Island}/Media/Texture/Image/LoadScreen.dds`, on the PC).
