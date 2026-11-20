@@ -38,7 +38,7 @@ const TInt KBenchPort = 8000;
 enum { BENCH_VARIANTS = 5, BENCH_LOG = 6144 };
 enum { BAR_W = 64, BAR_H = 152 };           // the counters, top left (F)
 enum { SIDE_W = VIEW_X, RIGHT_X = VIEW_X + VIEW_W };
-static const char* const KVersionC = "0.17";
+static const char* const KVersionC = "0.18";
 enum { KMaxFiles = 64 };
 
 // the benchmark's log to the PC (the local server's /results, into its uploads folder), after Hrimfell's
@@ -457,7 +457,9 @@ void CTmView::ScanTracks()
             // rallyA1 / snowE: the environment, the series' letter (A White .. E Black), the number
             TBuf<20> lo(n); lo.LowerCase();
             TInt k = 0;
-            if (lo.Find(_L("rally")) == 0) { t.iEnv = 0; k = 5; } else if (lo.Find(_L("snow")) == 0) { t.iEnv = 1; k = 4; } else if (lo.Find(_L("desert")) == 0) { t.iEnv = 2; k = 6; } else continue;
+            if (lo.Find(_L("rally")) == 0) { t.iEnv = 0; k = 5; } else if (lo.Find(_L("snow")) == 0) { t.iEnv = 1; k = 4; } else if (lo.Find(_L("desert")) == 0) { t.iEnv = 2; k = 6; }
+            else if (lo.Find(_L("island")) == 0) { t.iEnv = 3; k = 6; } else if (lo.Find(_L("bay")) == 0) { t.iEnv = 4; k = 3; }
+            else if (lo.Find(_L("coast")) == 0) { t.iEnv = 5; k = 5; } else if (lo.Find(_L("stadium")) == 0) { t.iEnv = 6; k = 7; } else continue;
             if (k >= n.Length()) continue;
             TInt letter = n[k]; if (letter >= 'a') letter -= 32;
             if (letter < 'A' || letter > 'E') continue;
@@ -553,7 +555,7 @@ void CTmView::BenchStart()
     iLog.Zero();
     TInt f = 0, t = 0; HAL::Get(HALData::EMemoryRAMFree, f); HAL::Get(HALData::EMemoryRAM, t);
     TBuf8<64> name8; name8.Copy(iStatus);
-    iLog.AppendFormat(_L8("tm9300 bench v0.17: %S, %d meshes %d instances %d triangles, display %d bpp direct %d, RAM free %d KB of %d KB\r\n"),
+    iLog.AppendFormat(_L8("tm9300 bench v0.18: %S, %d meshes %d instances %d triangles, display %d bpp direct %d, RAM free %d KB of %d KB\r\n"),
         &name8, iTrack->iNMesh, iTrack->iNInst, iTrack->iTris, iFbBpp, iFb ? 1 : 0, f / 1024, t / 1024);
     iLog.Append(_L8("variant: frames, fps, draw ms (avg), copy ms (avg), slowest frame ms, polys drawn, submitted, instances visible (avg), direct; fps by second\r\n"));
     iShowInfo = EFalse;
@@ -678,8 +680,8 @@ void CTmView::DrawLoading(TBool aReady)
     {
     TInt env = 0;
     for (TInt k = 0; k < iNFiles; k++) if (iUiTracks[k].iFile == iTrackIndex) env = iUiTracks[k].iEnv;
-    static const char* const KLoad[3] = { "loadrally", "loadsnow", "loaddesert" };
-    const TmImage* pic = env < 3 ? iPack.Find(KLoad[env]) : 0;
+    static const char* const KLoad[7] = { "loadrally", "loadsnow", "loaddesert", "loadisland", "loadbay", "loadcoast", "loadstadium" };
+    const TmImage* pic = env < 7 ? iPack.Find(KLoad[env]) : 0;
     if (pic && pic->w == SCR_W && pic->h == SCR_H) TmDraw::Blit(iBack, SCR_W, 0, 0, pic);
     else for (TInt i = 0; i < SCR_W * SCR_H; i++) iBack[i] = 0;
     const TInt bh = iFText.iH + 4 > 16 ? iFText.iH + 4 : 16, by = 150;

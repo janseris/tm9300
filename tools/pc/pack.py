@@ -26,6 +26,7 @@ Format TMB4 (little-endian):
   TMB5: i32 farDist (1/16 m)  u16 far[nInst] (the mesh drawn beyond farDist; 0xffff none)  (pad to 4)
 The collision meshes are Nadeo's own collision solids (CPlugSurface), pre-turned like the visual ones; the surfaces:
   0 road (pavement, wood, metal), 1 dirt, 2 grass, 3 rock, 4 water, 5 none (not collidable: dropped), 6 turbo, 7 ice, 8 snow,
+  11 turbo2 (0.18: the red pads, a big push),
   9 a wall (a face steeper than ~75 degrees, its normal as it is: the car slides along it)
 """
 # the depth-order work-arounds of v0.3/0.4 (water under a low deck dropped, faces under low pieces dropped) are
@@ -48,6 +49,9 @@ D_GRID = float(__import__('os').environ.get('D_GRID', '1.4'))
 # 0.16: the coarse grids and the budget only for the solids matching COARSE (a regex: Desert's sand and cliffs); the
 # others (roads, ramps, garages) at 1.4 / 1.2 m and ROAD_BUDGET faces (a ramp clustered at 3 m lost its slope)
 COARSE = __import__('os').environ.get('COARSE')
+# 0.18: the solids (a regex) whose steep faces are never walls: Bay's turbo gantries (the replays drive through their
+# posts: the game does not stop the car there)
+NOWALLS = __import__('os').environ.get('NOWALLS')
 ROAD_BUDGET = int(__import__('os').environ.get('ROAD_BUDGET', '0'))    # m: the coarsest of what is driven on (0.15: Desert's sand tiles need 3)
 EDGE_STEP = 2.0 # m: the grid the pieces' edge corners snap to along the edge (the seams)
 WIND = 'reverse'
@@ -71,8 +75,8 @@ class Mesh:
 # decides where the car stands): 0 road, 1 dirt, 2 grass, 3 rock / wall, 4 water, 5 none, 6 turbo, 7 ice, 8 snow
 def tex_surface(tex):
     n = tex.lower()
-    for key, surf in (('turbo', 6), ('treebranch', 5), ('trees', 5), ('hilltree', 5), ('warptree', 5), ('flag', 5), ('sign', 5),
-                      ('advert', 5), ('envmap', 5), ('vegetation', 5), ('lamp', 5), ('grid', 0),
+    for key, surf in (('turbo2', 11), ('turbo', 6), ('treebranch', 5), ('trees', 5), ('hilltree', 5), ('warptree', 5), ('flag', 5), ('sign', 5),
+                      ('advert', 5), ('envmap', 5), ('vegetation', 5), ('lamp', 5), ('alpha', 10), ('grid', 0),
                       ('ice', 7), ('snow', 8), ('toundra', 8), ('tundra', 8),
                       ('water', 4), ('sea', 4), ('lake', 4),
                       ('dirtyroad', 1), ('dirt', 1), ('field', 1), ('sand', 1),
@@ -349,7 +353,7 @@ def coll_from(mesh):
         tris.append((a, b, cc, tuple(int(round(k * 8192)) for k in n), surf))
     return tris
 
-def mark_walls(mesh, s):
+def mark_walls(mesh, s, nowalls=False):
     """the mesh's steep faces (|ny| < WALL_NY) become surface 9 (solid) when Nadeo's collision solid has a steep face
     within 0.6 m of their middle facing the same way, else 5 (nothing): what the game lets the car through, we do"""
     c = s.get('coll')
@@ -371,11 +375,15 @@ def mark_walls(mesh, s):
         n, _ = face_normal(mesh.verts[a], mesh.verts[b], mesh.verts[cc])
         if n is None or surf == 5: out.append(fc); continue
         m = [(mesh.verts[a][k] + mesh.verts[b][k] + mesh.verts[cc][k]) / 3 for k in range(3)]
+        # 0.18: a see-through texture (its alpha: a grid, a sign, a toll's barrier, a railing) is solid only where the
+        # game's own collision has a wall too (Bay's toll gates stood across the road as walls), and driven on as road
+        seethrough = surf == 10
+        if seethrough: surf = 0; fc = (a, b, cc, (col, 0))
         if abs(n[1]) >= WALL_NY:
             # 0.6: a bevelled face (26..63 degrees: a rail's side, a wall's chamfer) is a wall when the game's own
             # collision has a steep face right there facing the same way (horizontally): the snow rails, the castle
             # walls (drawn bevelled, solid in the game); else a slope the car drives on
-            if abs(n[1]) < 0.9:
+            if abs(n[1]) < 0.9 and not nowalls:
                 hn = math.hypot(n[0], n[2])
                 for A, wn, bb in walls:
                     if not (bb[0] <= m[0] <= bb[1] and bb[2] <= m[1] <= bb[3] and bb[4] <= m[2] <= bb[5]): continue
@@ -388,8 +396,8 @@ def mark_walls(mesh, s):
         # car checks walls 0.25 m and 0.6 m over its wheels, so a kerb or a painted edge still lets it over). Was:
         # only where Nadeo's collision had a wall within 0.6 m facing the same way, which the simplified shape of
         # a fence, a post, a house or a rock often missed (the car drove through them)
-        solid = collidable if ALLWALLS else False
-        if not ALLWALLS:
+        solid = collidable if ALLWALLS and not seethrough and not nowalls else False
+        if (not ALLWALLS or seethrough) and not nowalls:
             for A, wn, bb in walls:
                 if not (bb[0] <= m[0] <= bb[1] and bb[2] <= m[1] <= bb[3] and bb[4] <= m[2] <= bb[5]): continue
                 if abs(wn[0] * n[0] + wn[1] * n[1] + wn[2] * n[2]) < 0.7: continue
@@ -484,7 +492,8 @@ def main():
             if fine: parts = [(0, 0, compact(decimate_keep(m, ROAD_BUDGET or budget, (bb[0], bb[3], bb[2], bb[5]), 1.2, 1.4)))]
             else: parts = [(0, 0, compact(decimate_keep(m, budget, (bb[0], bb[3], bb[2], bb[5]))))]
         WALLSTAT[0] = WALLSTAT[1] = 0
-        parts = [(tx, tz, (drop_water_under(mark_walls(pm, s)) if DEPTHFIX else mark_walls(pm, s))) for tx, tz, pm in parts]
+        nowalls = NOWALLS is not None and __import__('re').search(NOWALLS, sname)
+        parts = [(tx, tz, (drop_water_under(mark_walls(pm, s, nowalls)) if DEPTHFIX else mark_walls(pm, s, nowalls))) for tx, tz, pm in parts]
         if os.environ.get('PACKSTATS') and WALLSTAT[0] + WALLSTAT[1]: print(f"    walls {sname}: {WALLSTAT[0]} solid, {WALLSTAT[1]} dropped; collision {len(s['coll']['tris']) // 4 if s.get('coll') and s['coll'].get('tris') else 0} tris")
         base_meshes[sname] = parts
         return parts
@@ -618,7 +627,7 @@ def main():
             print(f"  base plate {pname}: {len(L['faces']) // 4} -> {n0} triangles in {sum(1 for i in insts if i[1] == 1)} tiles")
     # 4. the car
     car = -1
-    for cname in ('RallyCar', 'SnowCar', 'American', 'SpeedCar', 'BayCar', 'IslandCar', 'CoastCar'):
+    for cname in ('RallyCar', 'SnowCar', 'American', 'SpeedCar', 'BayCar', 'SportCar', 'IslandCar', 'CoastCar'):
         if cname in t.solids:
             m = compact(decimate(from_lod(t.solids[cname]['lods'][0], matcol), CAR_TRIS))
             car = add_mesh(m); print(f"  car {cname}: {t.solids[cname]['tris'][0]} -> {len(m.faces)} triangles"); break
@@ -631,6 +640,11 @@ def main():
         yaw = int(round(math.degrees(math.atan2(dx, dz)) * 4096 / 360)) % 4096 if abs(dx) + abs(dz) >= 0.05 else prev
         prev = yaw
         path.append((int(round(p[0] * 16)), int(round(p[1] * 16)), int(round(p[2] * 16)), yaw, 0))
+    # 0.18: the samples before the car first moves take its first heading (the start's yaw: IslandA1 starts towards -z,
+    # it was 0, +z, and the car drove off the wrong way)
+    first = next((k for k in range(len(rp) - 1) if abs(rp[k + 1]['p'][0] - rp[k]['p'][0]) + abs(rp[k + 1]['p'][2] - rp[k]['p'][2]) >= 0.05), None)
+    if first:
+        path = [(x, y, z, path[first][3], pt) for x, y, z, yw, pt in path[:first]] + path[first:]
     sky = rgb565(130, 170, 220); ground = rgb565(70, 90, 30) if t.env == 'Rally' else rgb565(205, 145, 90) if t.env == 'Speed' else rgb565(225, 228, 235)
     if t.env == 'Speed': sky = rgb565(150, 180, 215)        # 0.15: Desert: sand under a paler sky
     fog = sky

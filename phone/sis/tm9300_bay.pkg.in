@@ -1,0 +1,13 @@
+; TrackMania 9300 - Bay's tracks (one of each series) and their pictures (cut from the
+; game's own files on the PC: never in git); installed on their own, beside the tracks package
+&EN
+#{"TM9300 Bay"},(0x0E3D9313),0,18,0
+(0x101F8ED2), 0, 0, 0, {"Series80ProductID"}
+"../data/bayA1.tmb"-"!:\system\apps\tm9300\bayA1.tmb"
+"../data/bayB1.tmb"-"!:\system\apps\tm9300\bayB1.tmb"
+"../data/bayC4.tmb"-"!:\system\apps\tm9300\bayC4.tmb"
+"../data/bayD2.tmb"-"!:\system\apps\tm9300\bayD2.tmb"
+"../data/bayA1.tmt"-"!:\system\apps\tm9300\bayA1.tmt"
+"../data/bayB1.tmt"-"!:\system\apps\tm9300\bayB1.tmt"
+"../data/bayC4.tmt"-"!:\system\apps\tm9300\bayC4.tmt"
+"../data/bayD2.tmt"-"!:\system\apps\tm9300\bayD2.tmt"

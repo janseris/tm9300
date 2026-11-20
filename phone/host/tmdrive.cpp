@@ -91,7 +91,7 @@ int main(int argc, char** argv)
             const TmPath& a = t.iPath[prog]; const TmPath& b = t.iPath[prog + 1];
             long da = (long) (a.x * 16 - s.x) * (a.x * 16 - s.x) + (long) (a.z * 16 - s.z) * (a.z * 16 - s.z);
             long db = (long) (b.x * 16 - s.x) * (b.x * 16 - s.x) + (long) (b.z * 16 - s.z) * (b.z * 16 - s.z);
-            if (db < da) prog++; else break;
+            if (db <= da) prog++; else break;      // (0.18: <=: a start standing still repeats its first sample)
             }
         int look = lookTarget * 256 + ((s.speed > 0 ? s.speed : 0) * 1) / 4;
         if (getenv("OFFSET")) look += atoi(getenv("OFFSET")) * 256;     // aims farther ahead: cuts corners across the terrain     // 12 m + 0.25 s of travel
@@ -126,8 +126,10 @@ int main(int argc, char** argv)
         if (getenv("DRIVER") && atoi(getenv("DRIVER")) == 2)
             {
             const bool snow = t.iCarClass == 1;
-            const double acap = getenv("ACAP") ? atof(getenv("ACAP")) : (snow ? 120.0 : 52.0);
-            const double rcap = getenv("RCAP") ? atof(getenv("RCAP")) : (snow ? 2.2 : 1.3);
+            // (0.18: by the car's own grip and turning: Bay's and Island's cars hold 2.5 times Rally's)
+            const bool fast = t.iCarClass >= 3;
+            const double acap = getenv("ACAP") ? atof(getenv("ACAP")) : (snow ? 120.0 : fast ? car.Grip() / 5.12 * (getenv("ACAPK") ? atof(getenv("ACAPK")) : 0.8) : 52.0);
+            const double rcap = getenv("RCAP") ? atof(getenv("RCAP")) : (snow ? 2.2 : fast ? 1.6 : 1.3);
             const double bdec = getenv("BDEC") ? atof(getenv("BDEC")) : 14.0;
             const double v = s.speed / 256.0, cx = s.x / 256.0, cz = s.z / 256.0;
             const double hy = s.yaw * 6.283185307 / 4096, fx = sin(hy), fz = cos(hy);
@@ -139,7 +141,7 @@ int main(int argc, char** argv)
             const double kap = 2 * lat / (lat * lat + fwd * fwd + 0.01);
             // the full-lock turning rate at this speed (the car's own table, roughly): Snow 2 m + 0.4 v radius
             const double vv = v > 1 ? v : 1;
-            const double rfull = snow ? vv / (2 + 0.4 * vv) : (vv < 30 ? 1.9 : vv < 40 ? 1.65 : vv < 50 ? 1.5 : 1.35);
+            const double rfull = snow ? vv / (2 + 0.4 * vv) : fast ? car.FullTurn((int) (vv * 256)) / 208.6 : (vv < 30 ? 1.9 : vv < 40 ? 1.65 : vv < 50 ? 1.5 : 1.35);
             double st = (v * kap) / rfull * 256;
             in.steer = (int) (st > 256 ? 256 : st < -256 ? -256 : st);
             // the speed: every bend ahead (150 m along the line) by its curvature, with the braking room to it
@@ -164,6 +166,30 @@ int main(int argc, char** argv)
         if (getenv("STEERBIAS")) { in.steer += atoi(getenv("STEERBIAS")); if (in.steer > 256) in.steer = 256; if (in.steer < -256) in.steer = -256; }
         const int px0 = car.iS.x, py0 = car.iS.y, pz0 = car.iS.z;
         car.Step(g, in);
+        if (getenv("TRACE")) { double ta = 0, tb = 0; if (sscanf(getenv("TRACE"), "%lf,%lf", &ta, &tb) == 2 && step >= ta * 50 && step <= tb * 50) printf("step %d: (%.2f,%.2f,%.2f) vy %.1f speed %.1f %s surf %d steer %d\n", step, car.iS.x / 256.0, car.iS.y / 256.0, car.iS.z / 256.0, car.iS.vy / 256.0, car.iS.speed / 256.0, car.iS.onGround ? "ground" : "AIR", car.iS.surf, in.steer); }
+        // 0.18: RESPAWN=1: off the replay's line by 15 m, or stuck (under 3 m/s) for a second: the car is put back on
+        // the replay's path, a sample on, at the replay's speed and heading (the game's respawn, as a player would):
+        // where it happens, and how often, says where the track or the car is wrong
+        static int offSteps = 0, respawns = 0;
+        if (getenv("RESPAWN") && prog + 3 < t.iNPath)
+            {
+            const TmPath& a = t.iPath[prog];
+            const double dx = car.iS.x / 256.0 - a.x / 16.0, dz = car.iS.z / 256.0 - a.z / 16.0;
+            const bool off = dx * dx + dz * dz > 225 || (car.iS.speed < 3 * 256 && step > 150) || car.iS.y / 256.0 < a.y / 16.0 - 15;
+            offSteps = off ? offSteps + 1 : 0;
+            if (offSteps >= 50)
+                {
+                const int k = prog + 2 < t.iNPath - 1 ? prog + 2 : t.iNPath - 2;
+                const TmPath& p = t.iPath[k]; const TmPath& q = t.iPath[k + 1];
+                const double vx = (q.x - p.x) / 16.0 * 10, vy = (q.y - p.y) / 16.0 * 10, vz = (q.z - p.z) / 16.0 * 10;
+                car.iS.x = p.x * 16; car.iS.y = p.y * 16; car.iS.z = p.z * 16;
+                car.iS.vx = (int) (vx * 256); car.iS.vy = (int) (vy * 256); car.iS.vz = (int) (vz * 256);
+                const double yaw = atan2(vx, vz); car.iS.yaw = ((int) (yaw * 4096 / (2 * M_PI))) & 4095; car.iS.yaw16 = car.iS.yaw << 4;
+                car.iS.speed = (int) (sqrt(vx * vx + vz * vz) * 256); car.iS.onGround = 0;
+                respawns++; offSteps = 0; prog = k;
+                printf("respawn %d at %.1f s: sample %d (%.0f, %.0f, %.0f)\n", respawns, step / 50.0, k, p.x / 16.0, p.y / 16.0, p.z / 16.0);
+                }
+            }
         if (getenv("GHOST")) run.Record(car);
         if (getenv("WALLCHECK"))
             {

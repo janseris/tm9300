@@ -32,6 +32,7 @@ int Mat(string matFile)
     i = materials.Count; matIndex[name] = i; materials.Add(new { name, texture = tex }); return i;
 }
 var solids = new Dictionary<string, object>();
+var solidPaths = new Dictionary<string, string>();
 object ExportLod(CPlugSolid s, int lod, out int ntris)
 {
     var verts = new List<float>(); var faces = new List<int>(); var norms = new List<float>(); ntris = 0;
@@ -96,7 +97,15 @@ string SolidName(CPlugSolid s)
     var name = Path.GetFileName(f).Replace(".Solid.Gbx", "");
     var folder = Path.GetFileName(Path.GetDirectoryName(f.Replace('\\', '/')) ?? "");
     if (name.Length == 0 || folder.Length == 0 || folder == "Solid" || folder == "Media") return name;
-    return folder + "/" + name;
+    // 0.18: Bay keeps Road/Turbo/Ground, Bridge/Turbo/Ground and Platform/Turbo/Ground: the first one keeps the short
+    // key, the others get their grandparent folder in front (they all were the first one's shape)
+    var norm = f.Replace('\\', '/'); var at = norm.LastIndexOf("/Solid/", StringComparison.OrdinalIgnoreCase);
+    var full = (at >= 0 ? norm.Substring(at + 7) : norm).ToLowerInvariant();
+    var key = folder + "/" + name;
+    if (!solidPaths.TryGetValue(key, out var was)) { solidPaths[key] = full; return key; }
+    if (was == full) return key;
+    var gp = Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(norm) ?? "") ?? "");
+    return gp + "/" + key;
 }
 var blocks = new List<object>();
 foreach (var f in Directory.EnumerateFiles(root, "*.TMED*.Gbx", SearchOption.AllDirectories).Order())

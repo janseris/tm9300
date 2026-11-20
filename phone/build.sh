@@ -15,4 +15,10 @@ sed "s|EPOC32|$EPOC|g" sis/tm9300.pkg.in > build/tm9300.pkg
 (cd build && $TOOLS/makesis tm9300.pkg ../bin/tm9300.sis)
 sed "s|EPOC32|$EPOC|g" sis/tm9300_tracks.pkg.in > build/tm9300_tracks.pkg
 (cd build && $TOOLS/makesis tm9300_tracks.pkg ../bin/tm9300_tracks.sis)
-ls -l bin/tm9300.sis bin/tm9300_tracks.sis
+# 0.18: an environment's tracks a package of their own (Bay, Island, ...), when its .pkg.in is there
+for e in bay island coast stadium; do
+  [ -f sis/tm9300_$e.pkg.in ] || continue
+  sed "s|EPOC32|$EPOC|g" sis/tm9300_$e.pkg.in > build/tm9300_$e.pkg
+  (cd build && $TOOLS/makesis tm9300_$e.pkg ../bin/tm9300_$e.sis)
+done
+ls -l bin/*.sis

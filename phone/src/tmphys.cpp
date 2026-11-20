@@ -286,6 +286,13 @@ bool TmGround::WallHit(int aX0, int aZ0, int aX1, int aZ1, int aY, TmGroundHit& 
     return found;
     }
 
+// 0.18: the point (1/256 m) is within the collision grid (the map), not past its edge
+bool TmGround::Covers(int aX, int aZ) const
+    {
+    const int cx = (aX >> 13) - iCellX0, cz = (aZ >> 13) - iCellZ0;
+    return cx >= 0 && cz >= 0 && cx < iCellsX && cz < iCellsZ;
+    }
+
 int TmGround::KindAt(int aKind, int aX, int aY, int aZ) const
     {
     if (!iT) return -1;
@@ -355,8 +362,8 @@ static const int KPull[5][10] =
     { 230, 135, 89, 30, 30, 24, 20, 20, 20, 18 },       // 0.8: Rally: the replays' median tyre force along the car on straights (slope out)
     { 153, 127, 46, 25, 12, 12, 12, 8, 8, 8 },          // 0.8: Snow, the same way
     { 150, 150, 132, 50, 50, 45, 45, 45, 46, 36 },      // 0.15: Desert, the replays' medians on the road (sand: a fifth)
-    { 200, 253, 223, 61, 61, 60, 45, 45, 45, 0 },
-    { 96, 92, 87, 190, 195, 248, 222, 230, 229, 171 },
+    { 255, 255, 63, 61, 60, 53, 45, 45, 45, 44 },       // 0.18: Bay, the replays' medians on the road (its car pulls 50 m/s^2 off the line)
+    { 97, 90, 86, 78, 75, 72, 70, 68, 70, 56 },         // 0.18: Island, the replays' medians on the road (90 m/s and over: 11 m/s^2, to 240)
     };
 // the full-lock turning rate by speed band, in 1/16 yaw units a step (rad/s * 208.6): the replays' 95th percentile
 static const int KTurn[5][10] =
@@ -364,8 +371,8 @@ static const int KTurn[5][10] =
     { 396, 396, 396, 344, 313, 292, 280, 280, 280, 280 },   // 0.8: on at high speed (Nadeo: radius 5 m + 0.7 s * speed)
     { 261, 392, 434, 455, 467, 477, 484, 488, 492, 494 },   // 0.8: Snow, Nadeo's Steer02 radius 2 m + 0.4 s * speed
     { 300, 330, 370, 412, 381, 362, 339, 336, 364, 331 },   // 0.15: Desert, the replays' 98th percentile
-    { 288, 359, 263, 204, 192, 236, 298, 323, 363, 302 },
-    { 81, 229, 315, 503, 421, 330, 321, 194, 186, 165 },
+    { 150, 200, 186, 254, 277, 298, 340, 386, 382, 315 },   // 0.18: Bay, the replays' 98th percentile
+    { 150, 239, 250, 300, 380, 360, 360, 330, 340, 300 },   // 0.18: Island, the replays' 98th percentile
     };
 // by surface: the pull (/256), the extra drag (/256), the lateral grip's keep factor a step (/256), the turning (/256)
 static const int KSurfPull[9] = { 256, 250, 150, 200, 80, 256, 256, 110, 190 };
@@ -374,8 +381,13 @@ static const int KSurfKeep[9] = { 218, 228, 240, 218, 243, 256, 218, 248, 232 };
 // 0.6: the sideways grip by class, 1/256 m/s a step (m/s^2 * 5.12), fitted to the replays' slip angles; by surface
 // (/256: road, dirt, grass, rock, water, none, turbo, ice, snow); the widest slide (tan * 256); the speed a slide
 // costs (/4096 of the sideways speed a step)
-static const int KGrip[5] = { 297, 740, 340, 300, 300 };      // 0.15: Desert 66 m/s^2 (the replays' 90th percentile, flat)
+static const int KGrip[5] = { 297, 740, 340, 700, 800 };   // 0.18: Bay 137, Island 156 m/s^2 (the replays' 98th percentile at speed)      // 0.15: Desert 66 m/s^2 (the replays' 90th percentile, flat)
 static const int KSurfGrip[9] = { 256, 238, 170, 240, 120, 256, 256, 8, 50 };
+// 0.18: the turbo by class (Desert, Bay, Island): its push a step (1/256 m/s) and its steps from the pad on
+static const int KTurboPush[5] = { 0, 0, 90, 150, 150 };
+static const int KTurboSteps[5] = { 0, 0, 50, 30, 60 };
+// 0.18: the top speed by class, m/s (the replays: Desert 120, Island 240; Rally and Snow kept at 100)
+static const int KVMax[5] = { 100, 100, 140, 140, 250 };
 static const int KSlipMax[5] = { 160, 80, 128, 128, 110 };
 static const int KScrub[5] = { 40, 64, 48, 48, 48 };
 static const int KSurfTurn[9] = { 256, 240, 205, 256, 180, 256, 256, 128, 210 };
@@ -390,7 +402,7 @@ void TmCarState::Slopes(int& aAlong, int& aRight) const
     if (aRight > 4096) aRight = 4096; if (aRight < -4096) aRight = -4096;
     }
 
-TmCar::TmCar() : iClass(0), iCheckpoints(0), iCheckMask(0), iFinished(0), iSteps(0), iFinishSteps(0), iLastKindInst(-1), iTotalCps(0), iWallHits(0), iTopY(0), iCpX(0), iCpY(0), iCpZ(0), iCpYaw(0), iGravity(40 * 256), iSusB(0), iSusV(0), iBumpY(0), iAirSteps(0), iClimbVy(0), iClimbRaw(0), iTurbo(0)
+TmCar::TmCar() : iClass(0), iCheckpoints(0), iCheckMask(0), iFinished(0), iSteps(0), iFinishSteps(0), iLastKindInst(-1), iTotalCps(0), iWallHits(0), iTopY(0), iCpX(0), iCpY(0), iCpZ(0), iCpYaw(0), iGravity(40 * 256), iSusB(0), iSusV(0), iBumpY(0), iAirSteps(0), iClimbVy(0), iClimbRaw(0), iTurbo(0), iShadow(0), iShY(0), iShVy(0)
     {
     iS.x = iS.y = iS.z = 0; iS.vx = iS.vy = iS.vz = 0; iS.yaw = iS.yaw16 = 0; iS.onGround = 1; iS.surf = 0;
     iS.nx = 0; iS.ny = 8192; iS.nz = 0; iS.speed = 0; iS.steerPos = 0;
@@ -399,6 +411,9 @@ TmCar::TmCar() : iClass(0), iCheckpoints(0), iCheckMask(0), iFinished(0), iSteps
 void TmCar::Reset(const TmTrack& aT)
     {
     iClass = aT.iCarClass >= 0 && aT.iCarClass < 5 ? aT.iCarClass : 0;
+    // 0.18: the air's pull per car: Bay's car falls at 29 m/s^2 in its replays (BayD1's big drop landed short), the
+    // others at 40
+    iGravity = (iClass == 3 ? 29 : 40) * 256;
     iS.x = aT.iStartX * 16; iS.y = aT.iStartY * 16; iS.z = aT.iStartZ * 16;
     iS.vx = iS.vy = iS.vz = 0;
     iS.yaw = aT.iStartYaw & 4095; iS.yaw16 = iS.yaw * 16;
@@ -418,13 +433,15 @@ void TmCar::Reset(const TmTrack& aT)
             const int ox = (c.bb[3] < o.bb[3] ? c.bb[3] : o.bb[3]) - (c.bb[0] > o.bb[0] ? c.bb[0] : o.bb[0]);
             const int oz = (c.bb[5] < o.bb[5] ? c.bb[5] : o.bb[5]) - (c.bb[2] > o.bb[2] ? c.bb[2] : o.bb[2]);
             if (ox > 16 && oz > 16) grp = iCpGroup[k];
+            // 0.18: the tiles of one wide checkpoint block (Island's 64 m pieces, cut in four) share its origin
+            if (c.x == o.x && c.y == o.y && c.z == o.z) grp = iCpGroup[k];
             }
         if (grp < 0) { if (iTotalCps >= 32) continue; grp = iTotalCps++; }
         iCpInst[iNCp] = i; iCpGroup[iNCp] = grp; iNCp++;
         }
     iBumpY = iS.y;
     for (int w = 0; w < 5; w++) { iLast[w].cinst = -1; iLast[w].face = -1; }
-    iCpX = iS.x; iCpY = iS.y; iCpZ = iS.z; iCpYaw = iS.yaw; iTopY = iS.y; iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; iTurbo = 0; iSusB = 0; iSusV = 0;
+    iCpX = iS.x; iCpY = iS.y; iCpZ = iS.z; iCpYaw = iS.yaw; iTopY = iS.y; iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; iTurbo = 0; iSusB = 0; iSusV = 0; iShadow = 0;
     }
 
 void TmCar::Respawn()
@@ -432,7 +449,7 @@ void TmCar::Respawn()
     // standing at the last checkpoint taken (the start when none), the race going on
     iS.x = iCpX; iS.y = iCpY; iS.z = iCpZ; iS.yaw = iCpYaw & 4095; iS.yaw16 = iS.yaw * 16;
     iS.vx = iS.vy = iS.vz = 0; iS.onGround = 1; iS.surf = 0; iS.nx = 0; iS.ny = 8192; iS.nz = 0; iS.speed = 0; iS.steerPos = 0;
-    iBumpY = iS.y; iTopY = iS.y; iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; iTurbo = 0; iSusB = 0; iSusV = 0;
+    iBumpY = iS.y; iTopY = iS.y; iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; iTurbo = 0; iSusB = 0; iSusV = 0; iShadow = 0;
     for (int w = 0; w < 5; w++) { iLast[w].cinst = -1; iLast[w].face = -1; }
     }
 
@@ -448,6 +465,9 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
     const int sn = R3D::Sin(s.yaw), co = R3D::Cos(s.yaw);         // the heading (* 16384)
     if (s.onGround)
         {
+        // 0.18: the red turbo pad (surface 11): a push of 215 m/s^2 while on it (Island's replays: 131 -> 234 m/s in
+        // 0.4 s), road otherwise
+        const bool turbo2 = s.surf == 11;
         int surf = s.surf; if (surf < 0 || surf > 8) surf = 0;
         // the speed along the heading and across it
         int v = (s.vx * sn + s.vz * co) >> 14;
@@ -471,14 +491,16 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
         // a turbo pad: 0.16: Desert's a boost of 17.6 m/s^2 for a second from the pad on (its replays: 71 -> 97 m/s over
         // the pad and the 40 m after it; was 58 m/s^2 on the pad only)
         // (Rally and Snow as before: their replays fit the pad's push)
-        if (iClass != 2) { if (surf == 6) a += 300; }
-        else { if (surf == 6) iTurbo = 50; if (iTurbo > 0) { a += 90; iTurbo--; } }
+        // (0.18: Bay's 29 m/s^2 for 0.6 s, Island's 29 m/s^2 for 1.2 s: their replays over and after the pads)
+        if (turbo2) a += 1100;
+        if (iClass < 2) { if (surf == 6) a += 300; }
+        else { if (surf == 6) iTurbo = KTurboSteps[iClass]; if (iTurbo > 0) { a += KTurboPush[iClass]; iTurbo--; } }
         // the slope: g along the heading (f . n) * ny. 0.8: the game's gravity on the ground (29.4 m/s^2: GroundGravityCoef 3;
         // the replays' climbs fit 29.6 for Rally, 28.9 for Snow), 150 a step; was 9.8 m/s^2 (the pull table now leaves the slope
         // out, measured with 27)
         int fn = (sn * s.nx + co * s.nz) >> 14;
         a += ((((fn * s.ny) >> 13) * 150) >> 13);
-        v = Clamp(v + a, -20 * 256, (iClass == 2 ? 140 : 100) * 256);       // 0.16: Desert's 140 m/s (its car reaches 120 in the replays; the others 100)
+        v = Clamp(v + a, -20 * 256, KVMax[iClass] * 256);       // 0.16: Desert's 140 m/s (its car reaches 120 in the replays; the others 100)
         // the turning, and the grip: the sideways speed dies away (a slide on soft ground), scrubbing some speed
         int turn = (KTurn[iClass][band] * KSurfTurn[surf]) >> 8;
         // 0.17: the wheels' load from the body on its springs: rebounding after a bump the tyres are light (they turn and
@@ -651,20 +673,41 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
             // which lags behind a ramp's kicker: the launches were a third too low)
             if (iClimbVy > 8 * 256 && iClimbVy > s.vy) s.vy = iClimbVy;
             int throwY = s.y + s.vy / 50 - ((iGravity * 256 / 50) >> 8) / 50;
-            if (hit.y >= throwY - 24 || (iAirSteps < 1 && hit.y >= throwY - 128 && s.vy < 2 * 256))
+            // 0.18: the throw's shadow: once the ground falls away under the throw (a ramp's rounded lip), the car's
+            // flight from there is followed; when the ground is 0.25 m under it, the car is in the air (IslandB1's
+            // kicker: the replay's car flies off where the lip starts to round, ours rode the lip down to 7 m/s up and
+            // flew 30 % short). Re-based each step on the ground, the throw alone never saw a slow rounding
+            const int gStep = (iGravity * 256 / 50) >> 8;
+            if (iShadow) { iShY += iShVy / 50; iShVy -= gStep; if (hit.y >= iShY) iShadow = 0; }
+            else if (hit.y < throwY - 2 && s.vy > 4 * 256) { iShadow = 1; iShY = throwY; iShVy = s.vy - gStep; }
+            const bool shadowOff = iShadow && hit.y < iShY - 64;
+            if (shadowOff) { throwY = iShY; s.vy = iShVy; iShadow = 0; }
+            if (!shadowOff && (hit.y >= throwY - 24 || (iAirSteps < 1 && hit.y >= throwY - 128 && s.vy < 2 * 256)))
                 {
                 if (hit.y < throwY - 24) iAirSteps++; else iAirSteps = 0;
                 // on it: the climb rate from the ground itself (a ramp's end throws the car at that rate)
                 ny = hit.y; s.surf = hit.surf;
                 int vy = (hit.y - s.y) * 50;
-                if (vy > 40 * 256) vy = 40 * 256; if (vy < -40 * 256) vy = -40 * 256;
+                if (vy > 80 * 256) vy = 80 * 256; if (vy < -80 * 256) vy = -80 * 256;     // (0.18: 80 m/s: Island's ramps throw its car at 52; was 40)
                 // a ramp's climb is the smaller of the last two steps' (a kerb's one step up launches nothing)
                 s.vy = vy; iClimbVy = vy < iClimbRaw ? vy : iClimbRaw; iClimbRaw = vy;
                 // the normal smoothed over a few steps: a kerb under one wheel is not a ramp
                 s.nx += (hit.nx - s.nx) >> 2; s.ny += (hit.ny - s.ny) >> 2; s.nz += (hit.nz - s.nz) >> 2;
                 if (s.ny < 2048) s.ny = 2048;
                 }
-            else { s.onGround = 0; s.nx = 0; s.ny = 8192; s.nz = 0; iAirSteps = 0; ny = s.y + s.vy / 50; iClimbVy = 0; iClimbRaw = 0; }
+            else
+                {
+                s.onGround = 0; s.nx = 0; s.ny = 8192; s.nz = 0; iAirSteps = 0; ny = s.y + s.vy / 50; iClimbVy = 0; iClimbRaw = 0; iShadow = 0;
+                // 0.18: thrown up off a ramp, the speed turns upwards: what goes up is taken from the flat speed (the
+                // replays: BayD2's kicker, 96 m/s flat -> 86 flat and 33 up), or the car flew a fifth too far
+                if (s.vy > 2 * 256)
+                    {
+                    const int hx = s.vx >> 4, hz = s.vz >> 4, hy = s.vy >> 4;
+                    const unsigned h2 = (unsigned) (hx * hx + hz * hz), y2 = (unsigned) (hy * hy);
+                    const int h = ISqrt(h2), n = ISqrt(y2 < h2 * 3 / 4 ? h2 - y2 : h2 / 4);
+                    if (h > 0) { s.vx = (int) (((long long) s.vx * n) / h); s.vz = (int) (((long long) s.vz * n) / h); }
+                    }
+                }
             }
         else if (dh >= 0)
             {
@@ -682,6 +725,10 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
         TmGroundHit high;
         if (aG.Probe(nx, nz, ny + 12 * 256, high) && high.y > ny)
             {
+            // 0.18: the lowest such surface (the one the car meets first): under a tunnel's roof the road, not the roof
+            // (BayD2: the car came in under a tunnel's floor level and was put on its roof)
+            TmGroundHit lower;
+            for (int k = 0; k < 4 && aG.Probe(nx, nz, high.y - 16, lower) && lower.y > ny; k++) high = lower;
             ny = high.y; s.onGround = 1; s.nx = high.nx; s.ny = high.ny; s.nz = high.nz; s.surf = high.surf; hit = high; top = high.y;
             int vn = (s.vx * s.nx + s.vy * s.ny + s.vz * s.nz) >> 13;
             if (vn < 0) { s.vx -= (vn * s.nx) >> 13; s.vy -= (vn * s.ny) >> 13; s.vz -= (vn * s.nz) >> 13; }
@@ -691,11 +738,20 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
         }
     else
         {
-        // off the collision meshes (the map's edge): flat ground at the last height
-        ny = iBumpY; s.nx = 0; s.ny = 8192; s.nz = 0;
+        // 0.18: nothing under the car at all on Island and Bay (off a platform's end over the sea: IslandD2's turbo
+        // platform, the car rode on at its height in thin air): it falls. Rally's, Snow's and Desert's terrain covers
+        // their maps in the game (a hole there is a tile our packing lost): flat ground at the last height, as before
+        if (iClass >= 3 && aG.Covers(nx, nz)) { s.onGround = 0; s.nx = 0; s.ny = 8192; s.nz = 0; iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; ny = s.y + s.vy / 50; }
+        else { ny = iBumpY; s.nx = 0; s.ny = 8192; s.nz = 0; }
         }
     iTopY = top > ny ? top : ny;
     s.x = nx; s.y = ny; s.z = nz;
+    // 0.18: never faster on the flat than the car's top speed (a steep face's landing pushed IslandD2's car to 330 m/s)
+    {
+    const int hx = s.vx >> 4, hz = s.vz >> 4, vm = KVMax[iClass] * 16;
+    const unsigned h2 = (unsigned) (hx * hx + hz * hz);
+    if (h2 > (unsigned) (vm * vm)) { const int h = ISqrt(h2); s.vx = (int) (((long long) s.vx * vm) / h); s.vz = (int) (((long long) s.vz * vm) / h); }
+    }
     Suspension(vy0);
     Race(aG);
     }
@@ -717,6 +773,14 @@ void TmCar::Suspension(int aVy0)
     if (iSusB > lim) { iSusB = lim; if (iSusV > 0) iSusV = 0; }
     if (iSusB < -lim) { iSusB = -lim; if (iSusV < 0) iSusV = -(iSusV >> 2); }
     }
+
+// the full-lock turning rate at a speed (1/256 m/s), rad/s * 208.6 (for drivers on the PC)
+int TmCar::FullTurn(int aSpeed) const
+    {
+    int band = Abs(aSpeed) >> 8; band /= 10; if (band > 9) band = 9;
+    return KTurn[iClass][band];
+    }
+int TmCar::Grip() const { return KGrip[iClass]; }
 
 // the wheels' load against the car standing (256): the spring's and the damper's push over 20 m/s^2, 0.5 .. 1.3
 int TmCar::Load() const

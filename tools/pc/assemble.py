@@ -6,8 +6,8 @@ import Track; t = Track(kitjson, trackbytes); t.instances -> [(solidname, x, y, 
 import json, math, sys, os
 sys.path.insert(0, os.path.dirname(__file__)); import gbxtrack
 
-ENV_BLK = {'Alpine': 32, 'Rally': 32, 'Speed': 32, 'Bay': 64, 'Island': 64, 'Stadium': 32}
-ENV_BLK_H = {"Alpine": 16, "Speed": 16}     # 0.15: Desert's cells are 16 m high too (its replays drove 32 m over the road at 8)
+ENV_BLK = {'Alpine': 32, 'Rally': 32, 'Speed': 32, 'Bay': 32, 'Island': 64, 'Stadium': 32}     # 0.18: Bay's cells are 32 m (its replays)
+ENV_BLK_H = {"Alpine": 16, "Speed": 16}     # 0.15: Desert's cells are 16 m high too (its replays drove 32 m over the road at 8); Bay 8, Island 8 (0.18)
 DEFAULT_ZONE = {'Rally': 'RallyFlat', 'Alpine': 'AlpineSnowBase', 'Speed': 'DesertFlat', 'Bay': 'BayFlat', 'Island': 'IslandFlat'}
 ZONE_HEIGHT_FIX = {'RallyRockyGrass': -1.5, 'RallyRockyGrassHills': 2.5, 'RallyRockyGrassCliffs': 1.5}
 BASE_CELL = 3       # the default terrain's cell (its top one cell up: 32 m in Rally, 64 m in Alpine)

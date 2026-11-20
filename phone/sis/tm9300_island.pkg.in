@@ -1,0 +1,13 @@
+; TrackMania 9300 - Island's tracks (one of each series) and their pictures (cut from
+; the game's own files on the PC: never in git); installed on their own, beside the tracks package
+&EN
+#{"TM9300 Island"},(0x0E3D9314),0,18,0
+(0x101F8ED2), 0, 0, 0, {"Series80ProductID"}
+"../data/islandA1.tmb"-"!:\system\apps\tm9300\islandA1.tmb"
+"../data/islandB2.tmb"-"!:\system\apps\tm9300\islandB2.tmb"
+"../data/islandC2.tmb"-"!:\system\apps\tm9300\islandC2.tmb"
+"../data/islandD1.tmb"-"!:\system\apps\tm9300\islandD1.tmb"
+"../data/islandA1.tmt"-"!:\system\apps\tm9300\islandA1.tmt"
+"../data/islandB2.tmt"-"!:\system\apps\tm9300\islandB2.tmt"
+"../data/islandC2.tmt"-"!:\system\apps\tm9300\islandC2.tmt"
+"../data/islandD1.tmt"-"!:\system\apps\tm9300\islandD1.tmt"

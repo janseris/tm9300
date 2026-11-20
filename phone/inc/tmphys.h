@@ -39,6 +39,7 @@ public:
     // aHit gets the crossing point (x, z in aHit.y? no: aHit.nx/ny/nz the wall's normal, aHit.y the fraction * 4096)
     bool WallHit(int aX0, int aZ0, int aX1, int aZ1, int aY, TmGroundHit& aHit, int aDY = 0) const;     // aDY: the move's height change
     // the collision instances of a kind (checkpoint, finish) whose box holds the point (1/256 m): the first one's index, or -1
+    bool Covers(int aX, int aZ) const;
     int KindAt(int aKind, int aX, int aY, int aZ) const;
     int iProbes, iTests;        // statistics: probes, triangles tested
     const TmTrack& Track() const { return *iT; }
@@ -91,6 +92,8 @@ public:
     int iGravity;               // m/s^2 * 256 (0.16: 40 * 256, the replays' vertical acceleration in the air in all environments)
     int iSusB, iSusV;           // 0.17: the body on its springs: its height over its rest (1/256 m), its speed (1/256 m/s)
     int Load() const;           // the wheels' load from the body (256: standing)
+    int FullTurn(int aSpeed) const;     // the full-lock turning rate (rad/s * 208.6) at a speed; Grip: the sideways grip (m/s^2 * 5.12)
+    int Grip() const;
 private:
     void Race(const TmGround& aG);
     int iBumpY;                 // the ground's last y (when the probe finds nothing)
@@ -98,6 +101,7 @@ private:
     int iAirSteps;              // steps running the ground fell away under the car (the car leaves it at the second)
     int iClimbVy;               // 0.16: the upward speed the ground gave the last steps (1/256 m/s)
     int iClimbRaw;              //   the last step's alone
+    int iShadow, iShY, iShVy;    // 0.18: the throw's shadow over a ramp's lip: on, its height (1/256 m), its upward speed
     int iTurbo;                 // 0.16: the turbo's steps left
     void Suspension(int aVy0);
     };

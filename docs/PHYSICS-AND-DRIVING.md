@@ -415,6 +415,36 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
 - The auto-driver finishes Desert A1, A4, A5, B1, B3, B5, C1, C2, C3 (D1 too, before the turbo's change); the others
   fail on its line-keeping after jumps and at the E start (the author turns on the spot). Installed: A1, B3, C1, D1.
 
+## 0.18: Bay and Island
+
+- Two more environments, each its own package (`tm9300_bay.sis`, `tm9300_island.sis`, installed beside the tracks
+  package): Bay A1, B1, C4, D2 (the BayCar) and Island A1, B2, C2, D1 (the SportCar, 250 m/s). Bay's cells are
+  32 m (its replays), Island's 64 m; a 64 m checkpoint block is cut into four tiles that count as one checkpoint.
+- The kit's solid names: Bay keeps `Road/Turbo/Ground`, `Bridge/Turbo/Ground` and `Platform/Turbo/Ground` (79 such
+  pairs in Bay, 2 in Island, 1 in Alpine, none in Rally and Speed); the kit had kept the first one's shape for all of
+  them, so BayC1's bridge turbo stood 1.3 m low with a turbo platform's gantry across the road. `KitExport` puts the
+  grandparent folder in front of a name that collides now.
+- The turbo: a timed push per car from the pad on (Desert 17.6 m/s^2 for 1 s, Bay 29 for 0.6 s, Island 29 for
+  1.2 s); the red pads (`turbo2`, surface 11) push 215 m/s^2 while on them. The ground's climb rate is held to 80 m/s (was 40: Island's
+  ramps throw its car at 52).
+- Bay's car falls at 29 m/s^2 (its replays; the others at 40): BayD1's big drop landed short.
+- The launch: thrown up off a ramp, the upward speed is taken from the flat speed (BayD2's kicker: 96 m/s flat ->
+  86 flat and 33 up; the car flew a fifth too far), and a ramp's rounded lip throws the car where it starts to round
+  (the throw's shadow: once the ground falls away under the throw, the car's flight is followed from there and it is
+  in the air when the ground is 0.25 m under it; re-based each step on the ground, the throw alone never saw a slow
+  rounding, and the car rode the lip down to a third of its climb).
+  Jump test (`jt`: each replay take-off, the car started 0.8 s before at the replay's speed, straight on; the
+  landing distance against the replay's): mean |log(sim/replay)| Rally 0.131 -> 0.110, Snow 0.197 -> 0.172,
+  Desert 0.258 -> 0.207, Bay 0.254 -> 0.178, Island 0.199 -> 0.186; Bay's apex -5.4 m -> +0.1 m.
+- Island and Bay: off a platform's end over the sea the car falls (was: flat ground at its height in thin air, kept
+  for Rally, Snow and Desert, whose terrain covers the map in the game). Flown into the ground from below, the car is
+  put on the lowest surface over it (the road under a tunnel's roof, not the roof). Never faster on the flat than the
+  car's top speed.
+- The auto-driver: `RESPAWN=1` puts the car back on the replay's line when it is 15 m off it or stuck for a second
+  (as a player's respawn) and counts it: Bay A1-A5, B1 and Island A1, A3, A4, B2, B4 finish with none; the installed
+  C and D tracks with one or two. `TRACE=a,b` prints every step between two times.
+- Loading screens for Bay and Island wait for their `LoadScreen.dds` (on the PC, outside the paks): black until then.
+
 ## Next
 
 1. **Speed on Snow**: SnowA1 draws ~2,000 triangles a frame (3.8 M instructions: ~18 fps on the phone), the
@@ -425,5 +455,5 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
    ramp, the camera distance.
 3. The depth test's per-polygon and per-row cost (the planes, the row bookkeeping): ~0.7 M a frame.
 4. Wall rides and loops (Snow C/D).
-5. Desert, Bay, Island on the same pipeline (their kits are not exported yet; Bay and Island have 64 m cells).
+5. Coast and Stadium on the same pipeline (their replays are not dumped yet).
 6. A menu (track list, best times kept in `C:\Data\TM9300`), a countdown, a replay of the ghost from the path.
