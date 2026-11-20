@@ -10,3 +10,4 @@ phone/emu/out/
 _to_delete/
 __pycache__/
 fan/
+*.tmk

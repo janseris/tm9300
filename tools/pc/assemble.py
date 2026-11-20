@@ -96,10 +96,13 @@ class Track:
             v = c['verts']; pts = self.place([(v[i], v[i + 1], v[i + 2]) for i in range(0, len(v), 3)], x, y, z, d)
             xs = [p[0] for p in pts]; zs = [p[2] for p in pts]
             cx0, cx1 = int(min(xs) // self.blk), int(max(xs) // self.blk); cz0, cz1 = int(min(zs) // self.blk), int(max(zs) // self.blk)
-            tr = c['tris']
-            def over(px, pz):
-                for i in range(0, len(tr), 4):
-                    A, B, C = pts[tr[i]], pts[tr[i + 1]], pts[tr[i + 2]]
+            # (0.19: the triangles with no area seen from above left out: a wall's face is a line there, which "covered"
+            # the points on it, and a triangle of one point every point)
+            tr = [tuple(c['tris'][i:i + 3]) for i in range(0, len(c['tris']), 4)]
+            tr = [(pts[a], pts[b], pts[cc]) for a, b, cc in tr if abs((pts[b][0] - pts[a][0]) * (pts[cc][2] - pts[a][2]) - (pts[b][2] - pts[a][2]) * (pts[cc][0] - pts[a][0])) > 1e-4]
+            # (0.19: tr bound now: the closures kept in zone_cut used the last piece's, a late-binding slip)
+            def over(px, pz, tr=tr):
+                for A, B, C in tr:
                     s1 = (B[0] - A[0]) * (pz - A[2]) - (B[2] - A[2]) * (px - A[0])
                     s2 = (C[0] - B[0]) * (pz - B[2]) - (C[2] - B[2]) * (px - B[0])
                     s3 = (A[0] - C[0]) * (pz - C[2]) - (A[2] - C[2]) * (px - C[0])

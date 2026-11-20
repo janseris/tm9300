@@ -476,6 +476,134 @@ def block_kind(bn):
     if 'start' in n: return 1
     return 0
 
+def ibox(iv):
+    return [min(p[0] for p in iv), min(p[1] for p in iv), min(p[2] for p in iv), max(p[0] for p in iv), max(p[1] for p in iv), max(p[2] for p in iv)] if iv else [0] * 6
+
+def turn_iv(iv, d, C):
+    """1/16 m corners turned d quarter turns about (C, C) in x, z, exactly (assemble.rot_xz)"""
+    out = []
+    for x, y, z in iv:
+        X, Z = x - C, z - C
+        for _ in range(d % 4): X, Z = Z, -X
+        out.append((X + C, y, Z + C))
+    return out
+
+def turn_n(n, d):
+    nx, ny, nz = n
+    for _ in range(d % 4): nx, nz = nz, -nx
+    return (nx, ny, nz)
+
+class Prep:
+    """0.19: the work on an environment's solids, shared by pack.py (a track's) and blockkit.py (all of them, the
+    phone's block kit): each solid simplified and split into parts (parts), and each part's drawn mesh, far form and
+    collision in the solid's own frame, unturned (forms); the placed copies are these turned by quarter turns"""
+    def __init__(self, kit, cols, lod=-1, budget=300, farbudget=60):
+        self.kit = kit; self.solids = kit['solids']; self.mats = kit['materials']; self.cols = cols
+        self.lod, self.budget, self.farbudget = lod, budget, farbudget
+        leaf = None
+        for m in self.mats:
+            if 'leaf' in m['texture'].lower() or 'TreeSprite' in m['texture']: leaf = cols.get(m['texture']); break
+        self.leaf = tuple(leaf) if leaf else (70, 110, 40)
+        self.base_meshes = {}      # solid name -> [ (dx_tile, dz_tile, Mesh) ]  (tiles for wide meshes, else [(0, 0, mesh)])
+        self.forms_cache = {}
+        # 0.18: the solids of the loop, wall-ride, pipe and quarter-pipe blocks: their steep faces are road (surface 12)
+        self.steep_solids = set()
+        if STEEPROAD:
+            for b in kit['blocks']:
+                if __import__('re').search(STEEPROAD, b['name']):
+                    for var in (b.get('ground') or []) + (b.get('air') or []): self.steep_solids.update(n for n in var if n)
+
+    def matcol(self, i):
+        if i < 0: return (128, 128, 128)
+        tex = self.mats[i]['texture']; c = self.cols.get(tex)
+        if c: return tuple(c)
+        tl = tex.lower()
+        if 'sea' in tl or 'water' in tl or 'lake' in tl: return (60, 95, 140)
+        if 'ice' in tl: return (190, 215, 235)
+        return (120, 120, 120)
+
+    def matsurf(self, i): return tex_surface(self.mats[i]['texture']) if 0 <= i < len(self.mats) else 0
+
+    def parts(self, sname):
+        """the solid as meshes in its local frame (metres), simplified: [(ox, oz, Mesh)] (tiles for wide ones)"""
+        if sname in self.base_meshes: return self.base_meshes[sname]
+        lod, budget, mats = self.lod, self.budget, self.mats
+        s = self.solids[sname]
+        L = s['lods'][lod if 0 <= lod < len(s['lods']) else len(s['lods']) - 1]
+        m = from_lod(tree_cards(L, mats), self.matcol, self.matsurf)
+        if s['sprites'] and 'tree' in sname.lower():
+            c = canopies(s['sprites'], self.leaf)
+            b = len(m.verts); m = Mesh(m.verts + c.verts, m.faces + [(x + b, y + b, z + b, col) for x, y, z, col in c.faces])
+        bb = s['bbox']
+        wide = (bb[3] - bb[0]) > TILE * 1.5 or (bb[5] - bb[2]) > TILE * 1.5
+        if wide:
+            # simplified whole (the piece's outer edges kept, the drivable part fine), then split into tiles: the
+            # tiles share their corners exactly, so no seam opens between them
+            ntiles = max(1, int(math.ceil((bb[3] - bb[0]) / TILE))) * max(1, int(math.ceil((bb[5] - bb[2]) / TILE)))
+            m = decimate_keep(m, budget * ntiles, (bb[0], bb[3], bb[2], bb[5]))
+            parts = [(tx, tz, pm) for tx, tz, pm in split_tiles(m)]
+        else:
+            # the corners on the piece's edges stay on them when it is simplified: the seams between pieces
+            # stay closed (gaps showed, and the car fell through them)
+            fine = COARSE is not None and not __import__('re').search(COARSE, sname)
+            if fine: parts = [(0, 0, compact(decimate_keep(m, ROAD_BUDGET or budget, (bb[0], bb[3], bb[2], bb[5]), 1.2, 1.4)))]
+            else: parts = [(0, 0, compact(decimate_keep(m, budget, (bb[0], bb[3], bb[2], bb[5]))))]
+        WALLSTAT[0] = WALLSTAT[1] = 0
+        nowalls = NOWALLS is not None and __import__('re').search(NOWALLS, sname)
+        steep = 12 if sname in self.steep_solids else 9
+        parts = [(tx, tz, (drop_water_under(mark_walls(pm, s, nowalls, steep)) if DEPTHFIX else mark_walls(pm, s, nowalls, steep))) for tx, tz, pm in parts]
+        if os.environ.get('PACKSTATS') and WALLSTAT[0] + WALLSTAT[1]: print(f"    walls {sname}: {WALLSTAT[0]} solid, {WALLSTAT[1]} dropped; collision {len(s['coll']['tris']) // 4 if s.get('coll') and s['coll'].get('tris') else 0} tris")
+        self.base_meshes[sname] = parts
+        return parts
+
+    def forms(self, sname, ox, oz, pm):
+        """a part's forms in the solid's frame, unturned, 1/16 m: ((iv, faces), far (iv, faces) or None,
+        collision (civ, [(a, b, c, normal * 8192, surface)]) or None)"""
+        key = (sname, ox, oz)
+        if key in self.forms_cache: return self.forms_cache[key]
+        def ints(m):
+            iv = [(int(round(p[0] * 16)), int(round(p[1] * 16)), int(round(p[2] * 16))) for p in m.verts]
+            for p in iv:
+                if max(abs(c) for c in p) > 32000: raise SystemExit(f"a corner out of the 16-bit range: {p}")
+            return iv
+        rm = Mesh([(p[0] + ox, p[1], p[2] + oz) for p in pm.verts], pm.faces)
+        iv = ints(rm)
+        # its far form: the same piece beyond the far distance, a fifth of the faces (the drawing cost is
+        # per polygon, and a piece 100 m off is a few pixels a face anyway)
+        fm = compact(decimate(rm, self.farbudget)) if len(rm.faces) > self.farbudget * 2 else None
+        far = (ints(fm), fm.faces) if fm is not None and fm.faces else None
+        # its collision: the same corners, the faces the car stands on
+        tris = coll_from(rm)
+        # 0.16: the walls from Nadeo's own collision mesh (its steep faces, both sides), not the drawn mesh's
+        # simplified ones, for pieces in one part: the car's body box meets them as the game's car does
+        sc = self.solids[sname].get('coll')
+        if NADEOWALLS and ox == 0 and oz == 0 and len(self.parts(sname)) == 1 and sc and sc.get('tris'):
+            tris = [tr for tr in tris if tr[4] != 9]
+            cv = sc['verts']; extra = []
+            for i in range(0, len(sc['tris']), 4):
+                if sc['surfs'][sc['tris'][i + 3]] == 'NotCollidable': continue
+                P = [tuple(cv[sc['tris'][i + q] * 3 + k] for k in range(3)) for q in range(3)]
+                n, area = face_normal(*P)
+                if n is None or abs(n[1]) >= WALL_NY or area < 0.02: continue
+                extra.append(P)
+            if extra:
+                iv = list(iv); b0 = len(iv)
+                for P in extra:
+                    for p2 in P: iv.append((int(round(p2[0] * 16)), int(round(p2[1] * 16)), int(round(p2[2] * 16))))
+                for k in range(len(extra)):
+                    n, _ = face_normal(*extra[k])
+                    if n is None: continue
+                    nn = tuple(int(round(q * 8192)) for q in n)
+                    tris.append((b0 + k * 3, b0 + k * 3 + 1, b0 + k * 3 + 2, nn, 9))
+                    tris.append((b0 + k * 3, b0 + k * 3 + 2, b0 + k * 3 + 1, tuple(-q for q in nn), 9))
+        coll = None
+        if tris:
+            used = sorted({k for tr in tris for k in tr[:3]}); remap = {k: i for i, k in enumerate(used)}
+            coll = ([iv[k] for k in used], [(remap[a], remap[b], remap[cc], n, surf) for a, b, cc, n, surf in tris])
+        res = ((iv[:len(rm.verts)], rm.faces), far, coll)
+        self.forms_cache[key] = res
+        return res
+
 def main():
     a = sys.argv[1:]
     lod = -1; budget = 300; only = None; plate = True; farbudget = 60
@@ -495,56 +623,8 @@ def main():
     BLOCK_WP.update({b['name'].lower(): b.get('wp') for b in t.kit['blocks'] if b.get('wp')})
     if only: t.instances = [x for x in t.instances if x[1] == only or x[0] == only]
     print(f"{os.path.basename(trackf)}: {t.env} {t.size}, {len(t.instances)} instances, unknown {t.unknown}")
-    def matcol(i):
-        if i < 0: return (128, 128, 128)
-        tex = mats[i]['texture']; c = cols.get(tex)
-        if c: return tuple(c)
-        tl = tex.lower()
-        if 'sea' in tl or 'water' in tl or 'lake' in tl: return (60, 95, 140)
-        if 'ice' in tl: return (190, 215, 235)
-        return (120, 120, 120)
-    def matsurf(i): return tex_surface(mats[i]['texture']) if 0 <= i < len(mats) else 0
-    leaf = None
-    for m in mats:
-        if 'leaf' in m['texture'].lower() or 'TreeSprite' in m['texture']: leaf = cols.get(m['texture']); break
-    leaf = tuple(leaf) if leaf else (70, 110, 40)
-    # 1. the solids used, as meshes in their local frame (metres), simplified
-    base_meshes = {}      # solid name -> [ (dx_tile, dz_tile, Mesh) ]  (tiles for wide meshes, else [(0, 0, mesh)])
-    # 0.18: the solids of the loop, wall-ride, pipe and quarter-pipe blocks: their steep faces are road (surface 12)
-    steep_solids = set()
-    if STEEPROAD:
-        for b in t.kit['blocks']:
-            if __import__('re').search(STEEPROAD, b['name']):
-                for var in (b.get('ground') or []) + (b.get('air') or []): steep_solids.update(n for n in var if n)
-    def solid_mesh(sname):
-        if sname in base_meshes: return base_meshes[sname]
-        s = t.solids[sname]
-        L = s['lods'][lod if 0 <= lod < len(s['lods']) else len(s['lods']) - 1]
-        m = from_lod(tree_cards(L, mats), matcol, matsurf)
-        if s['sprites'] and 'tree' in sname.lower():
-            c = canopies(s['sprites'], leaf)
-            b = len(m.verts); m = Mesh(m.verts + c.verts, m.faces + [(x + b, y + b, z + b, col) for x, y, z, col in c.faces])
-        bb = s['bbox']
-        wide = (bb[3] - bb[0]) > TILE * 1.5 or (bb[5] - bb[2]) > TILE * 1.5
-        if wide:
-            # simplified whole (the piece's outer edges kept, the drivable part fine), then split into tiles: the
-            # tiles share their corners exactly, so no seam opens between them
-            ntiles = max(1, int(math.ceil((bb[3] - bb[0]) / TILE))) * max(1, int(math.ceil((bb[5] - bb[2]) / TILE)))
-            m = decimate_keep(m, budget * ntiles, (bb[0], bb[3], bb[2], bb[5]))
-            parts = [(tx, tz, pm) for tx, tz, pm in split_tiles(m)]
-        else:
-            # the corners on the piece's edges stay on them when it is simplified: the seams between pieces
-            # stay closed (gaps showed, and the car fell through them)
-            fine = COARSE is not None and not __import__('re').search(COARSE, sname)
-            if fine: parts = [(0, 0, compact(decimate_keep(m, ROAD_BUDGET or budget, (bb[0], bb[3], bb[2], bb[5]), 1.2, 1.4)))]
-            else: parts = [(0, 0, compact(decimate_keep(m, budget, (bb[0], bb[3], bb[2], bb[5]))))]
-        WALLSTAT[0] = WALLSTAT[1] = 0
-        nowalls = NOWALLS is not None and __import__('re').search(NOWALLS, sname)
-        steep = 12 if sname in steep_solids else 9
-        parts = [(tx, tz, (drop_water_under(mark_walls(pm, s, nowalls, steep)) if DEPTHFIX else mark_walls(pm, s, nowalls, steep))) for tx, tz, pm in parts]
-        if os.environ.get('PACKSTATS') and WALLSTAT[0] + WALLSTAT[1]: print(f"    walls {sname}: {WALLSTAT[0]} solid, {WALLSTAT[1]} dropped; collision {len(s['coll']['tris']) // 4 if s.get('coll') and s['coll'].get('tris') else 0} tris")
-        base_meshes[sname] = parts
-        return parts
+    prep = Prep(kit, cols, lod, budget, farbudget)
+    matcol = prep.matcol; solid_mesh = prep.parts; base_meshes = prep.base_meshes
     # 2. the instances: (solid, dir) -> a pre-turned mesh; wide solids: one instance per tile
     meshes = []; meshkey = {}; insts = []; farkey = {}
     def add_mesh(m):
@@ -553,50 +633,23 @@ def main():
             if max(abs(c) for c in p) > 32000: raise SystemExit(f"a corner out of the 16-bit range: {p}")
         bb = [min(p[0] for p in iv), min(p[1] for p in iv), min(p[2] for p in iv), max(p[0] for p in iv), max(p[1] for p in iv), max(p[2] for p in iv)] if iv else [0] * 6
         meshes.append((iv, m.faces, bb)); return len(meshes) - 1
-    c = t.blk / 2
+    def add_imesh(iv, faces):
+        meshes.append((iv, faces, ibox(iv))); return len(meshes) - 1
+    c = t.blk / 2; C16 = t.blk * 8
     colls = []; collkey = {}; cinsts = []
     for sname, bn, x, y, z, d, ground, kind in t.instances:
         for ox, oz, pm in solid_mesh(sname):
             if not pm.faces: continue
             key = (sname, ox, oz, d)
             if key not in meshkey:
-                rm = rotate(Mesh([(p[0] + ox, p[1], p[2] + oz) for p in pm.verts], pm.faces), d, c)
-                meshkey[key] = add_mesh(rm)
-                # its far form: the same piece beyond the far distance, a fifth of the faces (the drawing cost is
-                # per polygon, and a piece 100 m off is a few pixels a face anyway)
-                fm = compact(decimate(rm, farbudget)) if len(rm.faces) > farbudget * 2 else None
-                farkey[key] = add_mesh(fm) if fm is not None and fm.faces else -1
-                # its collision: the same corners, the faces the car stands on
-                tris = coll_from(rm)
-                iv = meshes[meshkey[key]][0]
-                # 0.16: the walls from Nadeo's own collision mesh (its steep faces, both sides), not the drawn mesh's
-                # simplified ones, for pieces in one part: the car's body box meets them as the game's car does
-                sc = t.solids[sname].get('coll')
-                if NADEOWALLS and ox == 0 and oz == 0 and len(solid_mesh(sname)) == 1 and sc and sc.get('tris'):
-                    tris = [tr for tr in tris if tr[4] != 9]
-                    cv = sc['verts']; extra = []
-                    for i in range(0, len(sc['tris']), 4):
-                        if sc['surfs'][sc['tris'][i + 3]] == 'NotCollidable': continue
-                        P = [tuple(cv[sc['tris'][i + q] * 3 + k] for k in range(3)) for q in range(3)]
-                        n, area = face_normal(*P)
-                        if n is None or abs(n[1]) >= WALL_NY or area < 0.02: continue
-                        extra.append(P)
-                    if extra:
-                        rmw = rotate(Mesh([p2 for P in extra for p2 in P], []), d, c)
-                        iv = list(iv); b0 = len(iv)
-                        for p2 in rmw.verts: iv.append((int(round(p2[0] * 16)), int(round(p2[1] * 16)), int(round(p2[2] * 16))))
-                        for k in range(len(extra)):
-                            A, B, C = rmw.verts[k * 3], rmw.verts[k * 3 + 1], rmw.verts[k * 3 + 2]
-                            n, _ = face_normal(A, B, C)
-                            if n is None: continue
-                            nn = tuple(int(round(q * 8192)) for q in n)
-                            tris.append((b0 + k * 3, b0 + k * 3 + 1, b0 + k * 3 + 2, nn, 9))
-                            tris.append((b0 + k * 3, b0 + k * 3 + 2, b0 + k * 3 + 1, tuple(-q for q in nn), 9))
-                if tris:
-                    used = sorted({k for tr in tris for k in tr[:3]}); remap = {k: i for i, k in enumerate(used)}
-                    civ = [iv[k] for k in used]
-                    cbb = [min(p[0] for p in civ), min(p[1] for p in civ), min(p[2] for p in civ), max(p[0] for p in civ), max(p[1] for p in civ), max(p[2] for p in civ)]
-                    colls.append((civ, [(remap[a], remap[b], remap[cc], n, surf) for a, b, cc, n, surf in tris], cbb)); collkey[key] = len(colls) - 1
+                # 0.19: the part's forms worked out unturned (Prep.forms, shared with the phone's block kit) and turned
+                # here by exact quarter turns of the 1/16 m corners
+                (iv0, faces0), far0, coll0 = prep.forms(sname, ox, oz, pm)
+                meshkey[key] = add_imesh(turn_iv(iv0, d, C16), faces0)
+                farkey[key] = add_imesh(turn_iv(far0[0], d, C16), far0[1]) if far0 else -1
+                if coll0:
+                    civ = turn_iv(coll0[0], d, C16)
+                    colls.append((civ, [(a2, b2, c2, turn_n(n, d), surf) for a2, b2, c2, n, surf in coll0[1]], ibox(civ))); collkey[key] = len(colls) - 1
                 else: collkey[key] = -1
             mi = meshkey[key]; iv, faces, bb = meshes[mi]
             # a zone tile partly under a block's ground: split finer and cut where the block's ground is (the two

@@ -482,6 +482,37 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   within ~10 m/s at each height. The car is drawn turned in 3D there (`TmView::iCar3D`), and the camera follows it in
   its own frame (11 m back along its way, 4 m over it along its up, no roll).
 
+## 0.19: the game's own tracks on the phone (.Challenge.Gbx)
+
+- Copy any `.Challenge.Gbx` of Rally, Snow, Desert, Bay or Island (TMX's, the game editor's, a friend's) into
+  `\TmTracks\` on the phone or the memory card (`C:\TmTracks\`, `E:\TmTracks\`). Play Solo > Browse lists it by
+  its map's name with its medal times (from the file's header: `TmGbxHeader`); chosen the first time, the app builds
+  the track itself into `\TmTracks\cache\<name>.tmb` (again when the Gbx or the kit is newer) and loads that.
+  Stadium and Coast tracks are skipped. No PC step any more; `fantrack.py` still works.
+- `tmgbx.cpp`: the Gbx reader in C++ (the LZO1X decoder, the header chunks, the reference table, chunk 0x0304301F's
+  block list with skins), every read bounds-checked (a cut or bit-flipped file fails, it does not crash: fuzzed under
+  ASan). It reads the 112 campaign and StarTrack tracks exactly as `gbxtrack.py` does.
+- The block kits (`tools/pc/blockkit.py`, `data/<env>.tmk`, each in its environment's tracks package): every solid
+  of the environment's blocks as `pack.py` makes it (simplified, wide pieces tiled, walls marked), each part's drawn
+  mesh, far form and collision unturned; how much of each cell a ground piece covers (3 x 3 samples: the terrain tile
+  dropped at 6; 16 x 16 for cutting a tile it covers in part); the blocks' variants, footprints, zone heights,
+  waypoints and start offsets; the base plates and the car. "TMK2": a directory and ~900 KB chunks of mesh data, each
+  LZMA-packed on its own (the phone unpacks one at a time and keeps what the track uses): Rally 0.7 MB, Snow 1.0,
+  Desert 1.4, Bay 1.0, Island 2.5.
+- `tmkit.cpp` builds the track as `assemble.py` and `pack.py` do, step for step: the blocks placed, the default
+  terrain, the covered terrain dropped and the partly covered cut, each part turned by exact quarter turns of its
+  1/16 m corners, the base plate, the car, the start from the start block, a TMB5 file. Against `pack.py` on all 112
+  tracks: the same instances, collision (but 18 triangles of two terrain tiles kept on IslandC5) and starts; the
+  drawn geometry the same but in the cut terrain tiles, where the kit's mask keeps a few hundred faces more under
+  pieces' edges (overlap, never a hole; at most 3 faces fewer). The 105 campaign tracks built this way with their
+  replays drive exactly as the installed ones (`DRIVER=2`). A build unpacks 4-6 MB of kit and peaks at ~5.7 MB of
+  heap beside the kit's 2.5 MB (Island); 0.05 s on the PC.
+- `pack.py`: `Prep` holds the per-solid work (shared with `blockkit.py`); the far forms are simplified unturned
+  and turned with the rest (a few faces differ from before). `assemble.py`: the terrain cut used the last ground
+  piece's shape for every cut tile (a closure bound late): fixed; triangles with no area seen from above (a wall's
+  face: a line; a point) no longer "cover" the points on them.
+- Host tools: `phone/host/gbx2tmb.cpp` (kit + Gbx [+ path] -> .tmb, the stats).
+
 ## Next
 
 1. **Speed on Snow**: SnowA1 draws ~2,000 triangles a frame (3.8 M instructions: ~18 fps on the phone), the
@@ -492,6 +523,10 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
    ramp, the camera distance.
 3. The depth test's per-polygon and per-row cost (the planes, the row bookkeeping): ~0.7 M a frame.
 4. Wall rides by feel on the phone (the surface mode is fitted on loops only).
-5. Bay's big loops (`BayPlatformLoopStart4` / `End4`): the two halves of the loop's top are placed 16 m apart
+5. Campaign tracks from their Gbx files: a package would be its kit, the 21 Gbx files (~30 KB each), their replay
+   paths and pictures (~1-3.5 MB instead of 4-11 MB, ~25 MB less in all) if the phone built each track when it is
+   loaded (a build unpacks 4-6 MB of kit: the chunks could be ordered by how often the solids are used).
+6. A thumbnail for Gbx tracks in Browse (the file's JPEG, or a map drawn from the block list).
+7. Bay's big loops (`BayPlatformLoopStart4` / `End4`): the two halves of the loop's top are placed 16 m apart
    (BayC2: a gap at z 792..808 the replay drives through); the turned multi-unit pieces' placing, or a solid's own
    offset the kit does not carry. None of the installed Bay tracks has one.

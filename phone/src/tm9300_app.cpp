@@ -24,6 +24,8 @@
 #include "tmui.h"
 #include <ezlib.h>
 #include "tmlzma.h"
+#include "tmgbx.h"
+#include "tmkit.h"
 #include "fastmem.h"
 
 const TUid KUidTm9300 = { 0x0E3D9310 };
@@ -31,6 +33,7 @@ enum { SCR_W = 640, SCR_H = 200 };
 enum { VIEW_W = 320, VIEW_H = 200, VIEW_X = (SCR_W - VIEW_W) / 2 };   // the 3D view, in the middle of the screen
 _LIT(KTrackDir, "?:\\system\\apps\\tm9300\\");
 _LIT(KTrackPattern, "*.tmb");
+_LIT(KGbxDir, "?:\\TmTracks\\");          // 0.19: the game's own tracks (.Challenge.Gbx) the user copies here
 _LIT(KUiPack, "tm9300.ui");
 _LIT(KUiFont, "tm9300.fnt");
 _LIT(KBenchDir, "C:\\Data\\TM9300\\");
@@ -40,8 +43,8 @@ const TInt KBenchPort = 8000;
 enum { BENCH_VARIANTS = 5, BENCH_LOG = 6144 };
 enum { BAR_W = 64, BAR_H = 152 };           // the counters, top left (F)
 enum { SIDE_W = VIEW_X, RIGHT_X = VIEW_X + VIEW_W };
-static const char* const KVersionC = "0.18";
-enum { KMaxFiles = 128 };      // 0.18: every campaign track of five environments (105)
+static const char* const KVersionC = "0.19";
+enum { KMaxFiles = 192 };      // 0.18: every campaign track of five environments (105); 0.19: and the Gbx tracks
 
 // the benchmark's log to the PC (the local server's /results, into its uploads folder), after Hrimfell's
 class CBenchSender : public CActive
@@ -251,6 +254,9 @@ private:
     TFileName iDir;                 // the program's folder: the tracks, their pictures, the menus' pictures
     TBuf<20> iFiles[KMaxFiles];
     TText iFileDrive[KMaxFiles];    // 0.18: the drive each track is on (its package may be on the memory card)
+    TFileName* iGbx[KMaxFiles];     // 0.19: a .Challenge.Gbx track's file (0: a .tmb)
+    TBool GbxBuild(TInt aIndex, TFileName& aTmb);
+    void ReadRecord(TmUiTrack& aT, const TDesC& aName);
     TInt iNFiles;
     TmUiTrack iUiTracks[KMaxFiles];
     TUint8* iThumbs[KMaxFiles];
@@ -431,7 +437,7 @@ CTmView::~CTmView()
     delete iTrack;
     delete iSender;
     delete iUi;
-    for (TInt i = 0; i < KMaxFiles; i++) User::Free(iThumbs[i]);
+    for (TInt i = 0; i < KMaxFiles; i++) { User::Free(iThumbs[i]); delete iGbx[i]; }
     User::Free(iPackData);
     delete[] iFBig.iMask; delete[] iFText.iMask; delete[] iFSmall.iMask;
     User::Free(iBack);
@@ -517,17 +523,71 @@ void CTmView::ScanTracks()
                     }
                 f.Close();
                 }
-            // its record: the ghost's finish ("TMG1", points, finish)
-            TFileName gn(KBenchDir); gn.Append(n); gn.Append(_L(".ghost"));
-            if (f.Open(fs, gn, EFileRead | EFileShareReadersOnly) == KErrNone)
-                {
-                TBuf8<16> h;
-                if (f.Read(h) == KErrNone && h.Length() == 16 && h[0] == 'T' && h[3] == '1') t.iBest = h[8] | (h[9] << 8) | (h[10] << 16) | (h[11] << 24);
-                f.Close();
-                }
+            ReadRecord(t, n);
             iNFiles++;
             }
     delete list;
+    }
+    // 0.19: the game's own tracks (.Challenge.Gbx: from TMX, the game's editor, a friend) in \TmTracks\ on the phone
+    // or the card: in Browse by their maps' names; a track is built from its environment's block kit (the tracks
+    // package's .tmk) when it is first chosen
+    {
+    const TText gd[3] = { 'C', 'E', 'D' };
+    for (TInt di = 0; di < 3; di++)
+        {
+        TFileName dir(KGbxDir); dir[0] = gd[di];
+        CDir* list = 0;
+        TFileName pat(dir); pat.Append(_L("*.gbx"));
+        if (fs.GetDir(pat, KEntryAttNormal, ESortByName, list) != KErrNone || !list) { delete list; continue; }
+        for (TInt i = 0; i < list->Count() && iNFiles < KMaxFiles; i++)
+            {
+            const TDesC& fn = (*list)[i].iName;
+            TFileName path(dir); path.Append(fn);
+            RFile f;
+            if (f.Open(fs, path, EFileRead | EFileShareReadersOnly) != KErrNone) continue;
+            TInt sz = 0; f.Size(sz);
+            const TInt n = sz < 262144 ? sz : 262144;     // (the header: the XML, the thumbnail)
+            TUint8* b = n > 16 ? (TUint8*) User::Alloc(n) : 0;
+            char env[16], title[24]; TInt medals[4];
+            TInt r = -1;
+            if (b) { TPtr8 p(b, 0, n); if (f.Read(p) == KErrNone && p.Length() == n) r = TmGbxHeader(b, n, env, sizeof(env), title, sizeof(title), (int*) medals); }
+            User::Free(b); f.Close();
+            if (r) continue;
+            static const char* const KEnvs[5] = { "Rally", "Alpine", "Speed", "Island", "Bay" };   // the UI's order
+            TInt e = -1;
+            for (TInt k = 0; k < 5; k++) { const char* a = KEnvs[k]; TInt j = 0; while (a[j] && a[j] == env[j]) j++; if (!a[j] && !env[j]) e = k; }
+            if (e < 0) continue;      // (Stadium, Coast: not on the phone)
+            // its name among the files (its ghost, its built .tmb): g_ and its file name's letters
+            TBuf<20> nm(_L("g_"));
+            for (TInt c = 0; c < fn.Length() && fn[c] != '.' && nm.Length() < 16; c++)
+                {
+                const TUint ch = fn[c];
+                if ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) nm.Append(ch);
+                }
+            if (nm.Length() == 2) nm.Append(_L("track"));
+            for (TInt tries = 2; tries < 10; tries++)
+                {
+                TBool dup = EFalse; for (TInt j = 0; j < iNFiles; j++) if (iFiles[j].CompareF(nm) == 0) dup = ETrue;
+                if (!dup) break;
+                if (nm.Length() >= 16) nm.SetLength(15);
+                if (tries > 2) nm.SetLength(nm.Length() - 1);
+                nm.AppendNum(tries);
+                }
+            iGbx[iNFiles] = new TFileName(path);
+            if (!iGbx[iNFiles]) continue;
+            TmUiTrack& t = iUiTracks[iNFiles];
+            Mem::FillZ(&t, sizeof(t));
+            ToC(t.iName, nm, 19);
+            t.iEnv = e; t.iSeries = 5; t.iNum = 1; t.iFile = iNFiles;
+            if (title[0]) { TInt c = 0; for (; c < 23 && title[c]; c++) t.iTitle[c] = title[c]; t.iTitle[c] = 0; }
+            else ToC(t.iTitle, nm.Mid(2), 23);
+            for (TInt m = 0; m < 4; m++) t.iMedal[m] = medals[m];
+            iFiles[iNFiles] = nm; iFileDrive[iNFiles] = gd[di];
+            ReadRecord(t, nm);
+            iNFiles++;
+            }
+        delete list;
+        }
     }
     iTrackCount = iNFiles;
     // the menus' pictures
@@ -651,6 +711,97 @@ void CTmView::BenchEnd()
     }
 
 
+// a track's record: its ghost's finish ("TMG1", points, finish)
+void CTmView::ReadRecord(TmUiTrack& aT, const TDesC& aName)
+    {
+    RFs& fs = iCoeEnv->FsSession();
+    TFileName gn(KBenchDir); gn.Append(aName); gn.Append(_L(".ghost"));
+    RFile f;
+    if (f.Open(fs, gn, EFileRead | EFileShareReadersOnly) == KErrNone)
+        {
+        TBuf8<16> h;
+        if (f.Read(h) == KErrNone && h.Length() == 16 && h[0] == 'T' && h[3] == '1') aT.iBest = h[8] | (h[9] << 8) | (h[10] << 16) | (h[11] << 24);
+        f.Close();
+        }
+    }
+
+// 0.19: the built track into a file
+class TTmFileOut : public MTmOut
+    {
+public:
+    RFile* iF;
+    int Write(const void* aData, int aLen) { return iF->Write(TPtrC8((const TUint8*) aData, aLen)) == KErrNone ? 0 : -1; }
+    };
+
+static TUint8* ReadAll(RFs& aFs, const TDesC& aName, TInt aMax, TInt& aSize)
+    {
+    aSize = 0;
+    RFile f;
+    if (f.Open(aFs, aName, EFileRead | EFileShareReadersOnly) != KErrNone) return 0;
+    TInt sz = 0; f.Size(sz);
+    TUint8* b = sz > 0 && sz <= aMax ? (TUint8*) User::Alloc(sz) : 0;
+    if (b) { TPtr8 p(b, 0, sz); if (f.Read(p) != KErrNone || p.Length() != sz) { User::Free(b); b = 0; } }
+    f.Close();
+    if (b) aSize = sz;
+    return b;
+    }
+
+// 0.19: a Gbx track built with its environment's block kit (rally.tmk ... beside the program, from the tracks
+// packages) into <its folder>\cache\<name>.tmb, again when the Gbx or the kit is newer than that
+TBool CTmView::GbxBuild(TInt aIndex, TFileName& aTmb)
+    {
+    RFs& fs = iCoeEnv->FsSession();
+    const TFileName& src = *iGbx[aIndex];
+    aTmb = src.Left(src.LocateReverse('\\') + 1); aTmb.Append(_L("cache\\")); aTmb.Append(iFiles[aIndex]); aTmb.Append(_L(".tmb"));
+    TInt env = 0;
+    for (TInt k = 0; k < iNFiles; k++) if (iUiTracks[k].iFile == aIndex) env = iUiTracks[k].iEnv;
+    TFileName kit;
+    const TText drives[4] = { iDir[0], 'C', 'E', 'D' };
+    TBool found = EFalse;
+    for (TInt di = 0; di < 4 && !found; di++)
+        {
+        kit = iDir; kit[0] = drives[di];
+        switch (env)
+            {
+            case 1: kit.Append(_L("alpine.tmk")); break;
+            case 2: kit.Append(_L("speed.tmk")); break;
+            case 3: kit.Append(_L("island.tmk")); break;
+            case 4: kit.Append(_L("bay.tmk")); break;
+            default: kit.Append(_L("rally.tmk")); break;
+            }
+        TEntry en; if (fs.Entry(kit, en) == KErrNone) found = ETrue;
+        }
+    if (!found) { iStatus = _L("Install this environment's tracks first"); return EFalse; }
+    TTime tg, tk, tc;
+    if (fs.Modified(src, tg) == KErrNone && fs.Modified(kit, tk) == KErrNone && fs.Modified(aTmb, tc) == KErrNone && tc >= tg && tc >= tk) return ETrue;
+    TInt gn = 0, kn = 0;
+    TUint8* g = ReadAll(fs, src, 4 * 1024 * 1024, gn);
+    TUint8* k = g ? ReadAll(fs, kit, 8 * 1024 * 1024, kn) : 0;
+    TmGbxTrack* t = new TmGbxTrack;
+    TmKit* kt = new TmKit;
+    TInt r = -1;
+    if (!g || !k || !t || !kt) iStatus = _L("Cannot read the track");
+    else if (t->Read(g, gn) != 0) iStatus = _L("Unknown Gbx track");
+    else if (kt->Open(k, kn) != 0) iStatus = _L("Bad block kit");
+    else
+        {
+        User::Free(g); g = 0;     // (the Gbx read: its memory for the build)
+        fs.MkDirAll(aTmb);
+        RFile o;
+        if (o.Replace(fs, aTmb, EFileWrite) != KErrNone) iStatus = _L("Cannot write the built track");
+        else
+            {
+            TTmFileOut w; w.iF = &o;
+            r = kt->Build(*t, w);
+            o.Close();
+            if (r) { fs.Delete(aTmb); iStatus.Format(_L("Cannot build the track (%d)"), r); }
+            }
+        }
+    delete kt; delete t;
+    User::Free(k); User::Free(g);
+    return r == 0;
+    }
+
 void CTmView::UnloadTrack()
     {
     delete iCam; iCam = 0; delete iCar; iCar = 0; delete iGround; iGround = 0;
@@ -672,6 +823,7 @@ TBool CTmView::LoadTrack(TInt aIndex)
     DrawLoading(EFalse);
     TFileName name(iDir); name[0] = iFileDrive[aIndex]; name.Append(iFiles[aIndex]); name.Append(_L(".tmb"));
     iStatus = iFiles[aIndex];
+    if (iGbx[aIndex] && !GbxBuild(aIndex, name)) return EFalse;
     RFile f;
     if (f.Open(fs, name, EFileRead | EFileShareReadersOnly) != KErrNone) { iStatus = _L("Cannot open the track"); return EFalse; }
     TInt size = 0;

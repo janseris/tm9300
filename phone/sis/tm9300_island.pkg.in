@@ -1,7 +1,7 @@
 ; TrackMania 9300 - Island's 21 campaign tracks and their pictures
 ; (cut from the game's own files on the PC: never in git); installed on their own, on the phone or the card
 &EN
-#{"TM9300 Island"},(0x0E3D9314),0,18,0
+#{"TM9300 Island"},(0x0E3D9314),0,19,0
 (0x101F8ED2), 0, 0, 0, {"Series80ProductID"}
 "../data/islandA1.tmb"-"!:\system\apps\tm9300\islandA1.tmb"
 "../data/islandA2.tmb"-"!:\system\apps\tm9300\islandA2.tmb"

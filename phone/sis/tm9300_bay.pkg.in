@@ -1,7 +1,7 @@
 ; TrackMania 9300 - Bay's 21 campaign tracks and their pictures
 ; (cut from the game's own files on the PC: never in git); installed on their own, on the phone or the card
 &EN
-#{"TM9300 Bay"},(0x0E3D9313),0,18,0
+#{"TM9300 Bay"},(0x0E3D9313),0,19,0
 (0x101F8ED2), 0, 0, 0, {"Series80ProductID"}
 "../data/bayA1.tmb"-"!:\system\apps\tm9300\bayA1.tmb"
 "../data/bayA2.tmb"-"!:\system\apps\tm9300\bayA2.tmb"

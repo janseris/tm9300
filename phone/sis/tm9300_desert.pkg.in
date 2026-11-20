@@ -1,7 +1,7 @@
 ; TrackMania 9300 - Desert's 21 campaign tracks and their pictures
 ; (cut from the game's own files on the PC: never in git); installed on their own, on the phone or the card
 &EN
-#{"TM9300 Desert"},(0x0E3D9315),0,18,0
+#{"TM9300 Desert"},(0x0E3D9315),0,19,0
 (0x101F8ED2), 0, 0, 0, {"Series80ProductID"}
 "../data/desertA1.tmb"-"!:\system\apps\tm9300\desertA1.tmb"
 "../data/desertA2.tmb"-"!:\system\apps\tm9300\desertA2.tmb"
