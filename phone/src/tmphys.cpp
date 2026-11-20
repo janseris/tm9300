@@ -920,8 +920,8 @@ void TmCar::SurfaceStep(const TmGround& aG, const TmCarInput& aIn)
     const int up[3] = { s.ux, s.uy, s.uz };
     if (!aG.Ray(ox, oy, oz, dx, dy, dz, h, t, up))
         {
-        // (a seam between two pieces' roads, a loop's rails between them: on along the road's plane for up to 3 steps)
-        if (++iSurfMiss <= 3) { s.x = px; s.y = py; s.z = pz; s.speed = sp; return; }
+        // (a seam between two pieces' roads, a gap in a loop's top (Bay's big loops: 16 m): flown across for up to 12 steps)
+        if (++iSurfMiss <= 12) { s.x = px; s.y = py; s.z = pz; s.speed = sp; return; }
 #ifdef SURFDEBUG
         printf("  surf: no road (%.1f %.1f %.1f) up (%d %d %d)\n", px / 256.0, py / 256.0, pz / 256.0, s.ux, s.uy, s.uz);
 #endif
