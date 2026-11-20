@@ -91,6 +91,7 @@ public:
     // the race: checkpoints taken, finished, the time in steps
     int iCheckpoints, iCheckMask, iFinished, iSteps, iFinishSteps;
     int iLastKindInst, iTotalCps;
+    int iLapFinish;             // 0.18: no finish block: the start-finish (multilap) block finishes the race
     int iWallHits;              // walls hit so far (statistics)
     int iTopY;                  // the highest of the wheels' ground this step (1/256 m): where to draw the body so a crowned road does not cut it
     int iCpX, iCpY, iCpZ, iCpYaw;   // the respawn pose: the last checkpoint taken (the start)

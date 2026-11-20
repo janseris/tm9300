@@ -41,13 +41,14 @@ struct TmUiTrack
     {
     char iName[20];             // the file's name without .tmb (rallyA1)
     int iEnv;                   // 0 Rally, 1 Snow, 2 Desert, 3 Island, 4 Bay, 5 Coast, 6 Stadium
-    int iSeries;                // 0 White (A) .. 4 Black (E)
+    int iSeries;                // 0 White (A) .. 4 Black (E); 5 a fan track (0.18: Browse)
     int iNum;                   // 1..5 (E: 1)
     int iFile;                  // its index among the installed files
     const TmPix* iThumb;        // iThumbW x iThumbH (0: none)
     int iThumbW, iThumbH;
     int iMedal[4];              // ms: author, gold, silver, bronze (0: not known)
     int iBest;                  // the record, in 20 ms steps (0: none)
+    char iTitle[24];            // 0.18: a fan track's name (its map's), shown in Browse
     };
 
 enum TmUiKey { EUiUp, EUiDown, EUiLeft, EUiRight, EUiOk, EUiBack, EUiChar, EUiDel };
@@ -58,7 +59,7 @@ enum TmUiOpp { EOppNone, EOppNadeo, EOppGold, EOppSilver, EOppBronze, EOppRecord
 class TmMenu
     {
 public:
-    enum TScreen { ETitle, EMain, ECampaign, EMode, ESolo, EOpponent, EParty, EHotSeat, ESeries };
+    enum TScreen { ETitle, EMain, ECampaign, EMode, ESolo, EOpponent, EParty, EHotSeat, ESeries, EBrowse };
     enum { KMaxTracks = 128, KMaxPlayers = 8, KNameLen = 12 };
     TmMenu();
     ~TmMenu();
@@ -105,6 +106,10 @@ private:
     void DrawHotSeat(TmPix* aF, int aS);
     void DrawSeries(TmPix* aF, int aS);
     void DrawTitle(TmPix* aF, int aS);
+    void DrawBrowse(TmPix* aF, int aS);     // 0.18: the fan tracks
+    int FanTracks(int* aIdx) const;         // their indices into iTracks, by name
+    int iBrowseSel;             // the fan track chosen (Browse); its count: Back
+    TScreen iOppFrom;           // where the opponent's choice came from (Solo or Browse)
     int TrackAt(int aSeries, int aEnv, int aNum) const;
     int PrevTrack(int aTi) const;            // the track before it in its environment (-1: the first)
     bool Unlocked(int aTi) const;

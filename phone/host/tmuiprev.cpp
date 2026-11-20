@@ -60,6 +60,13 @@ int main(int argc, char** argv)
         sprintf(p, "%s/%s.tmt", argv[3], argv[i]);
         int n; unsigned char* d = ReadAll(p, n);
         if (d) { int* h = (int*) d; t.iThumbW = h[1]; t.iThumbH = h[2]; for (int m = 0; m < 4; m++) t.iMedal[m] = h[3 + m]; t.iThumb = (const TmPix*) (d + 28); }
+        // 0.18: a fan track (f_...): Browse, its environment and name from the picture's trailer
+        if (!strncmp(argv[i], "f_", 2))
+            {
+            t.iSeries = 5; t.iNum = 1; t.iEnv = 0; strncpy(t.iTitle, argv[i] + 2, 23);
+            const int tr = d ? 28 + t.iThumbW * t.iThumbH * 2 : 0;
+            if (d && tr + 28 <= n && !memcmp(d + tr, "TMTN", 4)) { t.iEnv = d[tr + 4]; memcpy(t.iTitle, d + tr + 5, 23); t.iTitle[23] = 0; }
+            }
         if (nt == 0) t.iBest = 19500 / 20;          // a record on the first (a gold medal shows)
         if (nt == 1 && t.iMedal[2]) t.iBest = t.iMedal[2] / 20;     // silver on the second
         nt++;
@@ -69,7 +76,7 @@ int main(int argc, char** argv)
     static TmPix frame[640 * 200];
     struct { const char* name; const char* keys; } shots[] = {
         { "title", "" }, { "main", "o" }, { "campaign", "oo" }, { "mode", "ooo" }, { "difficulty", "oooo" }, { "grid", "ooooo" },
-        { "grid2", "ooooodr" }, { "lockmsg", "ooooorro" }, { "opponent", "oooooo" }, { "party", "odo" }, { "hotseat", "odoo" }, { "series", "odooo" } };
+        { "grid2", "ooooodr" }, { "lockmsg", "ooooorro" }, { "opponent", "oooooo" }, { "party", "odo" }, { "browse", "oodo" }, { "browse2", "oododd" }, { "browseopp", "oodoo" }, { "hotseat", "odoo" }, { "series", "odooo" } };
     for (unsigned s = 0; s < sizeof(shots) / sizeof(shots[0]); s++)
         {
         TmMenu mm; mm.iVersion = "0.11"; mm.Init(&big, &text, &small, tr, nt, &pack);

@@ -393,7 +393,7 @@ static const int KEnvRank[7] = { 3, 6, 2, 1, 4, 5, 0 };
 enum { LEFT_W = 196, RIGHT_X = 204 };
 
 TmMenu::TmMenu() : iDirty(true), iScreen(ETitle), iVersion(""), iRaceFile(-1), iRaceOpp(EOppGold), iPlayers(1), iAttempts(3), iHsMode(0), iTimeLimit(300), iNProfiles(0), iProfilesChanged(false), iSeriesN(0),
-    iLockMsg(false), iPack(0), iBig(0), iText(0), iSmall(0), iNTracks(0), iBg(0), iInGrid(false), iGridCol(0), iGridRow(0), iNEnvs(0), iOppSel(0), iHsRow(2), iChooser(false), iChooserSel(0), iRowH(24), iPlateH(29), iEditing(-1), iSeriesSel(0), iTitleTick(0)
+    iLockMsg(false), iPack(0), iBig(0), iText(0), iSmall(0), iNTracks(0), iBg(0), iInGrid(false), iGridCol(0), iGridRow(0), iNEnvs(0), iOppSel(0), iHsRow(2), iChooser(false), iChooserSel(0), iRowH(24), iPlateH(29), iEditing(-1), iSeriesSel(0), iTitleTick(0), iBrowseSel(0), iOppFrom(ESolo)
     {
     for (int i = 0; i < 10; i++) iSel[i] = 0;
     for (int p = 0; p < KMaxPlayers; p++) iNames[p][0] = 0;
@@ -512,7 +512,7 @@ int TmMenu::Items(TScreen sc, TItem* it) const
             break;
         case ECampaign:
             ITEM(EIcoUnited, "United", true, 0) ITEM(EIcoNations, "Nations", false, 1) ITEM(EIcoStar, "Star Track", false, 2)
-            ITEM(EIcoMyCampaign, "My Campaign", false, 3) ITEM(EIcoBrowse, "Browse", false, -2) ITEM(EIcoBack, "Back", true, -1)
+            ITEM(EIcoMyCampaign, "My Campaign", false, 3) ITEM(EIcoBrowse, "Browse", true, -2) ITEM(EIcoBack, "Back", true, -1)
             break;
         case EMode:
             ITEM(EIcoRaces, "Races", true, 0) ITEM(EIcoPlatforms, "Platforms", false, 1) ITEM(EIcoStunts, "Stunts", false, 2)
@@ -597,6 +597,7 @@ int TmMenu::PrevTrack(int ti) const
 
 bool TmMenu::Unlocked(int ti) const
     {
+    if (iTracks[ti].iSeries > 4) return true;          // 0.18: a fan track
     if (iTracks[ti].iSeries == 4)
         {
         for (int i = 0; i < iNTracks; i++) if (iTracks[i].iEnv == iTracks[ti].iEnv && iTracks[i].iSeries < 4 && !HasMedal(iTracks[i], 1)) return false;
@@ -616,7 +617,7 @@ int TmMenu::NextFile(int aFile) const
     {
     int ti = -1;
     for (int i = 0; i < iNTracks; i++) if (iTracks[i].iFile == aFile) ti = i;
-    if (ti < 0) return -1;
+    if (ti < 0 || iTracks[ti].iSeries > 4) return -1;
     const int key = iTracks[ti].iSeries * 10 + iTracks[ti].iNum;
     int best = -1, bestKey = 1 << 30;
     for (int i = 0; i < iNTracks; i++)
@@ -710,7 +711,10 @@ void TmMenu::DrawGrid(TmPix* f, int s)
 void TmMenu::OppRows(int* aRows, int& aN) const
     {
     aN = 0;
-    aRows[aN++] = EOppNadeo; aRows[aN++] = EOppGold; aRows[aN++] = EOppSilver; aRows[aN++] = EOppBronze;
+    bool fan = false;
+    for (int i = 0; i < iNTracks; i++) if (iTracks[i].iFile == iRaceFile && iTracks[i].iSeries > 4) fan = true;
+    // (0.18: a fan track has no author's run: the medals' ghosts are made from it)
+    if (!fan) { aRows[aN++] = EOppNadeo; aRows[aN++] = EOppGold; aRows[aN++] = EOppSilver; aRows[aN++] = EOppBronze; }
     for (int i = 0; i < iNTracks; i++) if (iTracks[i].iFile == iRaceFile && iTracks[i].iBest) { aRows[aN++] = EOppRecord; break; }
     aRows[aN++] = EOppNone;
     }
@@ -899,6 +903,80 @@ void TmMenu::DrawTitle(TmPix* f, int s)
     Text(f, s, *iSmall, 6, 200 - iSmall->iH - 3, v, Rgb(200, 210, 230));
     }
 
+// 0.18: the fan tracks (converted from any Challenge.Gbx of the five environments on the PC: tools/pc/fantrack.py),
+// listed by name on the left; the chosen one's picture, environment, medals and record on the right
+static const char* const KEnvName2[7] = { "Rally", "Snow", "Desert", "Island", "Bay", "Coast", "Stadium" };
+static int SCmpI(const char* a, const char* b)
+    {
+    for (;; a++, b++)
+        {
+        int x = *a, y = *b; if (x >= 'A' && x <= 'Z') x += 32; if (y >= 'A' && y <= 'Z') y += 32;
+        if (x != y || !x) return x - y;
+        }
+    }
+int TmMenu::FanTracks(int* aIdx) const
+    {
+    int n = 0;
+    for (int i = 0; i < iNTracks; i++) if (iTracks[i].iSeries > 4) aIdx[n++] = i;
+    for (int a = 1; a < n; a++) for (int b = a; b > 0 && SCmpI(iTracks[aIdx[b - 1]].iTitle, iTracks[aIdx[b]].iTitle) > 0; b--) { const int t = aIdx[b]; aIdx[b] = aIdx[b - 1]; aIdx[b - 1] = t; }
+    return n;
+    }
+
+void TmMenu::DrawBrowse(TmPix* f, int s)
+    {
+    int idx[KMaxTracks]; const int n = FanTracks(idx);
+    char sub[24]; sub[0] = 0; SNum(sub, n); SCpy(sub + SLen(sub), n == 1 ? " fan track" : " fan tracks", 20);
+    DrawLeft(f, s, "Browse", sub, EIcoBrowse);
+    // the list, scrolled so the chosen one shows
+    const int top = RowY(0), bottom = RowY(-1) - 4, rows = (bottom - top) / iRowH > 0 ? (bottom - top) / iRowH : 1;
+    int first = iBrowseSel < n ? iBrowseSel - rows / 2 : n - rows; if (first > n - rows) first = n - rows; if (first < 0) first = 0;
+    for (int r = 0; r < rows && first + r < n; r++)
+        {
+        const TmUiTrack& t = iTracks[idx[first + r]];
+        DrawItem(f, s, top + r * iRowH, t.iEnv == 1 ? EIcoSnow : t.iEnv == 0 ? EIcoRally : EIcoCar, t.iTitle[0] ? t.iTitle : t.iName, iBrowseSel == first + r);
+        }
+    DrawItem(f, s, RowY(-1), EIcoBack, "Back", iBrowseSel >= n);
+    // the right: the chosen track
+    const int x = RIGHT_X + 10, w = 640 - x - 8;
+    Round(f, s, x, 3, w, 194, 6, Rgb(46, 66, 78), Rgb(30, 46, 56));
+    RoundLine(f, s, x, 3, w, 194, 6, Rgb(110, 140, 150));
+    if (n == 0)
+        {
+        TextCentre(f, s, *iText, x, x + w, 70, "No fan tracks installed", Rgb(255, 255, 255));
+        TextCentre(f, s, *iSmall, x, x + w, 70 + iText->iH + 6, "Convert a track on the PC (tools/pc/fantrack.py)", Rgb(180, 200, 210));
+        TextCentre(f, s, *iSmall, x, x + w, 70 + iText->iH + 8 + iSmall->iH, "and install its package", Rgb(180, 200, 210));
+        return;
+        }
+    if (iBrowseSel >= n) return;
+    const TmUiTrack& t = iTracks[idx[iBrowseSel]];
+    Round(f, s, x + 4, 6, w - 8, iText->iH + 4, 4, Rgb(50, 160, 50), Rgb(26, 110, 26));
+    TextCentre(f, s, *iText, x + 4, x + w - 4, 8, t.iTitle[0] ? t.iTitle : t.iName, Rgb(255, 255, 255));
+    // the picture, as big as fits beside the times
+    const int py = 12 + iText->iH, tw = 192, th = t.iThumbH > 0 && t.iThumbW > 0 ? tw * t.iThumbH / t.iThumbW : 120;
+    if (t.iThumb)
+        for (int j = 0; j < th && py + j < 192; j++)
+            {
+            const int sy = (j * t.iThumbH) / th;
+            for (int i = 0; i < tw; i++) f[(py + j) * s + x + 8 + i] = t.iThumb[sy * t.iThumbW + (i * t.iThumbW) / tw];
+            }
+    else Fill(f, s, x + 8, py, tw, th, Rgb(60, 90, 60));
+    // the environment, the medals, the record
+    const int cx = x + 8 + tw + 12;
+    int y = py;
+    Text(f, s, *iText, cx, y, t.iEnv >= 0 && t.iEnv < 7 ? KEnvName2[t.iEnv] : "?", Rgb(90, 170, 255)); y += iText->iH + 6;
+    static const char* const KM[4] = { "Nadeo", "Gold", "Silver", "Bronze" };
+    for (int m = 0; m < 4; m++)
+        {
+        if (t.iMedal[m] <= 0) continue;
+        Coin(f, s, cx + 6, y + iSmall->iH / 2, 6, m);
+        Text(f, s, *iSmall, cx + 16, y, KM[m], Rgb(220, 220, 220));
+        char b[16]; FormatTime(b, t.iMedal[m]); Text(f, s, *iSmall, cx + 66, y, b, Rgb(220, 220, 220));
+        y += iSmall->iH + 3;
+        }
+    y += 4;
+    if (t.iBest) { char b[16]; FormatTime(b, t.iBest * 20); Text(f, s, *iSmall, cx, y, "Record", Rgb(255, 210, 90)); Text(f, s, *iSmall, cx + 66, y, b, Rgb(255, 210, 90)); }
+    }
+
 void TmMenu::Draw(TmPix* f, int s)
     {
     iDirty = false;
@@ -909,7 +987,9 @@ void TmMenu::Draw(TmPix* f, int s)
         case EMain: DrawLeft(f, s, "Welcome!", "Choose an activity", EIcoCar); DrawList(f, s, EMain, true); DrawMedalsPanel(f, s); break;
         case ECampaign: DrawLeft(f, s, "Play Solo", "Choose a campaign", EIcoPlayer); DrawList(f, s, ECampaign, true); DrawMedalsPanel(f, s); break;
         case EMode: DrawLeft(f, s, "Play Solo", "Choose a campaign", EIcoPlayer); DrawList(f, s, EMode, true); DrawMedalsPanel(f, s); break;
+        case EBrowse: DrawBrowse(f, s); break;
         case ESolo: case EOpponent:
+            if (iScreen == EOpponent && iOppFrom == EBrowse) { DrawBrowse(f, s); DrawOpponent(f, s); break; }
             DrawLeft(f, s, "Play Solo", "Choose the difficulty", EIcoPlayer);
             DrawList(f, s, ESolo, true);
             DrawMedalsPanel(f, s);
@@ -960,6 +1040,16 @@ int TmMenu::Key(int aKey, int aChar)
             const int k = ListKey(ECampaign, aKey);
             if (k == -2 || k == 5 || aKey == EUiLeft) iScreen = EMain;
             else if (k == 0) iScreen = EMode;
+            else if (k == 4) { iScreen = EBrowse; iBrowseSel = 0; }
+            return EUiNone;
+            }
+        case EBrowse:
+            {
+            int idx[KMaxTracks]; const int n = FanTracks(idx);
+            if (aKey == EUiUp) iBrowseSel = (iBrowseSel + n) % (n + 1);
+            else if (aKey == EUiDown) iBrowseSel = (iBrowseSel + 1) % (n + 1);
+            else if (aKey == EUiBack || aKey == EUiLeft || ((aKey == EUiOk || aKey == EUiRight) && iBrowseSel >= n)) iScreen = ECampaign;
+            else if ((aKey == EUiOk || aKey == EUiRight) && iBrowseSel < n) { iRaceFile = iTracks[idx[iBrowseSel]].iFile; iOppFrom = EBrowse; iScreen = EOpponent; iOppSel = 0; }
             return EUiNone;
             }
         case EMode:
@@ -993,7 +1083,7 @@ int TmMenu::Key(int aKey, int aChar)
                 {
                 const int ti = TrackAt(iSel[ESolo], iEnvs[iGridRow], iGridCol + 1);
                 if (ti >= 0 && !Unlocked(ti)) iLockMsg = true;
-                else if (ti >= 0) { iRaceFile = iTracks[ti].iFile; iScreen = EOpponent; iOppSel = 1; }
+                else if (ti >= 0) { iRaceFile = iTracks[ti].iFile; iOppFrom = ESolo; iScreen = EOpponent; iOppSel = 1; }
                 }
             return EUiNone;
         case EOpponent:
@@ -1001,8 +1091,8 @@ int TmMenu::Key(int aKey, int aChar)
             int rows[8], n; OppRows(rows, n);
             if (aKey == EUiUp) iOppSel = (iOppSel + n - 1) % n;
             else if (aKey == EUiDown) iOppSel = (iOppSel + 1) % n;
-            else if (aKey == EUiBack) iScreen = ESolo;
-            else if (aKey == EUiOk) { iRaceOpp = rows[iOppSel]; iPlayers = 1; iSeriesN = 0; iScreen = ESolo; return EUiRace; }
+            else if (aKey == EUiBack) iScreen = iOppFrom;
+            else if (aKey == EUiOk) { iRaceOpp = rows[iOppSel]; iPlayers = 1; iSeriesN = 0; iScreen = iOppFrom; return EUiRace; }
             return EUiNone;
             }
         case EParty:

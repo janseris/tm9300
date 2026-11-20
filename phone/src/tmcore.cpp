@@ -64,7 +64,7 @@ bool TmTrack::Load(const unsigned char* aData, int aSize)
     p += iNPath * 16;
     if (p > end) return false;
     if (!v4) return true;
-    if (iNPath == 0) { iStartX = iStartY = iStartZ = 0; }
+    // (0.18: a track with no path (a fan track's) keeps its start: pack.py takes it from the start block)
     iColl = new TmColl[iNColl];
     iCInst = new TmCInst[iNCInst];
     if (!iColl || !iCInst) return false;

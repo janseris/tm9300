@@ -483,7 +483,7 @@ void TmCarState::Slopes(int& aAlong, int& aRight) const
     if (aRight > 4096) aRight = 4096; if (aRight < -4096) aRight = -4096;
     }
 
-TmCar::TmCar() : iClass(0), iCheckpoints(0), iCheckMask(0), iFinished(0), iSteps(0), iFinishSteps(0), iLastKindInst(-1), iTotalCps(0), iWallHits(0), iTopY(0), iCpX(0), iCpY(0), iCpZ(0), iCpYaw(0), iGravity(40 * 256), iSusB(0), iSusV(0), iBumpY(0), iAirSteps(0), iClimbVy(0), iClimbRaw(0), iTurbo(0), iShadow(0), iShY(0), iShVy(0), iPress(0), iSurfMiss(0)
+TmCar::TmCar() : iClass(0), iCheckpoints(0), iCheckMask(0), iFinished(0), iSteps(0), iFinishSteps(0), iLastKindInst(-1), iTotalCps(0), iLapFinish(0), iWallHits(0), iTopY(0), iCpX(0), iCpY(0), iCpZ(0), iCpYaw(0), iGravity(40 * 256), iSusB(0), iSusV(0), iBumpY(0), iAirSteps(0), iClimbVy(0), iClimbRaw(0), iTurbo(0), iShadow(0), iShY(0), iShVy(0), iPress(0), iSurfMiss(0)
     {
     iS.x = iS.y = iS.z = 0; iS.vx = iS.vy = iS.vz = 0; iS.yaw = iS.yaw16 = 0; iS.onGround = 1; iS.surf = 0;
     iS.nx = 0; iS.ny = 8192; iS.nz = 0; iS.speed = 0; iS.steerPos = 0; iS.surfMode = 0; iS.ux = 0; iS.uy = 8192; iS.uz = 0;
@@ -503,6 +503,9 @@ void TmCar::Reset(const TmTrack& aT)
     // 0.6: the checkpoints: the checkpoint boxes on one spot (footprints overlapping by more than a metre each way:
     // an elevated checkpoint and the pillars under it) are one checkpoint
     iTotalCps = 0; iNCp = 0;
+    // 0.18: a multilap track (a fan track's start-finish block, kind 4) and no finish: the start-finish is the finish
+    iLapFinish = 1;
+    for (int i = 0; i < aT.iNCInst; i++) if (aT.iCInst[i].kind == 3) { iLapFinish = 0; break; }
     for (int i = 0; i < aT.iNCInst && iNCp < KMaxCpBoxes; i++)
         {
         const TmCInst& c = aT.iCInst[i];
@@ -1019,6 +1022,7 @@ void TmCar::Race(const TmGround& aG)
         }
     // the finish counts once every checkpoint is taken (and not in the first second: a start/finish line)
     int fin = aG.KindAt(3, iS.x, iS.y, iS.z);
+    if (fin < 0 && iLapFinish) fin = aG.KindAt(4, iS.x, iS.y, iS.z);
     if (fin >= 0 && iSteps > 50 && iCheckpoints >= iTotalCps) { iFinished = 1; iFinishSteps = iSteps; iLastKindInst = fin; }
     }
 

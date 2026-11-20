@@ -9,3 +9,4 @@ phone/emu/out/
 *.fnt
 _to_delete/
 __pycache__/
+fan/

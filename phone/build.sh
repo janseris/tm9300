@@ -19,6 +19,13 @@ for f in data/*.tmb; do o=build/z/$(basename $f); [ "$o" -nt "$f" ] || python3 t
 sed "s|EPOC32|$EPOC|g" sis/tm9300_tracks.pkg.in | sed 's|"../data/\([^"]*\.tmb\)"|"z/\1"|' > build/tm9300_tracks.pkg
 (cd build && $TOOLS/makesis tm9300_tracks.pkg ../bin/tm9300_tracks.sis)
 # 0.18: an environment's tracks a package of their own (Bay, Island, ...), when its .pkg.in is there
+# 0.18: the fan tracks (tools/pc/fantrack.py: data/f_*.tmb, packed already), a package of their own when there are any
+if ls data/f_*.tmb > /dev/null 2>&1; then
+  { echo '; TrackMania 9300 - fan tracks (tools/pc/fantrack.py; cut from the game files and the tracks: never in git)'; echo '&EN'
+    echo '#{"TM9300 fan tracks"},(0x0E3D9316),0,18,0'; echo '(0x101F8ED2), 0, 0, 0, {"Series80ProductID"}'
+    for f in data/f_*.tmb; do b=$(basename $f .tmb); echo "\"../data/$b.tmb\"-\"!:\\system\\apps\\tm9300\\$b.tmb\""; [ -f data/$b.tmt ] && echo "\"../data/$b.tmt\"-\"!:\\system\\apps\\tm9300\\$b.tmt\""; done; } > build/tm9300_fan.pkg
+  (cd build && $TOOLS/makesis tm9300_fan.pkg ../bin/tm9300_fan.sis)
+fi
 for e in snow desert bay island; do
   [ -f sis/tm9300_$e.pkg.in ] || continue
   sed "s|EPOC32|$EPOC|g" sis/tm9300_$e.pkg.in | sed 's|"../data/\([^"]*\.tmb\)"|"z/\1"|' > build/tm9300_$e.pkg

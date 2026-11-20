@@ -356,6 +356,40 @@ def coll_from(mesh):
         tris.append((a, b, cc, tuple(int(round(k * 8192)) for k in n), surf))
     return tris
 
+# 0.18: where the car stands on a start block, along its way from the block's middle (m; the campaign's replays):
+# the others from the middle
+START_FWD = {'rallystartline': -4.8, 'rallymediumstartline': -4.8, 'rallyhighsupportstartline': -2.0,
+             'alpineroadwoodstartline': -4.8, 'speedclassicstartline': -4.8, 'bayroadstartline': 0.0, 'baybridgestartline': 4.0,
+             'islandplatformstartline': 16.0, 'islandhighwaystartline': 16.0}
+
+def block_start(t, colls, cinsts):
+    """0.18: the start of a track with no replay: its start block's middle (a start-finish block's for a multilap),
+    moved along the block's way as the campaign's replays stand, on the highest ground there up to 20 m over the
+    block, facing the block's way: (x, y, z) 1/16 m, yaw 0..4095"""
+    wp = {b['name'].lower(): b.get('wp', 'None') for b in t.kit['blocks']}
+    sts = [i for i in t.instances if wp.get(i[1].lower()) == 'Start'] or [i for i in t.instances if wp.get(i[1].lower()) == 'StartFinish']
+    if not sts: print("  no start block: the start at the map's corner"); return (0, 0, 0, 0, 0)
+    sname, bn, x, y, z, d, ground, kind = sts[0]
+    c = t.blk / 2; ox, oz = 0.0, START_FWD.get(bn.lower(), 0.0)
+    for _ in range(d % 4): ox, oz = oz, -ox
+    wx, wz = x + c + ox, z + c + oz
+    best = None
+    for ci, ck, cx, cy, cz, wb in cinsts:
+        if not (wb[0] <= wx * 16 <= wb[3] and wb[2] <= wz * 16 <= wb[5]): continue
+        iv, tris, _ = colls[ci]
+        px, pz = wx * 16 - cx, wz * 16 - cz
+        for a, b, cc, n, surf in tris:
+            if surf in (5, 9, 12) or n[1] < 3686: continue
+            A, B, C = iv[a], iv[b], iv[cc]
+            s1 = (B[0] - A[0]) * (pz - A[2]) - (B[2] - A[2]) * (px - A[0]); s2 = (C[0] - B[0]) * (pz - B[2]) - (C[2] - B[2]) * (px - B[0]); s3 = (A[0] - C[0]) * (pz - C[2]) - (A[2] - C[2]) * (px - C[0])
+            if not ((s1 >= 0 and s2 >= 0 and s3 >= 0) or (s1 <= 0 and s2 <= 0 and s3 <= 0)): continue
+            h = (cy + A[1] + (n[0] * (A[0] - px) + n[2] * (A[2] - pz)) / n[1]) / 16
+            if h <= y + 20 and (best is None or h > best): best = h
+    wy = best if best is not None else y + 1
+    yaw = (d % 4) * 1024
+    print(f"  start from the block {bn} (dir {d}): ({wx:.1f}, {wy:.1f}, {wz:.1f}) yaw {yaw}")
+    return (int(round(wx * 16)), int(round(wy * 16)), int(round(wz * 16)), yaw, 0)
+
 def mark_walls(mesh, s, nowalls=False, steep=9):
     """the mesh's steep faces (|ny| < WALL_NY) become surface 9 (solid) when Nadeo's collision solid has a steep face
     within 0.6 m of their middle facing the same way, else 5 (nothing): what the game lets the car through, we do"""
@@ -431,8 +465,11 @@ def drop_water_under(mesh):
         else: out.append(fc)
     return Mesh(mesh.verts, out) if dropped else mesh
 
+BLOCK_WP = {}      # 0.18: block name (lower case) -> its waypoint type from the kit (Start, Finish, Checkpoint, StartFinish, None)
 def block_kind(bn):
     n = bn.lower()
+    w = BLOCK_WP.get(n)
+    if w is not None: return {'Start': 1, 'Checkpoint': 2, 'Finish': 3, 'StartFinish': 4}.get(w, 0)
     if 'multilap' in n: return 4
     if 'finish' in n: return 3
     if 'checkpoint' in n or 'checkpoint' in n.replace(' ', ''): return 2
@@ -455,6 +492,7 @@ def main():
     kitf, colf, trackf, replayf, outf = args[:5]
     kit = json.load(open(kitf)); cols = json.load(open(colf)); mats = kit['materials']
     t = assemble.Track(kit, open(trackf, "rb").read(), rotsign=int(os.environ.get("ROTSIGN", "-1")))
+    BLOCK_WP.update({b['name'].lower(): b.get('wp') for b in t.kit['blocks'] if b.get('wp')})
     if only: t.instances = [x for x in t.instances if x[1] == only or x[0] == only]
     print(f"{os.path.basename(trackf)}: {t.env} {t.size}, {len(t.instances)} instances, unknown {t.unknown}")
     def matcol(i):
@@ -659,7 +697,8 @@ def main():
     if t.env == 'Speed': sky = rgb565(150, 180, 215)        # 0.15: Desert: sand under a paler sky
     fog = sky
     out = bytearray()
-    start = path[0] if path else (0, 0, 0, 0, 0)
+    # 0.18: a track with no replay (a fan track): the start from its start block
+    start = path[0] if path else block_start(t, colls, cinsts)
     # the car's class (its physics tables on the phone) in the top byte of the car mesh field: 0 Rally, 1 Snow, 2 Desert, 3 Bay, 4 Island
     carclass = {'Rally': 0, 'Alpine': 1, 'Speed': 2, 'Bay': 3, 'Island': 4}.get(t.env, 0)
     out += struct.pack('<4sIIIi', b'TMB5', len(meshes), len(insts), len(path), car if car < 0 else car | (carclass << 24))

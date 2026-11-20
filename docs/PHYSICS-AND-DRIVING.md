@@ -457,6 +457,13 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   straight into the track's memory: 40 ms for the biggest track on the PC) unpacks them on loading; a zlib-packed
   ("TMBZ", the phone's ezlib) or a plain .tmb still loads. The menus' pictures (`tm9300.ui`, with Bay's and Island's loading screens now) go with the program.
   The heap may grow to 12 MB (a big track's tables take ~2.5 MB beside its data).
+- Fan tracks: `tools/pc/fantrack.py kitdir outdir X.Challenge.Gbx ...` turns any track of the five environments
+  (TMX's, the editor's) into `f_<name>.tmb` (no replay: the start from the start block, as the campaign's replays
+  stand on each start block; LZMA-packed) and `f_<name>.tmt` (the map's thumbnail, its medal times, a trailer with
+  the environment and the map's name). `build.sh` makes `tm9300_fan.sis` of the `data/f_*` files. On the phone:
+  Play Solo > Browse lists them by name (environment, medals, record, the picture); the opponents are your record or
+  none (no author's run to make the medals' ghosts from). The waypoints come from the kit's blocks (Start, Finish,
+  Checkpoint, StartFinish); a multilap track with no finish block finishes on its start-finish.
 - The auto-driver: `RESPAWN=1` puts the car back on the replay's line when it is 15 m off it or stuck for a second
   (as a player's respawn) and counts it: Bay A1-A5, B1 and Island A1, A3, A4, B2, B4 finish with none; the installed
   C and D tracks with one or two. `TRACE=a,b` prints every step between two times.

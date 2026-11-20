@@ -472,12 +472,20 @@ void CTmView::ScanTracks()
             TInt k = 0;
             if (lo.Find(_L("rally")) == 0) { t.iEnv = 0; k = 5; } else if (lo.Find(_L("snow")) == 0) { t.iEnv = 1; k = 4; } else if (lo.Find(_L("desert")) == 0) { t.iEnv = 2; k = 6; }
             else if (lo.Find(_L("island")) == 0) { t.iEnv = 3; k = 6; } else if (lo.Find(_L("bay")) == 0) { t.iEnv = 4; k = 3; }
-            else if (lo.Find(_L("coast")) == 0) { t.iEnv = 5; k = 5; } else if (lo.Find(_L("stadium")) == 0) { t.iEnv = 6; k = 7; } else continue;
-            if (k >= n.Length()) continue;
-            TInt letter = n[k]; if (letter >= 'a') letter -= 32;
-            if (letter < 'A' || letter > 'E') continue;
-            t.iSeries = letter - 'A';
-            t.iNum = k + 1 < n.Length() && n[k + 1] >= '1' && n[k + 1] <= '5' ? n[k + 1] - '0' : 1;
+            else k = -1;
+            TInt letter = k >= 0 && k < n.Length() ? n[k] : 0; if (letter >= 'a') letter -= 32;
+            if (k >= 0 && letter >= 'A' && letter <= 'E' && (k + 1 >= n.Length() || (n[k + 1] >= '1' && n[k + 1] <= '5' && k + 2 >= n.Length())))
+                {
+                t.iSeries = letter - 'A';
+                t.iNum = k + 1 < n.Length() ? n[k + 1] - '0' : 1;
+                }
+            else
+                {
+                // 0.18: a fan track (tools/pc/fantrack.py: f_<name>): in Browse; its environment and its map's name
+                // from its picture's trailer (the file's name and Rally without one)
+                t.iEnv = 0; t.iSeries = 5; t.iNum = 1;
+                ToC(t.iTitle, n.Mid(n.Left(2).CompareF(_L("f_")) == 0 ? 2 : 0), 23);
+                }
             t.iFile = iNFiles;
             iFiles[iNFiles] = n; iFileDrive[iNFiles] = drives[di];
             // its picture and medals
@@ -495,6 +503,14 @@ void CTmView::ScanTracks()
                         const TInt* hd = (const TInt*) b;
                         if (hd[1] > 0 && hd[2] > 0 && 28 + hd[1] * hd[2] * 2 <= sz) { t.iThumbW = hd[1]; t.iThumbH = hd[2]; t.iThumb = (const TmPix*) (b + 28); }
                         for (TInt m = 0; m < 4; m++) t.iMedal[m] = hd[3 + m];
+                        // (0.18: a fan track's trailer: "TMTN", its environment, its map's name)
+                        const TInt tr = 28 + hd[1] * hd[2] * 2;
+                        if (t.iSeries > 4 && tr + 28 <= sz && b[tr] == 'T' && b[tr + 1] == 'M' && b[tr + 2] == 'T' && b[tr + 3] == 'N')
+                            {
+                            if (b[tr + 4] < 7) t.iEnv = b[tr + 4];
+                            TInt c = 0; for (; c < 23 && b[tr + 5 + c]; c++) t.iTitle[c] = (char) b[tr + 5 + c];
+                            t.iTitle[c] = 0;
+                            }
                         iThumbs[iNFiles] = b;
                         }
                     else User::Free(b);
@@ -651,6 +667,8 @@ TBool CTmView::LoadTrack(TInt aIndex)
     iTrackIndex = aIndex;
     iTrackName = iFiles[aIndex].Left(16);
     ToC(iTrackC, iTrackName, 16);
+    // (0.18: a fan track by its map's name)
+    for (TInt k = 0; k < iNFiles; k++) if (iUiTracks[k].iFile == aIndex && iUiTracks[k].iSeries > 4 && iUiTracks[k].iTitle[0]) { TInt c = 0; for (; c < 16 && iUiTracks[k].iTitle[c]; c++) iTrackC[c] = iUiTracks[k].iTitle[c]; iTrackC[c] = 0; }
     DrawLoading(EFalse);
     TFileName name(iDir); name[0] = iFileDrive[aIndex]; name.Append(iFiles[aIndex]); name.Append(_L(".tmb"));
     iStatus = iFiles[aIndex];
