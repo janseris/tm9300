@@ -540,6 +540,24 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   Rally 16/20/11 -> 19/21/5, Snow 12/18/31 -> 11/21/24, Desert 7/19/51 -> 12/21/33, Bay 5/18/49 -> 7/17/47,
   Island 8/15/69 -> 8/17/69. Every Rally, Snow and Desert track finishes with respawns.
 
+- Failure census (`tools/pc/respawns_where.py`): the host driver logs where and why each respawn began (off the
+  line, stopped, fell, pinned: not moving a metre in a second whatever its speed says), and the blocks there are
+  counted over all 105 tracks. Island's big loop pieces (`IslandPlatformLoopGT4Start` ...) had 14 respawns over 7
+  tracks, Desert's loops 7 over 7. What was wrong:
+  - integer overflow in the wall response at Island speeds (`vn * nx * 6` past 2^31 above ~170 m/s): the car was
+    thrown off at 250-360 m/s; the wall and slope products are 64-bit now;
+  - the loop press friction charged every turn of the road's up: rolling onto a bank, or riding a curved wall round
+    a bend, cost as much as a loop (IslandC2's wall ride: 200 -> 110 m/s, the replay 197 -> 186). It is now by how
+    much the road turns over (the up's turn about a level axis, as in a loop) against round (about an upright one);
+  - steering on the steep road was capped at 0.8 rad/s: the car's own full-lock rate now (Island 1.4);
+  - a steep-road face met glancingly (under 15 degrees) was a wall: any contact at speed takes the car onto it;
+  - the host driver steers on the steep road (pure pursuit across the road's plane: nothing on a loop, the bend on
+    a banked curve or a wall) with full throttle (its flat-road corner speeds braked it to a crawl).
+  Respawns over all tracks 188 -> 151 (Island 81 -> 53, Desert 33 -> 27); unaided finishes Snow 11 -> 12,
+  Island 8 -> 10. What is left: Bay's jumps onto its platform slopes and road ramps (the car lands ~10 m long and
+  catches the slope's support: the take-off a tenth too steep there), Snow's metal-tube corners going down, Desert's
+  tilted straights; most of the rest the driver losing the line.
+
 ## Next
 
 1. **Speed on Snow**: SnowA1 draws ~2,000 triangles a frame (3.8 M instructions: ~18 fps on the phone), the

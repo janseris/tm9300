@@ -555,8 +555,8 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
         const bool turbo2 = s.surf == 11;
         int surf = s.surf; if (surf < 0 || surf > 8) surf = 0;
         // the speed along the heading and across it
-        int v = (s.vx * sn + s.vz * co) >> 14;
-        int l = (s.vx * co - s.vz * sn) >> 14;
+        int v = (int) (((long long) s.vx * sn + (long long) s.vz * co) >> 14);
+        int l = (int) (((long long) s.vx * co - (long long) s.vz * sn) >> 14);
         int band = Abs(v) >> 8; band /= 10; if (band > 9) band = 9;
         int a = 0;
         // rolling and air drag: 2.5 m/s^2 + 0.0005 v^2 (v m/s); the pull table is the net gain on a road at
@@ -603,9 +603,9 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
         // the replays' slip angles (Rally 10-30 degrees in a turn, Snow 2-8)
         const int sn2 = R3D::Sin(s.yaw), co2 = R3D::Cos(s.yaw);
         {
-        const int wx = (v * sn + l * co) >> 14, wz = (v * co - l * sn) >> 14;
-        v = (wx * sn2 + wz * co2) >> 14;
-        l = (wx * co2 - wz * sn2) >> 14;
+        const int wx = (int) (((long long) v * sn + (long long) l * co) >> 14), wz = (int) (((long long) v * co - (long long) l * sn) >> 14);
+        v = (int) (((long long) wx * sn2 + (long long) wz * co2) >> 14);
+        l = (int) (((long long) wx * co2 - (long long) wz * sn2) >> 14);
         }
         const int grip = (((KGrip[iClass] * KSurfGrip[surf]) >> 8) * load) >> 8;
         if (l > grip) l -= grip; else if (l < -grip) l += grip; else l = 0;
@@ -615,15 +615,15 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
         // sliding costs speed: the tyres' sideways work
         int scrub = (Abs(l) * KScrub[iClass]) >> 12;
         if (v > 0) v -= scrub < v ? scrub : v; else if (v < 0) v += scrub < -v ? scrub : -v;
-        s.vx = (v * sn2 + l * co2) >> 14;
-        s.vz = (v * co2 - l * sn2) >> 14;
-        s.vy = -((s.vx * s.nx + s.vz * s.nz) / s.ny);               // along the slope
+        s.vx = (int) (((long long) v * sn2 + (long long) l * co2) >> 14);
+        s.vz = (int) (((long long) v * co2 - (long long) l * sn2) >> 14);
+        s.vy = (int) (-(((long long) s.vx * s.nx + (long long) s.vz * s.nz) / s.ny));      // along the slope
         s.speed = v;
         }
     else
         {
         s.vy -= (iGravity * 256 / 50) >> 8;                         // 1/256 m/s a step
-        s.speed = (s.vx * sn + s.vz * co) >> 14;
+        s.speed = (int) (((long long) s.vx * sn + (long long) s.vz * co) >> 14);
         }
     // the move, then the ground there
     int nx = s.x + s.vx / 50, ny = s.y + s.vy / 50, nz = s.z + s.vz / 50;
@@ -639,7 +639,10 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
             {
             const int vn = (int) (((long long) s.vx * w.nx + (long long) s.vy * w.ny + (long long) s.vz * w.nz) >> 13);
             const int sp = ISqrt64((unsigned long long) ((long long) s.vx * s.vx + (long long) s.vy * s.vy + (long long) s.vz * s.vz));
-            if (sp > 15 * 256 && -vn * 4 > sp)
+            // (0.19: any contact moving into it: a glancing one too, as a banked climb into a loop (IslandC2's loop
+            // start: the car scraped the bank as a wall, 200 -> 150 m/s, where the replay rides up it); was: head on
+            // by more than 15 degrees)
+            if (sp > 15 * 256 && vn < 0)
                 {
                 const int t = w.y;
                 s.x += (int) (((long long) (nx - s.x) * t) >> 12); s.z += (int) (((long long) (nz - s.z) * t) >> 12);
@@ -663,9 +666,11 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
         int rn = (rx * w.nx + rz * w.nz) >> 13;
         if (rn < 0) { rx -= (rn * w.nx) >> 13; rz -= (rn * w.nz) >> 13; }
         nx = hx + rx; nz = hz + rz;
-        int vn = (s.vx * w.nx + s.vz * w.nz) >> 13;                       // the speed into the wall taken out, a fifth back
-        if (vn < 0) { s.vx -= (vn * w.nx * 6 / 5) >> 13; s.vz -= (vn * w.nz * 6 / 5) >> 13; }
-        s.speed = (s.vx * R3D::Sin(s.yaw) + s.vz * R3D::Cos(s.yaw)) >> 14;
+        int vn = (int) (((long long) s.vx * w.nx + (long long) s.vz * w.nz) >> 13);                       // the speed into the wall taken out, a fifth back
+        // (0.19: in 64 bits: Island's car meets walls at 180 m/s and more, and vn * nx * 6 overflowed (the car
+        // was thrown off at 250-360 m/s: IslandC2's loops))
+        if (vn < 0) { s.vx -= (int) (((long long) vn * w.nx * 6 / 5) >> 13); s.vz -= (int) (((long long) vn * w.nz * 6 / 5) >> 13); }
+        s.speed = (int) (((long long) s.vx * R3D::Sin(s.yaw) + (long long) s.vz * R3D::Cos(s.yaw)) >> 14);
         iWallHits++;
         }
     // 0.15: the car's body for the walls: its front corners (0.85 m to each side, 1.9 m out) at 0.35 m and 1 m up (the
@@ -676,7 +681,7 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
     // (not on a bank or a wall ride: there the road itself rises past the corners)
     if (s.ny >= 7000)
     {
-    const int lat = (s.vx * co - s.vz * sn) >> 14;
+    const int lat = (int) (((long long) s.vx * co - (long long) s.vz * sn) >> 14);
     const int lside = lat > 512 ? 218 : lat < -512 ? -218 : 0;
     for (int pass = 0; pass < 5; pass++)
         {
@@ -699,9 +704,11 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
         int rn = (rx * w.nx + rz * w.nz) >> 13;
         if (rn < 0) { rx -= (rn * w.nx) >> 13; rz -= (rn * w.nz) >> 13; }
         nx = hx + rx; nz = hz + rz;
-        int vn = (s.vx * w.nx + s.vz * w.nz) >> 13;
-        if (vn < 0) { s.vx -= (vn * w.nx * 6 / 5) >> 13; s.vz -= (vn * w.nz * 6 / 5) >> 13; }
-        s.speed = (s.vx * R3D::Sin(s.yaw) + s.vz * R3D::Cos(s.yaw)) >> 14;
+        int vn = (int) (((long long) s.vx * w.nx + (long long) s.vz * w.nz) >> 13);
+        // (0.19: in 64 bits: Island's car meets walls at 180 m/s and more, and vn * nx * 6 overflowed (the car
+        // was thrown off at 250-360 m/s: IslandC2's loops))
+        if (vn < 0) { s.vx -= (int) (((long long) vn * w.nx * 6 / 5) >> 13); s.vz -= (int) (((long long) vn * w.nz * 6 / 5) >> 13); }
+        s.speed = (int) (((long long) s.vx * R3D::Sin(s.yaw) + (long long) s.vz * R3D::Cos(s.yaw)) >> 14);
         iWallHits++;
         }
     }
@@ -842,8 +849,8 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
             {
             // landed: the speed into the ground taken out
             ny = hit.y; s.onGround = 1; s.nx = hit.nx; s.ny = hit.ny; s.nz = hit.nz; s.surf = hit.surf;
-            int vn = (s.vx * s.nx + s.vy * s.ny + s.vz * s.nz) >> 13;
-            if (vn < 0) { s.vx -= (vn * s.nx) >> 13; s.vy -= (vn * s.ny) >> 13; s.vz -= (vn * s.nz) >> 13; }
+            int vn = (int) (((long long) s.vx * s.nx + (long long) s.vy * s.ny + (long long) s.vz * s.nz) >> 13);
+            if (vn < 0) { s.vx -= (int) (((long long) vn * s.nx) >> 13); s.vy -= (int) (((long long) vn * s.ny) >> 13); s.vz -= (int) (((long long) vn * s.nz) >> 13); }
             }
         iBumpY = hit.y;
         }
@@ -859,8 +866,8 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
             TmGroundHit lower;
             for (int k = 0; k < 4 && aG.Probe(nx, nz, high.y - 16, lower) && lower.y > ny; k++) high = lower;
             ny = high.y; s.onGround = 1; s.nx = high.nx; s.ny = high.ny; s.nz = high.nz; s.surf = high.surf; hit = high; top = high.y;
-            int vn = (s.vx * s.nx + s.vy * s.ny + s.vz * s.nz) >> 13;
-            if (vn < 0) { s.vx -= (vn * s.nx) >> 13; s.vy -= (vn * s.ny) >> 13; s.vz -= (vn * s.nz) >> 13; }
+            int vn = (int) (((long long) s.vx * s.nx + (long long) s.vy * s.ny + (long long) s.vz * s.nz) >> 13);
+            if (vn < 0) { s.vx -= (int) (((long long) vn * s.nx) >> 13); s.vy -= (int) (((long long) vn * s.ny) >> 13); s.vz -= (int) (((long long) vn * s.nz) >> 13); }
             iBumpY = ny;
             }
         // 0.18: on Island and Bay, nothing under the car (the sea) and 40 m under the last ground: back at the last
@@ -909,10 +916,11 @@ void TmCar::SurfaceStep(const TmGround& aG, const TmCarInput& aIn)
     int nsp = sp + a; if (nsp > KVMax[iClass] * 256) nsp = KVMax[iClass] * 256; if (nsp < 256) nsp = 256;
     if (sp > 0) { s.vx = (int) ((long long) s.vx * nsp / sp); s.vy = (int) ((long long) s.vy * nsp / sp); s.vz = (int) ((long long) s.vz * nsp / sp); }
     sp = nsp;
-    // the steering: the speed turned about the up, ~0.8 rad/s at full lock
+    // the steering: the speed turned about the up, at the car's own full-lock rate for its speed (0.19: on a banked
+    // curve the car turns as on the flat; it was ~0.8 rad/s, under the 1.1 rad/s IslandC2's banked loop entry takes)
     if (s.steerPos)
         {
-        const int th = (s.steerPos * 67) / 256;                  // rad * 4096 a step
+        const int th = (s.steerPos * ((KTurn[iClass][band] * 402) >> 10)) / 256;    // rad * 4096 a step (KTurn: rad/s * 208.6)
         const long long cx = ((long long) s.uy * s.vz - (long long) s.uz * s.vy) >> 13;
         const long long cy = ((long long) s.uz * s.vx - (long long) s.ux * s.vz) >> 13;
         const long long cz = ((long long) s.ux * s.vy - (long long) s.uy * s.vx) >> 13;
@@ -939,10 +947,13 @@ void TmCar::SurfaceStep(const TmGround& aG, const TmCarInput& aIn)
     if ((long long) nx * s.ux + (long long) ny * s.uy + (long long) nz * s.uz < 0) { nx = -nx; ny = -ny; nz = -nz; }
     s.x = ox + (int) (((long long) dx * t) >> 12); s.y = oy + (int) (((long long) dy * t) >> 12); s.z = oz + (int) (((long long) dz * t) >> 12);
     // the curve's press: the up's turn this step (~ |n - u|, rad * 8192) times the speed, a second
+    const int ux0 = s.ux, uy0 = s.uy, uz0 = s.uz;
     const int ddx = nx - s.ux, ddy = ny - s.uy, ddz = nz - s.uz;
-    const int turn = ISqrt64((unsigned long long) ((long long) ddx * ddx + (long long) ddy * ddy + (long long) ddz * ddz));
-    const bool concave = ((long long) ddx * s.vx + (long long) ddy * s.vy + (long long) ddz * s.vz) < 0;     // the up turns against the way: a loop's inside
-    const long long press = (long long) sp * turn * 50 / 8192 * (concave ? 1 : -1);      // 1/256 m/s^2
+    // 0.19: the up's turn along the way only (a loop's curve, pitch): turning sideways about the way (rolling onto a
+    // bank) presses nothing. The whole turn's size was taken: rolling onto IslandC2's 35-degree banked loop entry
+    // cost the car 57 m/s (0.47 x 200 m/s x 0.61 rad), where the replay keeps its speed
+    const long long along = sp > 0 ? -(((long long) ddx * s.vx + (long long) ddy * s.vy + (long long) ddz * s.vz) / sp) : 0;   // * 8192: + concave
+    const long long press = (long long) sp * along * 50 / 8192;      // 1/256 m/s^2
     const long long pull = -((long long) iGravity * ny) / 8192;                          // gravity off the road (the road over the car)
     s.ux = nx; s.uy = ny; s.uz = nz; s.surf = h.surf;
     // the speed onto the road, all of it kept
@@ -951,11 +962,21 @@ void TmCar::SurfaceStep(const TmGround& aG, const TmCarInput& aIn)
     const int sp2 = ISqrt64((unsigned long long) ((long long) s.vx * s.vx + (long long) s.vy * s.vy + (long long) s.vz * s.vz));
     if (sp2 > 0) { s.vx = (int) ((long long) s.vx * sp / sp2); s.vy = (int) ((long long) s.vy * sp / sp2); s.vz = (int) ((long long) s.vz * sp / sp2); }
     // the road's press costs speed (IslandA2's loop: 175 m/s in, 51 at the top; gravity alone left 147): a share of it
-    if (press > 0) { sp -= (int) ((press * KLoopFric[iClass]) >> 8) / 50; if (sp < 256) sp = 256; }
+    // (0.19: by how much the road turns over (a loop: the up turns about a level axis) and not round (a curved wall,
+    // a banked curve: about an upright axis): IslandC2's curved wall ride keeps the replay's speed (197 -> 186 m/s),
+    // which the press cost 90 m/s; IslandA2's loop, where the share was fitted, turns over)
+    if (press > 0)
+        {
+        const long long ax = (long long) uy0 * ddz - (long long) uz0 * ddy, ay = (long long) uz0 * ddx - (long long) ux0 * ddz, az = (long long) ux0 * ddy - (long long) uy0 * ddx;
+        const unsigned long long all = (unsigned long long) ((ax >> 8) * (ax >> 8) + (ay >> 8) * (ay >> 8) + (az >> 8) * (az >> 8));
+        const unsigned long long lvl = (unsigned long long) ((ax >> 8) * (ax >> 8) + (az >> 8) * (az >> 8));
+        const int over = all > 0 ? (int) ((ISqrt64(lvl) * 256) / (ISqrt64(all) > 0 ? ISqrt64(all) : 1)) : 256;
+        sp -= (int) ((((press * KLoopFric[iClass]) >> 8) * over) >> 8) / 50; if (sp < 256) sp = 256;
+        }
     if (sp2 > 0) { s.vx = (int) ((long long) s.vx * sp / sp2); s.vy = (int) ((long long) s.vy * sp / sp2); s.vz = (int) ((long long) s.vz * sp / sp2); }
     s.speed = sp;
 #ifdef SURFDEBUG
-    printf("  surf: road at t %d n (%d %d %d) turn %d press %lld pull %lld\n", t, nx, ny, nz, turn, press, pull);
+    printf("  surf: road at t %d n (%d %d %d) along %lld press %lld pull %lld\n", t, nx, ny, nz, along, press, pull);
 #endif
     // (a faceted loop: the turn comes at the faces' edges, nothing on a face: the press averaged over ~8 steps)
     iPress += (int) ((press - iPress) / 8);

@@ -186,7 +186,31 @@ int main(int argc, char** argv)
             }
         if (getenv("STRAIGHT")) { in.steer = 0; in.throttle = 1; in.brake = 0; if (step % 50 == 49) printf("straight %d s: %.0f km/h %s\n", (step + 1) / 50, car.iS.speed * 3.6 / 256, car.iS.onGround ? "" : "(air)"); }
         if (getenv("STEERBIAS")) { in.steer += atoi(getenv("STEERBIAS")); if (in.steer > 256) in.steer = 256; if (in.steer < -256) in.steer = -256; }
-        if (car.iS.surfMode) in.steer = 0;              // 0.18: on a loop's road: straight on (the replay's turn in x, z there is the loop's)
+        // 0.18: on a loop's road: straight on (the replay's turn in x, z there is the loop's). 0.19: pure pursuit in
+        // the road's plane: the replay's point ahead, across the way (the up x the way): on a loop it is ahead, on a
+        // banked curve to the side
+        if (car.iS.surfMode)
+            {
+            in.steer = 0;
+            const TmCarState& c = car.iS;
+            const double sp = sqrt((double) c.vx * c.vx + (double) c.vy * c.vy + (double) c.vz * c.vz);
+            if (getenv("DRIVER") && atoi(getenv("DRIVER")) == 2 && sp > 256 && !getenv("NOSURFSTEER"))
+                {
+                const double fx = c.vx / sp, fy = c.vy / sp, fz = c.vz / sp, ux = c.ux / 8192.0, uy = c.uy / 8192.0, uz = c.uz / 8192.0;
+                const double rx = uy * fz - uz * fy, ry = uz * fx - ux * fz, rz = ux * fy - uy * fx;      // up x way: the right
+                const double v = sp / 256, L = 5 + 0.3 * v;
+                int k = prog;
+                while (k + 1 < t.iNPath && sqrt(pow(t.iPath[k].x / 16.0 - c.x / 256.0, 2) + pow(t.iPath[k].y / 16.0 - c.y / 256.0, 2) + pow(t.iPath[k].z / 16.0 - c.z / 256.0, 2)) < L) k++;
+                const double tx = t.iPath[k].x / 16.0 - c.x / 256.0, ty = t.iPath[k].y / 16.0 - c.y / 256.0, tz = t.iPath[k].z / 16.0 - c.z / 256.0;
+                const double lat = tx * rx + ty * ry + tz * rz, fwd = tx * fx + ty * fy + tz * fz;
+                const double kap = 2 * lat / (lat * lat + fwd * fwd + 0.01);
+                const double rfull = car.FullTurn((int) sp) / 208.6;
+                const double st = v * kap / (rfull > 0.1 ? rfull : 0.1) * 256;
+                in.steer = (int) (st > 256 ? 256 : st < -256 ? -256 : st);
+                // (on the road's steep part the flat road's corner speeds do not hold: full throttle, as the replays)
+                in.throttle = 1; in.brake = 0;
+                }
+            }
         const int px0 = car.iS.x, py0 = car.iS.y, pz0 = car.iS.z;
         car.Step(g, in);
         if (getenv("TRACE")) { double ta = 0, tb = 0; if (sscanf(getenv("TRACE"), "%lf,%lf", &ta, &tb) == 2 && step >= ta * 50 && step <= tb * 50) printf("step %d: (%.2f,%.2f,%.2f) vy %.1f speed %.1f %s surf %d steer %d\n", step, car.iS.x / 256.0, car.iS.y / 256.0, car.iS.z / 256.0, car.iS.vy / 256.0, car.iS.speed / 256.0, car.iS.onGround ? "ground" : "AIR", car.iS.surf, in.steer); }
@@ -198,7 +222,22 @@ int main(int argc, char** argv)
             {
             const TmPath& a = t.iPath[prog];
             const double dx = car.iS.x / 256.0 - a.x / 16.0, dz = car.iS.z / 256.0 - a.z / 16.0;
-            const bool off = dx * dx + dz * dz > 225 || (car.iS.speed < 3 * 256 && step > 150) || car.iS.y / 256.0 < a.y / 16.0 - 15;
+            // (0.19: pinned too: the car not moving 1 m in a second, whatever its speed says; and where and why it
+            // first went wrong, for the log)
+            static int hx[50], hz[50]; static double offX, offY, offZ, offT; static char why[48];
+            const int hi = step % 50;
+            const bool pinned = step > 150 && abs(car.iS.x - hx[hi]) + abs(car.iS.z - hz[hi]) < 256;
+            hx[hi] = car.iS.x; hz[hi] = car.iS.z;
+            const bool wide = dx * dx + dz * dz > 225, slow = car.iS.speed < 3 * 256 && step > 150, fell = car.iS.y / 256.0 < a.y / 16.0 - 15;
+            const bool off = wide || slow || fell || pinned;
+            if (off && offSteps == 0)
+                {
+                offX = car.iS.x / 256.0; offY = car.iS.y / 256.0; offZ = car.iS.z / 256.0; offT = step / 50.0;
+                if (fell) sprintf(why, "fell %.0f m under the line", a.y / 16.0 - offY);
+                else if (pinned) sprintf(why, "pinned");
+                else if (slow) sprintf(why, "stopped");
+                else sprintf(why, "off the line %.0f m", sqrt(dx * dx + dz * dz));
+                }
             offSteps = off ? offSteps + 1 : 0;
             if (offSteps >= 50)
                 {
@@ -210,7 +249,7 @@ int main(int argc, char** argv)
                 const double yaw = atan2(vx, vz); car.iS.yaw = ((int) (yaw * 4096 / (2 * M_PI))) & 4095; car.iS.yaw16 = car.iS.yaw << 4;
                 car.iS.speed = (int) (sqrt(vx * vx + vz * vz) * 256); car.iS.onGround = 0;
                 respawns++; offSteps = 0; prog = k;
-                printf("respawn %d at %.1f s: sample %d (%.0f, %.0f, %.0f)\n", respawns, step / 50.0, k, p.x / 16.0, p.y / 16.0, p.z / 16.0);
+                printf("respawn %d at %.1f s: sample %d (%.0f, %.0f, %.0f) | from %.1f s at (%.1f, %.1f, %.1f): %s\n", respawns, step / 50.0, k, p.x / 16.0, p.y / 16.0, p.z / 16.0, offT, offX, offY, offZ, why);
                 }
             }
         if (getenv("GHOST")) run.Record(car);
