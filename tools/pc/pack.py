@@ -34,6 +34,9 @@ The collision meshes are Nadeo's own collision solids (CPlugSurface), pre-turned
 DEPTHFIX = False
 CAR_TRIS = int(__import__('os').environ.get('CAR_TRIS', '600'))   # the car's triangles (vertex clustering below ~500 ruins its shape)
 ALLWALLS = __import__('os').environ.get('ALLWALLS', '1') != '0'
+# 0.19: and for the solids matching NADEOWALLS_FOR (a regex) always: SnowB2's lake bridges' railings, drawn as thin
+# panels the simplified drawn mesh kept half of (one triangle a panel), the car drove through the other half
+NADEOWALLS_FOR = __import__('os').environ.get('NADEOWALLS_FOR', r'LakeBridge')
 NADEOWALLS = __import__('os').environ.get('NADEOWALLS', '0') != '0'   # 0.16: walls from Nadeo's collision meshes     # 0.8: every steep face of a collidable piece is a wall
 WALL_NY = 0.45         # faces steeper than ~63 degrees are walls (the car hits them), not ground: a big stone's side, a bank
 WALLSTAT = [0, 0]      # steep faces kept as walls / dropped (per solid when PACKSTATS is set)
@@ -579,7 +582,9 @@ class Prep:
         # 0.16: the walls from Nadeo's own collision mesh (its steep faces, both sides), not the drawn mesh's
         # simplified ones, for pieces in one part: the car's body box meets them as the game's car does
         sc = self.solids[sname].get('coll')
-        if NADEOWALLS and ox == 0 and oz == 0 and len(self.parts(sname)) == 1 and sc and sc.get('tris'):
+        forced = bool(NADEOWALLS_FOR and __import__('re').search(NADEOWALLS_FOR, sname))
+        ntp = len(self.parts(sname))
+        if ((NADEOWALLS and ox == 0 and oz == 0 and ntp == 1) or forced) and sc and sc.get('tris'):
             tris = [tr for tr in tris if tr[4] != 9]
             cv = sc['verts']; extra = []
             for i in range(0, len(sc['tris']), 4):
@@ -587,6 +592,8 @@ class Prep:
                 P = [tuple(cv[sc['tris'][i + q] * 3 + k] for k in range(3)) for q in range(3)]
                 n, area = face_normal(*P)
                 if n is None or abs(n[1]) >= WALL_NY or area < 0.02: continue
+                # (a solid in tiles: each tile the faces whose middle is in it, as split_tiles)
+                if ntp > 1 and (math.floor(sum(q[0] for q in P) / 3 / TILE) * TILE != ox or math.floor(sum(q[2] for q in P) / 3 / TILE) * TILE != oz): continue
                 extra.append(P)
             if extra:
                 iv = list(iv); b0 = len(iv)

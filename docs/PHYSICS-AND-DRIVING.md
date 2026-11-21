@@ -558,6 +558,37 @@ and 1.3 rad/s for Rally, 120 and 2.2 for Snow), braking in time. Times against t
   catches the slope's support: the take-off a tenth too steep there), Snow's metal-tube corners going down, Desert's
   tilted straights; most of the rest the driver losing the line.
 
+- The phone test's reports, fixed:
+  - **Checkpoints respawn at their middle** (the group's boxes' centre, on the road found from 3 m above), facing
+    the nearest quarter turn of where the car was heading; was where the car crossed it.
+  - **Rails hold the car, no bounce, no climbing up them.** Snow's road-side rails (the plank-and-iron kerb with
+    snow on top) are wound with their faces outward, so a car met them from behind: it went into them and the
+    ground probe then put it on the snow on top (2 m up), or through. Walls are two-sided now (a loop's road
+    stays one-sided), level unit normals (a leaning face's 0.6-long normal left 40 % of the move into it: the car
+    crept in), in 64 bits at full precision (at 1/16 m a slow move into a face, under 6 cm a step, came out as
+    along it). A face lower than a climbable step (0.55 m over the car's ground) is not a wall (a snow mound's
+    0.5 m lip at a road's end, its riser met from behind before). The body's corners and the last move check test
+    a band, 0.35 / 0.25 m up to 1.2 m, not two points: a railing's bars at 0.9-1.4 m went between. The speed
+    into a wall is taken out with no bounce (met more than ~45 degrees head on, up to a quarter back, so the car
+    is not stuck against it); the last move check slides along the wall it meets instead of stopping the move
+    whole (wedged in a rail's corner the car stood still at 100 km/h).
+  - **SnowB2's red lake bridges' railings**: drawn as thin panels the simplified mesh kept half of (one triangle
+    a panel); `pack.py` now takes the walls of the solids matching `NADEOWALLS_FOR` (default `LakeBridge`) from
+    Nadeo's collision mesh, also for solids in tiles. SnowB2, SnowB5, SnowD1 repacked, the Snow kit rebuilt.
+  - **The car holds on to bumpy crests** (the bridges at 110 km/h flew): the kink is measured against the road's
+    climb over the last metres (Snow 10 m, others 4), not the last step, and the car holds on while it is under
+    its gravity (Snow 40 m/s^2): the simplified roads' noise (climb 13, 19, 24, 10 m/s on SnowB2's bridge) evens
+    out; a kink the car holds over starts no throw to follow. SnowB2's bridge: no air at 90-110 km/h, hops of
+    0.6 m at 130-155 (was 0.4 s in the air at 90 and 110); SnowD4's rounded crest at 360 km/h still throws it as
+    the replay's car.
+  - **Pitch drawn from the road under the nose and tail** (1.3 m each way) and roll from 0.8 m each side: it
+    turns smoothly as the car rolls over a kink; the faceted road's normal jumped from face to face (and gave a
+    false roll on a straight bridge).
+- Regression (unaided / with respawns, respawns in all), before -> after: Rally 19/21 -> 19/21, Snow 11/21 ->
+  14/21, Desert 12/21 -> 11/21, Bay 7/17 -> 9/17, Island 8/19 -> 12/19; respawns 190 -> 162 (the host driver now
+  meets the rails it used to cut through). Jump test (mean |log|): Rally 0.101 -> 0.105, Snow 0.219 -> 0.211,
+  Desert 0.194 -> 0.177, Bay 0.194 -> 0.151, Island 0.167 -> 0.132.
+
 ## Next
 
 1. **Speed on Snow**: SnowA1 draws ~2,000 triangles a frame (3.8 M instructions: ~18 fps on the phone), the

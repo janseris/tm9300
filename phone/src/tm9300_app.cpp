@@ -1485,7 +1485,7 @@ void CTmView::DriveFrame(TInt& aCx, TInt& aCy, TInt& aCz, TInt& aYaw, TInt& aPit
         if (q && q->At((TInt) (((TInt64) gs * gn) / gd).Low(), c.x, c.y, c.z, c.yaw, c.slopeF, c.slopeR)) iView->iNGhosts++;
         }
     aCarX = iCar->iS.x >> 4; aCarY = (iCar->iS.y >> 4) + 3 + (iCar->iSusB >> 4); aCarZ = iCar->iS.z >> 4; aCarYaw = iCar->iS.yaw;
-    iCar->iS.Slopes(iView->iCarSlopeF, iView->iCarSlopeR);
+    iCar->DrawSlopes(*iGround, iView->iCarSlopeF, iView->iCarSlopeR);
     // the body's pitch with its bounce (the nose dips as it sinks)
     iView->iCarSlopeF += iCar->iSusV * 2;
     // 0.18: on a loop's road: drawn turned in 3D, its up the road's normal, its forward its speed's way

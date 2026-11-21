@@ -209,7 +209,9 @@ bool TmGround::Probe(int aX, int aZ, int aYMax, TmGroundHit& aHit) const
     return found;
     }
 
-bool TmGround::WallHit(int aX0, int aZ0, int aX1, int aZ1, int aY, TmGroundHit& aHit, int aDY) const
+static int ISqrt(unsigned a);
+
+bool TmGround::WallHit(int aX0, int aZ0, int aX1, int aZ1, int aY, TmGroundHit& aHit, int aDY, int aBand, int aMinTop) const
     {
     if (!iT || !iFirst) return false;
     const int dx = aX1 - aX0, dz = aZ1 - aZ0;
@@ -232,7 +234,7 @@ bool TmGround::WallHit(int aX0, int aZ0, int aX1, int aZ1, int aY, TmGroundHit& 
         {
         const TmCInst& c = iT->iCInst[iList[k]];
         const int x16 = aX1 >> 4, z16 = aZ1 >> 4;
-        if (x16 < c.bb[0] - 64 || x16 > c.bb[3] + 64 || z16 < c.bb[2] - 64 || z16 > c.bb[5] + 64 || y16 < c.bb[1] || y16 > c.bb[4]) continue;
+        if (x16 < c.bb[0] - 64 || x16 > c.bb[3] + 64 || z16 < c.bb[2] - 64 || z16 > c.bb[5] + 64 || y16 + (aBand >> 4) < c.bb[1] || y16 > c.bb[4]) continue;
         // the same instance from the other cell: once
         bool dup = false;
         for (int cj = 0; cj < ci && !dup; cj++) for (int k2 = iFirst[cells[cj]]; k2 < iFirst[cells[cj] + 1]; k2++) if (iList[k2] == iList[k]) { dup = true; break; }
@@ -258,15 +260,31 @@ bool TmGround::WallHit(int aX0, int aZ0, int aX1, int aZ1, int aY, TmGroundHit& 
             const short* nrm = m.nrm + f * 3;
             const unsigned short* idx = m.idx + f * 3;
             const short* a = m.v + idx[0] * 3;
+            if (aMinTop > -0x7fffffff)
+                {
+                const int ty = (a[1] > m.v[idx[1] * 3 + 1] ? (a[1] > m.v[idx[2] * 3 + 1] ? a[1] : m.v[idx[2] * 3 + 1]) : (m.v[idx[1] * 3 + 1] > m.v[idx[2] * 3 + 1] ? m.v[idx[1] * 3 + 1] : m.v[idx[2] * 3 + 1]));
+                if ((ty + c.y) * 16 < aMinTop) continue;
+                }
             // the segment against the plane n . (p - a) = 0: n . (p0 - a) + t * n . d = 0
             const int ax = a[0] * 16, ay = a[1] * 16, az = a[2] * 16;
             // 0.6: the move's height change counts (a car falling past a leaning face crosses it going down)
-            const int nd = (nrm[0] * (dx >> 4) + nrm[1] * (aDY >> 4) + nrm[2] * (dz >> 4));     // * 16 less (dx up to a few m)
-            if (nd >= 0) continue;                                              // moving away from or along the face's front
-            const int n0 = (nrm[0] * ((px0 - ax) >> 4) + nrm[1] * ((py - ay) >> 4) + nrm[2] * ((pz0 - az) >> 4));
-            if (n0 < 0) continue;                                               // already behind it
+            // (0.19: in 64 bits at full precision: at 1/16 m a slow move into a face, under 6 cm a step, came out
+            // as along it, and the car crept through Snow's rails)
+            long long nd = (long long) nrm[0] * dx + (long long) nrm[1] * aDY + (long long) nrm[2] * dz;
+            if (nd == 0) continue;                                              // along it
+            long long n0 = (long long) nrm[0] * (px0 - ax) + (long long) nrm[1] * (py - ay) + (long long) nrm[2] * (pz0 - az);
+            // 0.19: two-sided: met from behind, the face turned round (Snow's road-side rails, the bridges' rails,
+            // are wound with their faces outward: the car met them from the back and went through, up onto the snow
+            // on top of them)
+            // (a loop's road, surf 12, one-sided still: its back is under the loop, where the car is not on it)
+            const int sg = nd < 0 ? 1 : -1;
+            if (sg < 0 && m.surf[f] == 12) continue;
+            nd *= sg; n0 *= sg;
+            if (n0 < 0) continue;                                               // moving away from it
             // t = -n0 / nd in 0..1, * 4096
-            int t = (int) (((long long) n0 << 12) / -nd);
+            const long long tl = (n0 << 12) / -nd;
+            if (tl > 4096) continue;
+            int t = (int) tl;
             if (t > 4096 || t >= bestT) continue;
             // the crossing point, inside the triangle? by the axis the normal is largest in (x or z: a wall)
             const int hx = px0 + (int) (((long long) dx * t) >> 12), hz = pz0 + (int) (((long long) dz * t) >> 12), hy = py + (int) (((long long) aDY * t) >> 12);
@@ -274,13 +292,39 @@ bool TmGround::WallHit(int aX0, int aZ0, int aX1, int aZ1, int aY, TmGroundHit& 
             int u0, v0, u1, v1, u2, v2, pu, pv;
             if (Abs(nrm[0]) > Abs(nrm[2])) { u0 = az; v0 = ay; u1 = bb2[2] * 16; v1 = bb2[1] * 16; u2 = cc[2] * 16; v2 = cc[1] * 16; pu = hz; pv = hy; }
             else { u0 = ax; v0 = ay; u1 = bb2[0] * 16; v1 = bb2[1] * 16; u2 = cc[0] * 16; v2 = cc[1] * 16; pu = hx; pv = hy; }
+            if (aBand > 0)
+                {
+                // the face's heights along the upright line through the crossing (its edges met there): any of the
+                // band's in them
+                int vlo = 0x7fffffff, vhi = -0x7fffffff;
+                const int us[3] = { u0, u1, u2 }, vs[3] = { v0, v1, v2 };
+                for (int e = 0; e < 3; e++)
+                    {
+                    const int ua = us[e], va = vs[e], ub = us[(e + 1) % 3], vb = vs[(e + 1) % 3];
+                    if ((pu < ua && pu < ub) || (pu > ua && pu > ub)) continue;
+                    const int v = ua == ub ? (va < vb ? va : vb) : va + (int) ((long long) (vb - va) * (pu - ua) / (ub - ua));
+                    const int v2b = ua == ub ? (va < vb ? vb : va) : v;
+                    if (v < vlo) vlo = v; if (v2b > vhi) vhi = v2b;
+                    }
+                if (vlo > vhi || vhi < pv || vlo > pv + aBand) continue;
+                }
+            else
+            {
             const int s1 = ((u1 - u0) >> 2) * ((pv - v0) >> 2) - ((v1 - v0) >> 2) * ((pu - u0) >> 2);
             const int s2 = ((u2 - u1) >> 2) * ((pv - v1) >> 2) - ((v2 - v1) >> 2) * ((pu - u1) >> 2);
             if ((s1 ^ s2) < 0 && s1 != 0 && s2 != 0) continue;
             const int s3 = ((u0 - u2) >> 2) * ((pv - v2) >> 2) - ((v0 - v2) >> 2) * ((pu - u2) >> 2);
             if (((s1 ^ s3) < 0 && s1 != 0 && s3 != 0) || ((s2 ^ s3) < 0 && s2 != 0 && s3 != 0)) continue;
+            }
             bestT = t; found = true;
-            aHit.y = t; aHit.nx = nrm[0]; aHit.ny = nrm[1]; aHit.nz = nrm[2]; aHit.surf = m.surf[f]; aHit.cinst = iList[k]; aHit.face = f;
+            aHit.y = t; aHit.nx = nrm[0] * sg; aHit.ny = nrm[1] * sg; aHit.nz = nrm[2] * sg; aHit.surf = m.surf[f]; aHit.cinst = iList[k]; aHit.face = f;
+            // 0.19: a wall's normal level, unit length (its slide takes all the move into it out; a leaning face's,
+            // 0.6 long, left 40 % of it: the car crept into Snow's rails a few cm a step)
+            if (m.surf[f] == 9)
+                {
+                const int hl = ISqrt((unsigned) (nrm[0] * nrm[0] + nrm[2] * nrm[2]));
+                if (hl > 0) { aHit.nx = nrm[0] * sg * 8192 / hl; aHit.nz = nrm[2] * sg * 8192 / hl; aHit.ny = 0; }
+                }
             }
         }
     return found;
@@ -377,6 +421,19 @@ int TmGround::KindAt(int aKind, int aX, int aY, int aZ) const
     }
 
 // ---- the car -----------------------------------------------------------------------------------------------
+
+// 0.19: a wall met: the speed into it (vn < 0, along the unit * 8192 normal) is taken out and the rest slides along
+// it, no bounce (the game's road-side rails hold the car without throwing it back); met head on (more than ~45
+// degrees in) a little is given back, up to a quarter, so the car does not stay stuck against it
+static void WallSlide(int& aVx, int& aVz, int aVn, int aNx, int aNz)
+    {
+    if (aVn >= 0) return;
+    const int sp = ILen(aVx, aVz);
+    int back = 0;
+    if (sp > 0 && -aVn * 10 > sp * 7) back = (int) ((long long) aVn * (-aVn * 10 - sp * 7) / (sp * 12));     // (0 at 45, vn/4 head on)
+    aVx -= (int) (((long long) (aVn + back) * aNx) >> 13);
+    aVz -= (int) (((long long) (aVn + back) * aNz) >> 13);
+    }
 
 static int ISqrt(unsigned a)
     {
@@ -483,7 +540,22 @@ void TmCarState::Slopes(int& aAlong, int& aRight) const
     if (aRight > 4096) aRight = 4096; if (aRight < -4096) aRight = -4096;
     }
 
-TmCar::TmCar() : iClass(0), iCheckpoints(0), iCheckMask(0), iFinished(0), iSteps(0), iFinishSteps(0), iLastKindInst(-1), iTotalCps(0), iLapFinish(0), iWallHits(0), iTopY(0), iCpX(0), iCpY(0), iCpZ(0), iCpYaw(0), iGravity(40 * 256), iSusB(0), iSusV(0), iBumpY(0), iAirSteps(0), iClimbVy(0), iClimbRaw(0), iTurbo(0), iShadow(0), iShY(0), iShVy(0), iPress(0), iSurfMiss(0)
+void TmCar::DrawSlopes(const TmGround& aG, int& aAlong, int& aRight) const
+    {
+    iS.Slopes(aAlong, aRight);
+    if (!iS.onGround || iS.surfMode) return;
+    const int sn = R3D::Sin(iS.yaw), co = R3D::Cos(iS.yaw);
+    const int fx = (sn * 333) >> 14, fz = (co * 333) >> 14;          // 1.3 m ahead (1/256 m)
+    const int rx = (co * 205) >> 14, rz = (-sn * 205) >> 14;         // 0.8 m to the right
+    const int top = iS.y + 256, low = iS.y - 256;                   // within 1 m of the car
+    TmGroundHit a, b;
+    if (aG.Probe(iS.x + fx, iS.z + fz, top, a) && aG.Probe(iS.x - fx, iS.z - fz, top, b) && a.y > low && b.y > low)
+        aAlong = Clamp((a.y - b.y) * 4096 / 666, -4096, 4096);
+    if (aG.Probe(iS.x + rx, iS.z + rz, top, a) && aG.Probe(iS.x - rx, iS.z - rz, top, b) && a.y > low && b.y > low)
+        aRight = Clamp((a.y - b.y) * 4096 / 410, -4096, 4096);
+    }
+
+TmCar::TmCar() : iClass(0), iCheckpoints(0), iCheckMask(0), iFinished(0), iSteps(0), iFinishSteps(0), iLastKindInst(-1), iTotalCps(0), iLapFinish(0), iWallHits(0), iTopY(0), iCpX(0), iCpY(0), iCpZ(0), iCpYaw(0), iGravity(40 * 256), iSusB(0), iSusV(0), iBumpY(0), iAirSteps(0), iClimbVy(0), iClimbRaw(0), iTurbo(0), iShadow(0), iKink(KKinkOff), iKinkY(0), iShY(0), iShVy(0), iPress(0), iSurfMiss(0)
     {
     iS.x = iS.y = iS.z = 0; iS.vx = iS.vy = iS.vz = 0; iS.yaw = iS.yaw16 = 0; iS.onGround = 1; iS.surf = 0;
     iS.nx = 0; iS.ny = 8192; iS.nz = 0; iS.speed = 0; iS.steerPos = 0; iS.surfMode = 0; iS.ux = 0; iS.uy = 8192; iS.uz = 0;
@@ -525,7 +597,7 @@ void TmCar::Reset(const TmTrack& aT)
         }
     iBumpY = iS.y;
     for (int w = 0; w < 5; w++) { iLast[w].cinst = -1; iLast[w].face = -1; }
-    iCpX = iS.x; iCpY = iS.y; iCpZ = iS.z; iCpYaw = iS.yaw; iTopY = iS.y; iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; iTurbo = 0; iSusB = 0; iSusV = 0; iShadow = 0;
+    iCpX = iS.x; iCpY = iS.y; iCpZ = iS.z; iCpYaw = iS.yaw; iTopY = iS.y; iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; iTurbo = 0; iSusB = 0; iSusV = 0; iShadow = 0; iKink = KKinkOff;
     }
 
 void TmCar::Respawn()
@@ -533,7 +605,7 @@ void TmCar::Respawn()
     // standing at the last checkpoint taken (the start when none), the race going on
     iS.x = iCpX; iS.y = iCpY; iS.z = iCpZ; iS.yaw = iCpYaw & 4095; iS.yaw16 = iS.yaw * 16;
     iS.vx = iS.vy = iS.vz = 0; iS.onGround = 1; iS.surf = 0; iS.nx = 0; iS.ny = 8192; iS.nz = 0; iS.speed = 0; iS.steerPos = 0; iS.surfMode = 0; iS.ux = 0; iS.uy = 8192; iS.uz = 0;
-    iBumpY = iS.y; iTopY = iS.y; iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; iTurbo = 0; iSusB = 0; iSusV = 0; iShadow = 0;
+    iBumpY = iS.y; iTopY = iS.y; iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; iTurbo = 0; iSusB = 0; iSusV = 0; iShadow = 0; iKink = KKinkOff;
     for (int w = 0; w < 5; w++) { iLast[w].cinst = -1; iLast[w].face = -1; }
     }
 
@@ -633,7 +705,7 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
         {
         TmGroundHit w;
         int hy = s.y + (pass == 0 ? 64 : pass == 2 ? 358 : 154);
-        if (!aG.WallHit(s.x, s.z, nx, nz, hy, w, ny - s.y)) { if (pass == 2) break; continue; }
+        if (!aG.WallHit(s.x, s.z, nx, nz, hy, w, ny - s.y, 0, s.y + 141)) { if (pass == 2) break; continue; }
         // 0.18: a loop's or a wall ride's steep road met at speed, head on enough: the car goes on along it in 3D
         if (w.surf == 12 && pass < 2)
             {
@@ -669,7 +741,7 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
         int vn = (int) (((long long) s.vx * w.nx + (long long) s.vz * w.nz) >> 13);                       // the speed into the wall taken out, a fifth back
         // (0.19: in 64 bits: Island's car meets walls at 180 m/s and more, and vn * nx * 6 overflowed (the car
         // was thrown off at 250-360 m/s: IslandC2's loops))
-        if (vn < 0) { s.vx -= (int) (((long long) vn * w.nx * 6 / 5) >> 13); s.vz -= (int) (((long long) vn * w.nz * 6 / 5) >> 13); }
+        WallSlide(s.vx, s.vz, vn, w.nx, w.nz);
         s.speed = (int) (((long long) s.vx * R3D::Sin(s.yaw) + (long long) s.vz * R3D::Cos(s.yaw)) >> 14);
         iWallHits++;
         }
@@ -683,20 +755,21 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
     {
     const int lat = (int) (((long long) s.vx * co - (long long) s.vz * sn) >> 14);
     const int lside = lat > 512 ? 218 : lat < -512 ? -218 : 0;
-    for (int pass = 0; pass < 5; pass++)
+    // (0.19: each from 0.35 m up to 1.2 m in one test, was at 0.35 and 1 m: a railing's bars between went through)
+    for (int pass = 0; pass < 3; pass++)
         {
-        int fwd = s.speed >= 0 ? 486 : -486, side = (pass & 1) ? 218 : -218, up = pass < 2 ? 90 : 256;
-        if (pass >= 4)
+        int fwd = s.speed >= 0 ? 486 : -486, side = (pass & 1) ? 218 : -218, up = 90;
+        if (pass >= 2)
             {
             if (!lside || s.ny < 7700) break;
-            side = lside; up = 128; fwd = pass == 4 ? 0 : -fwd;
+            side = lside; up = 128; fwd = 0;
             }
         const int ox = (fwd * sn + side * co) >> 14, oz = (fwd * co - side * sn) >> 14;
         TmGroundHit w;
         const int px = s.x + ox, pz = s.z + oz;
         // the corner's height over the ground's plane under the car (a gentle slope rises under a corner too)
         const int py = s.y - (s.nx * ox + s.nz * oz) / s.ny;
-        if (!aG.WallHit(px, pz, px + nx - s.x, pz + nz - s.z, py + up, w, ny - s.y)) continue;
+        if (!aG.WallHit(px, pz, px + nx - s.x, pz + nz - s.z, py + up, w, ny - s.y, 307 - up, py + 141)) continue;
         int t = w.y > 128 ? w.y - 128 : 0;
         int mx = nx - s.x, mz = nz - s.z;
         int hx = s.x + (int) (((long long) mx * t) >> 12), hz = s.z + (int) (((long long) mz * t) >> 12);
@@ -707,7 +780,7 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
         int vn = (int) (((long long) s.vx * w.nx + (long long) s.vz * w.nz) >> 13);
         // (0.19: in 64 bits: Island's car meets walls at 180 m/s and more, and vn * nx * 6 overflowed (the car
         // was thrown off at 250-360 m/s: IslandC2's loops))
-        if (vn < 0) { s.vx -= (int) (((long long) vn * w.nx * 6 / 5) >> 13); s.vz -= (int) (((long long) vn * w.nz * 6 / 5) >> 13); }
+        WallSlide(s.vx, s.vz, vn, w.nx, w.nz);
         s.speed = (int) (((long long) s.vx * R3D::Sin(s.yaw) + (long long) s.vz * R3D::Cos(s.yaw)) >> 14);
         iWallHits++;
         }
@@ -716,7 +789,20 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
     // else the car stays where it is this step (its speed into the walls was taken out above)
     {
     TmGroundHit w;
-    if (aG.WallHit(s.x, s.z, nx, nz, s.y + 154, w, ny - s.y) || aG.WallHit(s.x, s.z, nx, nz, s.y + 64, w, ny - s.y)) { nx = s.x; nz = s.z; }
+    if (aG.WallHit(s.x, s.z, nx, nz, s.y + 64, w, ny - s.y, 307 - 64, s.y + 141))
+        {
+        // (0.19: the move along that wall instead, if that one is clear, and the speed into it gone: wedged in a
+        // rail's corner the car stood still showing 100 km/h, its move along the rail stopped whole)
+        WallSlide(s.vx, s.vz, (int) (((long long) s.vx * w.nx + (long long) s.vz * w.nz) >> 13), w.nx, w.nz);
+        s.speed = (int) (((long long) s.vx * R3D::Sin(s.yaw) + (long long) s.vz * R3D::Cos(s.yaw)) >> 14);
+        int mx = nx - s.x, mz = nz - s.z;
+        const int mn = (int) (((long long) mx * w.nx + (long long) mz * w.nz) >> 13);
+        if (mn < 0) { mx -= (int) (((long long) mn * w.nx) >> 13); mz -= (int) (((long long) mn * w.nz) >> 13); }
+        mx += w.nx >> 9; mz += w.nz >> 9;                                   // (and a hair off it)
+        TmGroundHit w2;
+        if (!aG.WallHit(s.x, s.z, s.x + mx, s.z + mz, s.y + 64, w2, ny - s.y, 307 - 64, s.y + 141)) { nx = s.x + mx; nz = s.z + mz; }
+        else { nx = s.x; nz = s.z; }
+        }
     }
     TmGroundHit hit;
     // 0.6: the middle's ground. The highest surface up to the car's height (1.2 m) plus the move is the candidate (higher
@@ -751,9 +837,27 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
             }
         if (mid.y - ny > allowed && !ramp)
             {
-            // a wall: the car stops and bounces back a quarter of its speed
-            int v = s.speed;
-            s.vx = -(s.vx >> 2); s.vz = -(s.vz >> 2); s.speed = -(v >> 2);
+            // a wall: the car stays this step; the speed into the edge is taken out and the rest slides along it (0.19:
+            // was bounced back at a quarter of its speed: the game's road-side rails do not throw the car back). The
+            // edge's way from where the higher surface is around the point met (four probes half a metre out)
+            {
+            int gx = 0, gz = 0;
+            const int lim = ny + allowed;
+            TmGroundHit q;
+            if (aG.Probe(nx + 128, nz, mid.y + 64, q) && q.y > lim) gx -= 1;
+            if (aG.Probe(nx - 128, nz, mid.y + 64, q) && q.y > lim) gx += 1;
+            if (aG.Probe(nx, nz + 128, mid.y + 64, q) && q.y > lim) gz -= 1;
+            if (aG.Probe(nx, nz - 128, mid.y + 64, q) && q.y > lim) gz += 1;
+            if (gx == 0 && gz == 0) { gx = s.x - nx; gz = s.z - nz; }         // (all round: back the way it came)
+            const int gl = ILen(gx * 256, gz * 256);
+            if (gl > 0)
+                {
+                const int ex = gx * 256 * 8192 / gl, ez = gz * 256 * 8192 / gl;      // * 8192, toward the car
+                const int vn = (int) (((long long) s.vx * ex + (long long) s.vz * ez) >> 13);
+                WallSlide(s.vx, s.vz, vn, ex, ez);
+                }
+            s.speed = (int) (((long long) s.vx * R3D::Sin(s.yaw) + (long long) s.vz * R3D::Cos(s.yaw)) >> 14);
+            }
             nx = s.x; nz = s.z; ny = s.y;
             found = aG.Probe(nx, nz, ny + 115 + 102, s.y, mid);
             iWallHits++;
@@ -792,12 +896,33 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
             // flight from there is followed; when the ground is 0.25 m under it, the car is in the air (IslandB1's
             // kicker: the replay's car flies off where the lip starts to round, ours rode the lip down to 7 m/s up and
             // flew 30 % short). Re-based each step on the ground, the throw alone never saw a slow rounding
+            // 0.19: over a crest's kink the car stays on the road when following it, the kink spread over 4 m, pulls
+            // it down less than it holds on (Snow's car 60 m/s^2, the others 45): speed^2 x the kink / 4 m. The
+            // simplified shapes are faceted (SnowB2's humpback bridges: 6-12 degree kinks every 8 m) where the
+            // game's are smooth (its replay hugs the bridge at 155 km/h; ours flew the whole bridge at 110); a
+            // ramp's lip at speed still throws the car (20 degrees at 30 m/s: 80 m/s^2)
+            const int gvy = (hit.y - s.y) * 50;
+            const int hsp = s.speed > 256 ? s.speed : 256;
+            // (Snow's car: over 10 m and as much as its gravity, 40 m/s^2, the throw's own pull: it holds on to SnowB2's
+            // bumpy bridge roads at 110 km/h, hops 0.6 m at 130-155; SnowD4's rounded crest at 360 km/h, 43 m/s^2,
+            // still throws it as the replay's car)
+            const int spread = iClass == 1 ? 10 : 4;                        // m
+            const long long hold = (iClass == 1 ? 40 : 45) * spread;          // m/s^2 x m
+            // the kink against the road's climb over the last metres (not the last step: the decimated roads' noise,
+            // climb 13, 19, 24, 10 m/s on SnowB2's bridge, evens out; a smooth arc gives the same as one kink of the
+            // same turn; the ground's own climb, not the car's height, which floats a few cm over it)
+            if (iKink == KKinkOff) { iKink = s.vy; iKinkY = hit.y - s.vy / 50; }
+            const int gClimb = (hit.y - iKinkY) * 50;
+            const int kink = iKink - gClimb;
+            iKink += (int) ((long long) (gClimb - iKink) * hsp / (50 * 256 * spread));
+            iKinkY = hit.y;
+            const bool smallKink = !iShadow && s.vy > gvy && (long long) kink * hsp < hold * 65536 && hit.y > throwY - 256;
             const int gStep = (iGravity * 256 / 50) >> 8;
             if (iShadow) { iShY += iShVy / 50; iShVy -= gStep; if (hit.y >= iShY) iShadow = 0; }
-            else if (hit.y < throwY - 2 && s.vy > 4 * 256) { iShadow = 1; iShY = throwY; iShVy = s.vy - gStep; }
+            else if (!smallKink && hit.y < throwY - 2 && s.vy > 4 * 256) { iShadow = 1; iShY = throwY; iShVy = s.vy - gStep; }
             const bool shadowOff = iShadow && hit.y < iShY - 64;
             if (shadowOff) { throwY = iShY; s.vy = iShVy; iShadow = 0; }
-            if (!shadowOff && (hit.y >= throwY - 24 || (iAirSteps < 1 && hit.y >= throwY - 128 && s.vy < 2 * 256)))
+            if (!shadowOff && (hit.y >= throwY - 24 || smallKink || (iAirSteps < 1 && hit.y >= throwY - 128 && s.vy < 2 * 256)))
                 {
                 if (hit.y < throwY - 24) iAirSteps++; else iAirSteps = 0;
                 // on it: the climb rate from the ground itself (a ramp's end throws the car at that rate)
@@ -826,7 +951,7 @@ void TmCar::Step(const TmGround& aG, const TmCarInput& aIn)
                 }
             else
                 {
-                s.onGround = 0; s.nx = 0; s.ny = 8192; s.nz = 0; iAirSteps = 0; ny = s.y + s.vy / 50; iClimbVy = 0; iClimbRaw = 0; iShadow = 0;
+                s.onGround = 0; s.nx = 0; s.ny = 8192; s.nz = 0; iAirSteps = 0; ny = s.y + s.vy / 50; iClimbVy = 0; iClimbRaw = 0; iShadow = 0; iKink = KKinkOff;
                 // 0.18: thrown up off a ramp, the speed turns upwards: what goes up is taken from the flat speed (the
                 // replays: BayD2's kicker, 96 m/s flat -> 86 flat and 33 up), or the car flew a fifth too far
                 // 0.18: Island's car springs off a kicker 1.08 times the ramp's climb (its replays' take-offs; Bay's,
@@ -993,7 +1118,7 @@ void TmCar::LeaveSurface(bool aOnGround)
     if (aOnGround) { s.onGround = 1; s.nx = s.ux; s.ny = s.uy; s.nz = s.uz; s.speed = ILen(s.vx, s.vz); }
     else { s.onGround = 0; s.nx = 0; s.ny = 8192; s.nz = 0; }
     s.ux = 0; s.uy = 8192; s.uz = 0;
-    iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; iShadow = 0; iBumpY = s.y;
+    iAirSteps = 0; iClimbVy = 0; iClimbRaw = 0; iShadow = 0; iKink = KKinkOff; iBumpY = s.y;
     for (int w = 0; w < 5; w++) { iLast[w].cinst = -1; iLast[w].face = -1; }
     }
 
@@ -1043,7 +1168,29 @@ void TmCar::Race(const TmGround& aG)
         // its checkpoint (a bit each, 32 at most)
         int ord = 32;
         for (int k = 0; k < iNCp; k++) if (iCpInst[k] == cp) { ord = iCpGroup[k]; break; }
-        if (ord < 32 && !(iCheckMask & (1 << ord))) { iCheckMask |= 1 << ord; iCheckpoints++; iLastKindInst = cp; iCpX = iS.x; iCpY = iS.y; iCpZ = iS.z; iCpYaw = iS.yaw; }
+        if (ord < 32 && !(iCheckMask & (1 << ord)))
+            {
+            iCheckMask |= 1 << ord; iCheckpoints++; iLastKindInst = cp;
+            // 0.19: the respawn there as the game's: at the checkpoint's middle (all its boxes': Island's 64 m pieces
+            // are four), on the road there, facing along it (the checkpoint's axis: the car's heading to a quarter
+            // turn); was where and as the car crossed it
+            int b0 = 1 << 30, b2 = 1 << 30, b3 = -(1 << 30), b5 = -(1 << 30);
+            for (int k = 0; k < iNCp; k++)
+                {
+                if (iCpGroup[k] != ord) continue;
+                const TmCInst& c = aG.Track().iCInst[iCpInst[k]];
+                if (c.bb[0] < b0) b0 = c.bb[0]; if (c.bb[2] < b2) b2 = c.bb[2];
+                if (c.bb[3] > b3) b3 = c.bb[3]; if (c.bb[5] > b5) b5 = c.bb[5];
+                }
+            iCpX = iS.x; iCpY = iS.y; iCpZ = iS.z;
+            if (b3 >= b0 && b5 >= b2)
+                {
+                const int cx = ((b0 + b3) / 2) * 16, cz = ((b2 + b5) / 2) * 16;
+                TmGroundHit h;
+                if (aG.Probe(cx, cz, iS.y + 3 * 256, h) && h.y > iS.y - 6 * 256) { iCpX = cx; iCpZ = cz; iCpY = h.y; }
+                }
+            iCpYaw = ((iS.yaw + 512) & ~1023) & 4095;
+            }
         }
     // the finish counts once every checkpoint is taken (and not in the first second: a start/finish line)
     int fin = aG.KindAt(3, iS.x, iS.y, iS.z);

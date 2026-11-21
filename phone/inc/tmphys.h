@@ -37,7 +37,11 @@ public:
     bool FaceAt(int aCInst, int aFace, int aX, int aZ, int aYMax, TmGroundHit& aHit) const;
     // a wall between (aX0, aY, aZ0) and (aX1, aY, aZ1) (1/256 m): the nearest wall face the segment crosses;
     // aHit gets the crossing point (x, z in aHit.y? no: aHit.nx/ny/nz the wall's normal, aHit.y the fraction * 4096)
-    bool WallHit(int aX0, int aZ0, int aX1, int aZ1, int aY, TmGroundHit& aHit, int aDY = 0) const;     // aDY: the move's height change
+    // 0.19: aBand: not a point's height but the heights aY..aY + aBand (1/256 m): the car's side from its sills to its
+    // roof meets a railing's bars at 0.9-1.4 m (SnowB2's lake bridges) that the points at 0.35 and 1 m passed under
+    // aMinTop: a face lower than that (a step the car climbs, 0.55 m over its ground) is not a wall (the faces are met
+    // from both sides now: a snow mound's 0.5 m lip at a road's end, its riser seen from behind before, stopped the car)
+    bool WallHit(int aX0, int aZ0, int aX1, int aZ1, int aY, TmGroundHit& aHit, int aDY = 0, int aBand = 0, int aMinTop = -0x7fffffff) const;     // aDY: the move's height change
     // the collision instances of a kind (checkpoint, finish) whose box holds the point (1/256 m): the first one's index, or -1
     bool Covers(int aX, int aZ) const;
     // 0.18: the nearest face (not a wall, not 'none') the segment from (aX, aY, aZ) along (aDx, aDy, aDz) crosses (1/256 m):
@@ -86,6 +90,10 @@ public:
     void Reset(const TmTrack& aT);                  // at the start, standing
     void Respawn();                                 // standing at the last checkpoint taken (the start when none), the race going on
     void Step(const TmGround& aG, const TmCarInput& aIn);
+    // 0.19: the body's tilt for drawing (as TmCarState::Slopes, 4096 = 45 degrees): on the ground, from the road's
+    // height under its nose and tail, left and right side (it tilts smoothly as it rolls over a kink, where the
+    // faceted road's normal jumped); else, or a probe missing, the state's normal
+    void DrawSlopes(const TmGround& aG, int& aAlong, int& aRight) const;
     TmCarState iS;
     int iClass;                 // the car's class (TmTrack::iCarClass)
     // the race: checkpoints taken, finished, the time in steps
@@ -112,6 +120,8 @@ private:
     int iClimbRaw;              //   the last step's alone
     int iSurfMiss;              // 0.18: steps running the loop's road was not found under the car
     int iPress;                 // 0.18: on a loop: the road's press on the car, averaged (1/256 m/s^2)
+    int iKink, iKinkY;          // 0.19: the road's climb over the last metres (1/256 m/s; KKinkOff: off the road), the last ground height
+    enum { KKinkOff = 0x7fffffff };
     int iShadow, iShY, iShVy;    // 0.18: the throw's shadow over a ramp's lip: on, its height (1/256 m), its upward speed
     int iTurbo;                 // 0.16: the turbo's steps left
     void Suspension(int aVy0);
